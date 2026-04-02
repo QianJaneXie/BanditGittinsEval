@@ -1,0 +1,2845 @@
+[
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.npy",
+    "shape": [
+      154,
+      805
+    ],
+    "dtype": "float64",
+    "size_bytes": 991760,
+    "min": 0.0,
+    "max": 0.9999999407,
+    "mean": 0.13569549299539244,
+    "num_unique_values": 16247,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy",
+    "shape": [
+      153,
+      805
+    ],
+    "dtype": "float32",
+    "size_bytes": 492660,
+    "min": 0.0,
+    "max": 0.9999999403953552,
+    "mean": 0.13237953186035156,
+    "num_unique_values": 8272,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.npy",
+    "shape": [
+      154,
+      805
+    ],
+    "dtype": "float32",
+    "size_bytes": 495880,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1292288452386856,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true
+  },
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.npy",
+    "shape": [
+      154,
+      805
+    ],
+    "dtype": "float64",
+    "size_bytes": 991760,
+    "min": -2.0,
+    "max": 0.9999999407,
+    "mean": 0.13567129359231106,
+    "num_unique_values": 16248,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": false,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.npy",
+    "shape": [
+      154,
+      805
+    ],
+    "dtype": "float64",
+    "size_bytes": 991760,
+    "min": -2.0,
+    "max": 1.0,
+    "mean": 0.12344518835202065,
+    "num_unique_values": 4,
+    "unique_values_sample": [
+      -2.0,
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": false,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.pkl",
+    "npy_file": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.npy",
+    "shape": [
+      154,
+      805
+    ],
+    "dtype": "float64",
+    "size_bytes": 991760,
+    "min": -2.0,
+    "max": 1.0,
+    "mean": 0.12345325481971445,
+    "num_unique_values": 4,
+    "unique_values_sample": [
+      -2.0,
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": false,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "cnn_2d_comparisons.pkl",
+    "npy_file": "cnn_2d_comparisons.npy",
+    "shape": [
+      3,
+      500
+    ],
+    "dtype": "float64",
+    "size_bytes": 12000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.036333333333333336,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "FINAL_cnn_2d_comparisons.pkl",
+    "npy_file": "FINAL_cnn_2d_comparisons.npy",
+    "shape": [
+      14,
+      500
+    ],
+    "dtype": "float64",
+    "size_bytes": 56000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.0018571428571428571,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "FINAL_xsum_2d_comparisons.pkl",
+    "npy_file": "FINAL_xsum_2d_comparisons.npy",
+    "shape": [
+      42,
+      500
+    ],
+    "dtype": "float64",
+    "size_bytes": 168000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.05385714285714286,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_128_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_128_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.9140625,
+    "mean": 0.18740978098556496,
+    "num_unique_values": 117,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_128_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_128_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.90625,
+    "mean": 0.18735441489858137,
+    "num_unique_values": 117,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_128_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_128_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.90625,
+    "mean": 0.18743423150510205,
+    "num_unique_values": 115,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_128_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_128_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.90625,
+    "mean": 0.18737915707441513,
+    "num_unique_values": 116,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_128_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_128_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.90625,
+    "mean": 0.18747268152687904,
+    "num_unique_values": 117,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_16_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18734133897461425,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_16_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18724450908412146,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_16_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1876069406421105,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_16_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1874883337481334,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_16_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18773410278745645,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_various_models_seed1.pkl",
+    "npy_file": "gsm8k_16_samples_various_models_seed1.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11190573770491803,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_various_models_seed2.pkl",
+    "npy_file": "gsm8k_16_samples_various_models_seed2.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1119344262295082,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_various_models_seed3.pkl",
+    "npy_file": "gsm8k_16_samples_various_models_seed3.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11173565573770491,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_various_models_seed4.pkl",
+    "npy_file": "gsm8k_16_samples_various_models_seed4.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11185450819672131,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_16_samples_various_models_seed5.pkl",
+    "npy_file": "gsm8k_16_samples_various_models_seed5.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1116654713114754,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1878670980587357,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1874066699850672,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18792309606769536,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18883150821304132,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18795420607267296,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_top100_seed1.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_top100_seed1.npy",
+    "shape": [
+      100,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 627200,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2458545918367347,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_top1bottom99_seed1.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_top1bottom99_seed1.npy",
+    "shape": [
+      100,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 627200,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.12973214285714285,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_mistral_512_sequence_length_top1random99_seed1.pkl",
+    "npy_file": "gsm8k_1_samples_mistral_512_sequence_length_top1random99_seed1.npy",
+    "shape": [
+      100,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 627200,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1936607142857143,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_various_models_seed1.pkl",
+    "npy_file": "gsm8k_1_samples_various_models_seed1.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11114754098360656,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_various_models_seed2.pkl",
+    "npy_file": "gsm8k_1_samples_various_models_seed2.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11172950819672131,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_various_models_seed3.pkl",
+    "npy_file": "gsm8k_1_samples_various_models_seed3.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1114672131147541,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_various_models_seed4.pkl",
+    "npy_file": "gsm8k_1_samples_various_models_seed4.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11237704918032787,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_1_samples_various_models_seed5.pkl",
+    "npy_file": "gsm8k_1_samples_various_models_seed5.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11152459016393443,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_256_samples_mistral_512_sequence_length.pkl",
+    "npy_file": "gsm8k_256_samples_mistral_512_sequence_length.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.8984375,
+    "mean": 0.18740487143790444,
+    "num_unique_values": 225,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_2_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_2_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18807242409158786,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_2_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_2_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18706134892981582,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_2_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_2_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18733822797411648,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_2_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_2_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.188576406172225,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_2_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_2_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18760266301642609,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_32_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_32_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.96875,
+    "mean": 0.18724995333499253,
+    "num_unique_values": 32,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_32_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_32_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18728728534096564,
+    "num_unique_values": 32,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_32_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_32_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18738664291936286,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_32_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_32_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.96875,
+    "mean": 0.18747180655798906,
+    "num_unique_values": 32,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_32_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_32_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.96875,
+    "mean": 0.18756688651070183,
+    "num_unique_values": 32,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_4_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18782354405176704,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_4_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18748133399701344,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_4_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1874673344947735,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_4_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18762132901941264,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_4_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18760421851667497,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_various_models_seed1.pkl",
+    "npy_file": "gsm8k_4_samples_various_models_seed1.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11184016393442622,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_various_models_seed2.pkl",
+    "npy_file": "gsm8k_4_samples_various_models_seed2.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11208811475409836,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_various_models_seed3.pkl",
+    "npy_file": "gsm8k_4_samples_various_models_seed3.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11160450819672131,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_various_models_seed4.pkl",
+    "npy_file": "gsm8k_4_samples_various_models_seed4.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11212295081967213,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_4_samples_various_models_seed5.pkl",
+    "npy_file": "gsm8k_4_samples_various_models_seed5.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11204098360655737,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_64_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.953125,
+    "mean": 0.18743680780238925,
+    "num_unique_values": 61,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_64_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.9375,
+    "mean": 0.18735767172722748,
+    "num_unique_values": 61,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_64_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.953125,
+    "mean": 0.1873634076343952,
+    "num_unique_values": 61,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_64_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.90625,
+    "mean": 0.18736253266550523,
+    "num_unique_values": 59,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_64_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 0.953125,
+    "mean": 0.18756008119711298,
+    "num_unique_values": 61,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_various_models_seed1.pkl",
+    "npy_file": "gsm8k_64_samples_various_models_seed1.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11180981045081967,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_various_models_seed2.pkl",
+    "npy_file": "gsm8k_64_samples_various_models_seed2.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11180981045081967,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_various_models_seed3.pkl",
+    "npy_file": "gsm8k_64_samples_various_models_seed3.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11180981045081967,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_various_models_seed4.pkl",
+    "npy_file": "gsm8k_64_samples_various_models_seed4.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11180981045081967,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_64_samples_various_models_seed5.pkl",
+    "npy_file": "gsm8k_64_samples_various_models_seed5.npy",
+    "shape": [
+      122,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 976000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.11180981045081967,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_8_samples_mistral_512_sequence_length_seed1.pkl",
+    "npy_file": "gsm8k_8_samples_mistral_512_sequence_length_seed1.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18786476480836237,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_8_samples_mistral_512_sequence_length_seed2.pkl",
+    "npy_file": "gsm8k_8_samples_mistral_512_sequence_length_seed2.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18704034967645594,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_8_samples_mistral_512_sequence_length_seed3.pkl",
+    "npy_file": "gsm8k_8_samples_mistral_512_sequence_length_seed3.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18731411772025883,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_8_samples_mistral_512_sequence_length_seed4.pkl",
+    "npy_file": "gsm8k_8_samples_mistral_512_sequence_length_seed4.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.1871445681931309,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "gsm8k_8_samples_mistral_512_sequence_length_seed5.pkl",
+    "npy_file": "gsm8k_8_samples_mistral_512_sequence_length_seed5.npy",
+    "shape": [
+      205,
+      784
+    ],
+    "dtype": "float64",
+    "size_bytes": 1285760,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.18793942882030862,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_16_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5502342019865372,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_16_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504185212796281,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_16_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5503847179891975,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_16_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5502504184299194,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_16_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504909242733206,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_various_models_seed1.pkl",
+    "npy_file": "piqa_16_samples_various_models_seed1.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.29862924757281556,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_various_models_seed2.pkl",
+    "npy_file": "piqa_16_samples_various_models_seed2.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.29841504854368933,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_various_models_seed3.pkl",
+    "npy_file": "piqa_16_samples_various_models_seed3.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.298183859223301,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_various_models_seed4.pkl",
+    "npy_file": "piqa_16_samples_various_models_seed4.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2982845873786408,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_16_samples_various_models_seed5.pkl",
+    "npy_file": "piqa_16_samples_various_models_seed5.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2984884708737864,
+    "num_unique_values": 17,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_1_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504272005028468,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_1_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5510923030821292,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_1_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5516733542365573,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_1_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5502152447358227,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_1_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5506683915480811,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_various_models_seed1.pkl",
+    "npy_file": "piqa_1_samples_various_models_seed1.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2978155339805825,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_various_models_seed2.pkl",
+    "npy_file": "piqa_1_samples_various_models_seed2.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.29840776699029126,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_various_models_seed3.pkl",
+    "npy_file": "piqa_1_samples_various_models_seed3.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983495145631068,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_various_models_seed4.pkl",
+    "npy_file": "piqa_1_samples_various_models_seed4.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.29828155339805823,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_1_samples_various_models_seed5.pkl",
+    "npy_file": "piqa_1_samples_various_models_seed5.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2969611650485437,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_2_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_2_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5498315317093136,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_2_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_2_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5511069207212344,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_2_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_2_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5512037625803057,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_2_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_2_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5501385021305208,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_2_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_2_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5506629099334166,
+    "num_unique_values": 3,
+    "unique_values_sample": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_32_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_32_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5503512572996835,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_32_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_32_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504309691129285,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_32_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_32_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504187496802392,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_32_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_32_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5503735263592577,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_32_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_32_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5505733768938978,
+    "num_unique_values": 33,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_4_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5497849379846661,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_4_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5510447957550376,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_4_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5505541912425724,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_4_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5500188202103479,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_4_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5509918068132816,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_various_models_seed1.pkl",
+    "npy_file": "piqa_4_samples_various_models_seed1.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.29875,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_various_models_seed2.pkl",
+    "npy_file": "piqa_4_samples_various_models_seed2.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2986383495145631,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_various_models_seed3.pkl",
+    "npy_file": "piqa_4_samples_various_models_seed3.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2980922330097087,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_various_models_seed4.pkl",
+    "npy_file": "piqa_4_samples_various_models_seed4.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2979441747572816,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_4_samples_various_models_seed5.pkl",
+    "npy_file": "piqa_4_samples_various_models_seed5.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983470873786408,
+    "num_unique_values": 5,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_tulu_2_512_sequence_length.pkl",
+    "npy_file": "piqa_64_samples_tulu_2_512_sequence_length.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504240599944453,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_various_models_seed1.pkl",
+    "npy_file": "piqa_64_samples_various_models_seed1.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983261529126214,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_various_models_seed2.pkl",
+    "npy_file": "piqa_64_samples_various_models_seed2.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983261529126214,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_various_models_seed3.pkl",
+    "npy_file": "piqa_64_samples_various_models_seed3.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983261529126214,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_various_models_seed4.pkl",
+    "npy_file": "piqa_64_samples_various_models_seed4.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983261529126214,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_64_samples_various_models_seed5.pkl",
+    "npy_file": "piqa_64_samples_various_models_seed5.npy",
+    "shape": [
+      103,
+      1000
+    ],
+    "dtype": "float64",
+    "size_bytes": 824000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.2983261529126214,
+    "num_unique_values": 65,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "configurations",
+      "eval_indices",
+      "questions"
+    ]
+  },
+  {
+    "source_pkl": "piqa_8_samples_tulu_2_512_sequence_length_seed1.pkl",
+    "npy_file": "piqa_8_samples_tulu_2_512_sequence_length_seed1.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5499914121370257,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_8_samples_tulu_2_512_sequence_length_seed2.pkl",
+    "npy_file": "piqa_8_samples_tulu_2_512_sequence_length_seed2.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5505171903435876,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_8_samples_tulu_2_512_sequence_length_seed3.pkl",
+    "npy_file": "piqa_8_samples_tulu_2_512_sequence_length_seed3.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5504422749431739,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_8_samples_tulu_2_512_sequence_length_seed4.pkl",
+    "npy_file": "piqa_8_samples_tulu_2_512_sequence_length_seed4.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5502540728396956,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "piqa_8_samples_tulu_2_512_sequence_length_seed5.pkl",
+    "npy_file": "piqa_8_samples_tulu_2_512_sequence_length_seed5.npy",
+    "shape": [
+      177,
+      1546
+    ],
+    "dtype": "float64",
+    "size_bytes": 2189136,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.5505943897501114,
+    "num_unique_values": 9,
+    "is_strict_0_1": false,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "eval_indices",
+      "instructions",
+      "questions",
+      "train_indices"
+    ]
+  },
+  {
+    "source_pkl": "xsum_2d_comparisons.pkl",
+    "npy_file": "xsum_2d_comparisons.npy",
+    "shape": [
+      3,
+      500
+    ],
+    "dtype": "float64",
+    "size_bytes": 12000,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.094,
+    "num_unique_values": 2,
+    "unique_values_sample": [
+      0.0,
+      1.0
+    ],
+    "is_strict_0_1": true,
+    "values_in_unit_interval": true,
+    "other_keys_in_pkl": [
+      "instructions",
+      "model_order"
+    ]
+  }
+]
