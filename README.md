@@ -1,2 +1,2 @@
-# GittinsBanditEval
+# BanditGittinsEval
 
