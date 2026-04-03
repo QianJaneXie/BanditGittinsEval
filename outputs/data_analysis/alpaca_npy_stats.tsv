@@ -1,0 +1,7 @@
+stem	rows	cols	dtype	min	max	mean	nan_count	inf_count	num_unique_values	count_neg2	count_0	count_0_5	count_1	values_in_unit_interval	is_strict_0_1
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding	154	805	float64	0.0	0.9999999407	0.13569549299539244	0	0	16247	0	33	1443	0	1	0
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias	153	805	float32	0.0	0.9999999403953552	0.13237953186035156	0	0	8272	0	33	1431	0	1	0
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding	154	805	float32	0.0	1.0	0.1292288452386856	0	0	3	0	107228	1443	15299	1	0
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding	154	805	float64	-2.0	1.0	0.12345325481971445	0	0	4	1	108655	15	15299	0	0
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1	154	805	float64	-2.0	0.9999999407	0.13567129359231106	0	0	16248	1	34	1441	0	0	0
+alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2	154	805	float64	-2.0	1.0	0.12344518835202065	0	0	4	1	108657	13	15299	0	0

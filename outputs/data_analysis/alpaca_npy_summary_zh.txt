@@ -1,0 +1,63 @@
+Alpaca（GPT-4 Turbo weighted）六张 2D 比较矩阵 — .npy 统计摘要
+数据来源：outputs/matrices 下由 PKL 导出的同名 .npy 文件。
+
+— 连续概率版（无舍入） —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: 0.0 / 0.9999999407 / 0.13569549299539244
+唯一取值数量: 16247
+计数 — -2: 0 | 0: 33 | 0.5: 1443 | 1: 0
+是否严格二元 0/1: False；是否全落在 [0,1]: True
+
+— 连续概率 + debias（行数可能少 1） —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy
+shape: (153, 805)  dtype: float32
+min / max / mean: 0.0 / 0.9999999403953552 / 0.13237953186035156
+唯一取值数量: 8272
+计数 — -2: 0 | 0: 33 | 0.5: 1431 | 1: 0
+是否严格二元 0/1: False；是否全落在 [0,1]: True
+
+— 三值离散：{0, 0.5, 1} —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.npy
+shape: (154, 805)  dtype: float32
+min / max / mean: 0.0 / 1.0 / 0.1292288452386856
+唯一取值数量: 3
+全部取值: [0.0, 0.5, 1.0]
+计数 — -2: 0 | 0: 107228 | 0.5: 1443 | 1: 15299
+是否严格二元 0/1: False；是否全落在 [0,1]: True
+
+— 四值离散：{-2, 0, 0.5, 1}（强舍入，0.5 很少） —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 1.0 / 0.12345325481971445
+唯一取值数量: 4
+全部取值: [-2.0, 0.0, 0.5, 1.0]
+计数 — -2: 1 | 0: 108655 | 0.5: 15 | 1: 15299
+-2 出现位置 (row, col)，共 1 处: [[25, 150]]
+是否严格二元 0/1: False；是否全落在 [0,1]: False
+
+— 基本同无舍入 + 少量手工修正（含 -2 哨兵） —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 0.9999999407 / 0.13567129359231106
+唯一取值数量: 16248
+计数 — -2: 1 | 0: 34 | 0.5: 1441 | 1: 0
+-2 出现位置 (row, col)，共 1 处: [[25, 150]]
+是否严格二元 0/1: False；是否全落在 [0,1]: False
+
+— 四值离散（与 rounding 接近，0.5 更少） —
+文件: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 1.0 / 0.12344518835202065
+唯一取值数量: 4
+全部取值: [-2.0, 0.0, 0.5, 1.0]
+计数 — -2: 1 | 0: 108657 | 0.5: 13 | 1: 15299
+-2 出现位置 (row, col)，共 1 处: [[25, 150]]
+是否严格二元 0/1: False；是否全落在 [0,1]: False
+
+— 规则校验（non_trivial_rounding）—
+与 no_rounding 同形状: True
+>0.5→1, <0.5→0, ==0.5→0.5 是否与 non_trivial 矩阵完全一致: True
+辅助计数: {'no_gt_0_5': 15299, 'no_lt_0_5': 107228, 'no_eq_0_5': 1443, 'nt_eq_1': 15299, 'nt_eq_0': 107228, 'nt_eq_0_5': 1443}
+
+说明：rounding / option_2 中大量原本的 0.5（平局）被进一步压成 0 或 1，具体 tie-break 规则需对照论文实现或生成脚本；本摘要仅复述矩阵内数值统计。
