@@ -12,10 +12,19 @@ license = { text = "MIT" }
 authors = [{ name = "Qian Xie and collaborators" }]
 dependencies = [
     "banditeval>=0.1.1",
+    "jax>=0.4.26",
+    "jaxtyping>=0.2.28",
     "matplotlib>=3.8",
     "numpy>=1.24",
+    "torch>=2.5.1",
 ]
 
-# Script-only repo: wheel is metadata-only; use for dependency sync (e.g. pip install -e .).
+# Editable install exposes modules under src/ (e.g. import q_estimation).
 [tool.setuptools]
-packages = []
+package-dir = { "" = "src" }
+py-modules = [
+    "q_estimation",
+    "gittins_index_computation",
+    "gittins_shrinking_posterior",
+    "gittins_policy",
+]
