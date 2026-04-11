@@ -61,7 +61,7 @@ _repo_root = Path(__file__).resolve().parents[1]
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
-from gittins_bandit_policy import gittins_index_exploration
+from gittins_policy import gittins_index_exploration
 
 T = TypeVar("T", int, float)
 
