@@ -82,6 +82,11 @@ def gittins_index_exploration(
     chosen B). Default prior on each θ_k is N(0.7, 0.01); override with ``prior_mean`` and
     ``prior_variance``.
 
+    **Stopping:** Fully observed arms use their row **empirical mean** as the comparison score
+    (instead of continuing the DP). If the arm with the largest score is already fully observed,
+    return ``None`` so the simulator can stop early (policy “happy to stop” before the matrix is
+    full).
+
     **Batch semantics (not a mixed pair minibatch):** compute the Gittins index for every arm,
     choose the single arm k* with the largest index, then evaluate **that method** on
     ``batch_size`` **distinct unevaluated examples** (columns), chosen uniformly at random. So
@@ -165,7 +170,6 @@ def gittins_index_exploration(
 
     for k in arm_indices:
         if completely_sensed_mask[k]:
-            scores[k] = float("-inf")
             continue
         t = int(counts[k].item())
         row = observed_matrix[k]
@@ -201,7 +205,13 @@ def gittins_index_exploration(
             )
         scores[k] = float(jax.device_get(g))
 
+    for k in range(m_methods):
+        if completely_sensed_mask[k]:
+            scores[k] = float(mus[k].item())
+
     best_method_index = int(torch.argmax(scores).item())
+    if completely_sensed_mask[best_method_index]:
+        return (None, mus) if return_mus else None
     unobserved_column_indices = (
         observed_matrix[best_method_index].isnan().nonzero().flatten()
     )
