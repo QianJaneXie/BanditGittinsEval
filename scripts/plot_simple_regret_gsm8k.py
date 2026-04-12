@@ -35,8 +35,9 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 - ``lrf_x_full``, ``lrf_regret_full`` — UCB-E-LRF full trace (empty if not run)
 - ``lrf_x_plot``, ``lrf_regret_plot`` — LRF segment used in the figure (cum eval ≥ ``warmup_evals``)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
-- scalar ``gittins_stop_cum_eval`` — cumulative evals when Gittins returned early because the
-  top-scoring arm was already fully observed; ``-1`` if the run ended only on budget or full matrix
+- scalar ``gittins_stop_cum_eval`` — first cumulative eval count (before that policy step) where the
+  top-scoring arm was already fully observed (nominal stopping time); ``-1`` if that never occurred.
+  The Gittins regret curve still runs to the eval budget when using the simple-regret script.
 - scalars ``warmup_evals``, ``budget_evals``, ``tau_sq_gittins``
 
 **Gittins-only rerun with UCB/LRF unchanged:** pass ``--algorithms gittins`` and
@@ -77,7 +78,8 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
 
     cache: dict[str, torch.Tensor | int | None] = {"scores": None, "prev_arm": None}
 
-    def step(obs: torch.Tensor, **_kwargs) -> torch.Tensor | None:
+    def step(obs: torch.Tensor, **kwargs) -> torch.Tensor | None:
+        sim_cum_eval = kwargs.pop("sim_cum_eval", None)
         m = int(obs.shape[0])
         scores = cache["scores"]
         if scores is None:
@@ -92,6 +94,7 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
             obs,
             cached_scores=scores,
             recompute_arms=recompute_arms,
+            sim_cum_eval=sim_cum_eval,
             **gittins_kwargs,
         )
         if batch is not None:
@@ -135,16 +138,15 @@ def simulate(
     max_evaluations: int,
     verbose: bool = False,
     log_prefix: str = "",
-    track_policy_early_stop: bool = False,
-) -> tuple[list[float], list[int], int | None]:
+    pass_sim_cum_eval: bool = False,
+) -> tuple[list[float], list[int]]:
     """Run until eval budget is reached, the matrix is exhausted, or ``batch is None``.
 
-    Returns parallel lists: regret after each batch, cumulative number of
-    entries revealed (batch sizes summed), including warm-up queries for LRF, and optionally
-    ``policy_early_stop_cum_eval``: when ``track_policy_early_stop`` is True, the cumulative
-    eval count **after the last revealed batch** if the run ended because ``step`` returned
-    ``None`` while the matrix still contained unobserved cells (e.g. Gittins index rule); otherwise
-    ``None``.
+    Returns parallel lists: regret after each batch, and cumulative number of
+    entries revealed (batch sizes summed), including warm-up queries for LRF.
+
+    If ``pass_sim_cum_eval`` is True, each ``step`` call also receives
+    ``sim_cum_eval=<cumulative evals so far>`` (for Gittins nominal stopping-time bookkeeping).
 
     No new batch is started once cumulative evaluations have reached
     ``max_evaluations`` (total evals never exceed that cap).
@@ -162,15 +164,15 @@ def simulate(
     cum_evaluated: list[int] = []
     evaluated = 0
     tag = log_prefix or "sim"
-    policy_early_stop_cum_eval: int | None = None
 
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
             break
-        batch = step(obs, **step_kwargs)
+        call_kw = dict(step_kwargs)
+        if pass_sim_cum_eval:
+            call_kw["sim_cum_eval"] = evaluated
+        batch = step(obs, **call_kw)
         if batch is None:
-            if track_policy_early_stop and torch.isnan(obs).any().item():
-                policy_early_stop_cum_eval = int(evaluated)
             break
         row_idx, col_idx = batch
         n_batch = int(row_idx.numel())
@@ -192,7 +194,7 @@ def simulate(
                 flush=True,
             )
 
-    return regrets, cum_evaluated, policy_early_stop_cum_eval
+    return regrets, cum_evaluated
 
 
 def save_trace_bundle(
@@ -432,7 +434,7 @@ def main() -> int:
             return 1
 
     if "ucb" in algorithms:
-        regrets_ucbe, xs_ucbe, _ = simulate(
+        regrets_ucbe, xs_ucbe = simulate(
             ground_truth,
             upper_confidence_bound_exploration,
             step_kwargs={"a": args.a, "batch_size": args.batch_size, "return_mus": False},
@@ -440,7 +442,7 @@ def main() -> int:
             **sim_kwargs,
         )
     if "lrf" in algorithms:
-        regrets_lrf, xs_lrf, _ = simulate(
+        regrets_lrf, xs_lrf = simulate(
             ground_truth,
             upper_confidence_bound_exploration_low_rank_factorization,
             step_kwargs={
@@ -454,7 +456,8 @@ def main() -> int:
             **sim_kwargs,
         )
     if "gittins" in algorithms:
-        regrets_gittins, xs_gittins, gittins_stop_cum_eval = simulate(
+        gittins_natural_stop_holder: list[int | None] = [None]
+        regrets_gittins, xs_gittins = simulate(
             ground_truth,
             make_gittins_step_with_score_cache(
                 batch_size=args.gittins_batch_size,
@@ -465,12 +468,15 @@ def main() -> int:
                 prior_mean=args.gittins_prior_mean,
                 prior_variance=args.gittins_prior_variance,
                 use_batch_mean_gittins_dp=not args.gittins_per_cell_dp,
+                allow_early_stop=False,
+                natural_stop_cum_eval_holder=gittins_natural_stop_holder,
             ),
             step_kwargs={},
             log_prefix="gittins",
-            track_policy_early_stop=True,
+            pass_sim_cum_eval=True,
             **sim_kwargs,
         )
+        gittins_stop_cum_eval = gittins_natural_stop_holder[0]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -498,7 +504,7 @@ def main() -> int:
                 linestyle="--",
                 alpha=0.85,
                 linewidth=1.2,
-                label=f"Gittins stop ({gittins_stop_cum_eval} evals)",
+                label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
             )
     plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")
@@ -587,7 +593,7 @@ def main() -> int:
         )
     if "gittins" in plot_algorithms:
         stop_msg = (
-            f", policy early stop at cum_eval={gittins_stop_cum_eval}"
+            f", nominal stop marker at cum_eval={gittins_stop_cum_eval} (curve to budget)"
             if gittins_stop_cum_eval is not None
             else ""
         )

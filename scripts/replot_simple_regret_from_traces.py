@@ -62,7 +62,7 @@ def main() -> int:
                 linestyle="--",
                 alpha=0.85,
                 linewidth=1.2,
-                label=f"Gittins stop ({stop} evals)",
+                label=f"Gittins nominal stop ({stop} evals)",
             )
     plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")

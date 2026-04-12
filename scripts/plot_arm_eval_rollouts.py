@@ -43,7 +43,8 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
 
     cache: dict[str, torch.Tensor | int | None] = {"scores": None, "prev_arm": None}
 
-    def step(obs: torch.Tensor, **_kwargs) -> torch.Tensor | None:
+    def step(obs: torch.Tensor, **kwargs) -> torch.Tensor | None:
+        sim_cum_eval = kwargs.pop("sim_cum_eval", None)
         m = int(obs.shape[0])
         scores = cache["scores"]
         if scores is None:
@@ -58,6 +59,7 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
             obs,
             cached_scores=scores,
             recompute_arms=recompute_arms,
+            sim_cum_eval=sim_cum_eval,
             **gittins_kwargs,
         )
         if batch is not None:
