@@ -53,6 +53,17 @@ def main() -> int:
     _plot_if_nonempty("ucb_x", "ucb_regret", "UCB-E")
     _plot_if_nonempty("lrf_x_plot", "lrf_regret_plot", "UCB-E-LRF")
     _plot_if_nonempty("gittins_x", "gittins_regret", "Gittins (τ² = 1/(4B))")
+    if "gittins_stop_cum_eval" in z.files:
+        stop = int(z["gittins_stop_cum_eval"].reshape(()))
+        if stop >= 0:
+            plt.axvline(
+                stop,
+                color="C2",
+                linestyle="--",
+                alpha=0.85,
+                linewidth=1.2,
+                label=f"Gittins nominal stop ({stop} evals)",
+            )
     plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")
     plt.title(title or "Simple regret (from traces)")

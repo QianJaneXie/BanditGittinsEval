@@ -35,7 +35,14 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 - ``lrf_x_full``, ``lrf_regret_full`` — UCB-E-LRF full trace (empty if not run)
 - ``lrf_x_plot``, ``lrf_regret_plot`` — LRF segment used in the figure (cum eval ≥ ``warmup_evals``)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
+- scalar ``gittins_stop_cum_eval`` — first cumulative eval count (before that policy step) where the
+  top-scoring arm was already fully observed (nominal stopping time); ``-1`` if that never occurred.
+  The Gittins regret curve still runs to the eval budget when using the simple-regret script.
 - scalars ``warmup_evals``, ``budget_evals``, ``tau_sq_gittins``
+
+**Gittins-only rerun with UCB/LRF unchanged:** pass ``--algorithms gittins`` and
+``--merge-ucb-lrf-from PREVIOUS_traces.npz`` to copy UCB-E and UCB-E-LRF series from an earlier
+full run and simulate only Gittins (same matrix / seed / budget recommended).
 
 Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …``
 """
@@ -46,7 +53,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Callable, TypeVar
+from typing import Any, Callable, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -71,7 +78,8 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
 
     cache: dict[str, torch.Tensor | int | None] = {"scores": None, "prev_arm": None}
 
-    def step(obs: torch.Tensor, **_kwargs) -> torch.Tensor | None:
+    def step(obs: torch.Tensor, **kwargs) -> torch.Tensor | None:
+        sim_cum_eval = kwargs.pop("sim_cum_eval", None)
         m = int(obs.shape[0])
         scores = cache["scores"]
         if scores is None:
@@ -86,6 +94,7 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
             obs,
             cached_scores=scores,
             recompute_arms=recompute_arms,
+            sim_cum_eval=sim_cum_eval,
             **gittins_kwargs,
         )
         if batch is not None:
@@ -93,6 +102,14 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
         return batch
 
     return step
+
+
+def _lists_from_npz_trace(z: Any, xkey: str, ykey: str) -> tuple[list[int], list[float]]:
+    x = z[xkey]
+    y = z[ykey]
+    if x.size == 0:
+        return [], []
+    return x.astype(np.int64).tolist(), y.astype(np.float64).tolist()
 
 
 def _trim_trace_from_cum_eval(xs: list[int], ys: list[T], min_x: int) -> tuple[list[int], list[T]]:
@@ -121,11 +138,15 @@ def simulate(
     max_evaluations: int,
     verbose: bool = False,
     log_prefix: str = "",
+    pass_sim_cum_eval: bool = False,
 ) -> tuple[list[float], list[int]]:
     """Run until eval budget is reached, the matrix is exhausted, or ``batch is None``.
 
     Returns parallel lists: regret after each batch, and cumulative number of
     entries revealed (batch sizes summed), including warm-up queries for LRF.
+
+    If ``pass_sim_cum_eval`` is True, each ``step`` call also receives
+    ``sim_cum_eval=<cumulative evals so far>`` (for Gittins nominal stopping-time bookkeeping).
 
     No new batch is started once cumulative evaluations have reached
     ``max_evaluations`` (total evals never exceed that cap).
@@ -147,7 +168,10 @@ def simulate(
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
             break
-        batch = step(obs, **step_kwargs)
+        call_kw = dict(step_kwargs)
+        if pass_sim_cum_eval:
+            call_kw["sim_cum_eval"] = evaluated
+        batch = step(obs, **call_kw)
         if batch is None:
             break
         row_idx, col_idx = batch
@@ -184,12 +208,14 @@ def save_trace_bundle(
     regrets_lrf_plot: list[float],
     xs_gittins: list[int],
     regrets_gittins: list[float],
+    gittins_stop_cum_eval: int | None,
     warmup_evals: int,
     budget_evals: int,
     tau_sq_gittins: float,
     meta: dict,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    stop_scalar = np.int64(-1 if gittins_stop_cum_eval is None else int(gittins_stop_cum_eval))
     np.savez_compressed(
         path,
         ucb_x=np.asarray(xs_ucbe, dtype=np.int64),
@@ -200,6 +226,7 @@ def save_trace_bundle(
         lrf_regret_plot=np.asarray(regrets_lrf_plot, dtype=np.float64),
         gittins_x=np.asarray(xs_gittins, dtype=np.int64),
         gittins_regret=np.asarray(regrets_gittins, dtype=np.float64),
+        gittins_stop_cum_eval=stop_scalar,
         warmup_evals=np.int64(warmup_evals),
         budget_evals=np.int64(budget_evals),
         tau_sq_gittins=np.float64(tau_sq_gittins),
@@ -305,6 +332,13 @@ def main() -> int:
         help="Which algorithms to run and plot (default: all three). Example: --algorithms gittins",
     )
     parser.add_argument(
+        "--merge-ucb-lrf-from",
+        type=Path,
+        default=None,
+        help="Use with --algorithms gittins only: load UCB-E and UCB-E-LRF traces from this .npz "
+        "and simulate only Gittins. LRF plot trim uses warmup_evals stored in that .npz when present.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Print each simulation step: arms in batch, incumbent arm, simple regret",
@@ -312,6 +346,17 @@ def main() -> int:
     args = parser.parse_args()
 
     algorithms = list(dict.fromkeys(args.algorithms))
+    merge_ucb_lrf = args.merge_ucb_lrf_from
+    if merge_ucb_lrf is not None:
+        if set(algorithms) != {"gittins"}:
+            print(
+                "With --merge-ucb-lrf-from, use exactly: --algorithms gittins",
+                file=sys.stderr,
+            )
+            return 1
+        if not merge_ucb_lrf.is_file():
+            print(f"--merge-ucb-lrf-from not found: {merge_ucb_lrf}", file=sys.stderr)
+            return 1
 
     if args.batch_size <= 0:
         print("--batch-size must be positive", file=sys.stderr)
@@ -349,6 +394,8 @@ def main() -> int:
     n_cells = int(ground_truth.numel())
     budget_evals = max(1, int(round(args.eval_budget_fraction * n_cells)))
     warmup_evals = int(np.ceil(args.warmup_percentage * n_cells))
+    warmup_evals_lrf_trim = warmup_evals
+
     if "lrf" in algorithms and warmup_evals >= budget_evals:
         print(
             "Warm-up threshold (ceil(warmup %% × n)) must be < eval budget; "
@@ -371,6 +418,20 @@ def main() -> int:
     xs_lrf: list[int] = []
     regrets_gittins: list[float] = []
     xs_gittins: list[int] = []
+    gittins_stop_cum_eval: int | None = None
+
+    if merge_ucb_lrf is not None:
+        z_merge = np.load(merge_ucb_lrf)
+        if "warmup_evals" in z_merge.files:
+            warmup_evals_lrf_trim = int(z_merge["warmup_evals"].reshape(()))
+        xs_ucbe, regrets_ucbe = _lists_from_npz_trace(z_merge, "ucb_x", "ucb_regret")
+        xs_lrf, regrets_lrf = _lists_from_npz_trace(z_merge, "lrf_x_full", "lrf_regret_full")
+        if not xs_ucbe and not xs_lrf:
+            print(
+                "Merge file has empty UCB and LRF traces; check --merge-ucb-lrf-from path.",
+                file=sys.stderr,
+            )
+            return 1
 
     if "ucb" in algorithms:
         regrets_ucbe, xs_ucbe = simulate(
@@ -395,6 +456,7 @@ def main() -> int:
             **sim_kwargs,
         )
     if "gittins" in algorithms:
+        gittins_natural_stop_holder: list[int | None] = [None]
         regrets_gittins, xs_gittins = simulate(
             ground_truth,
             make_gittins_step_with_score_cache(
@@ -406,45 +468,63 @@ def main() -> int:
                 prior_mean=args.gittins_prior_mean,
                 prior_variance=args.gittins_prior_variance,
                 use_batch_mean_gittins_dp=not args.gittins_per_cell_dp,
+                allow_early_stop=False,
+                natural_stop_cum_eval_holder=gittins_natural_stop_holder,
             ),
             step_kwargs={},
             log_prefix="gittins",
+            pass_sim_cum_eval=True,
             **sim_kwargs,
         )
+        gittins_stop_cum_eval = gittins_natural_stop_holder[0]
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
-    xs_lrf_plot, regrets_lrf_plot = _trim_trace_from_cum_eval(xs_lrf, regrets_lrf, warmup_evals)
+    plot_algorithms = ["ucb", "lrf", "gittins"] if merge_ucb_lrf is not None else algorithms
+    xs_lrf_plot, regrets_lrf_plot = _trim_trace_from_cum_eval(
+        xs_lrf, regrets_lrf, warmup_evals_lrf_trim
+    )
 
     plt.figure(figsize=(8, 5))
-    if "ucb" in algorithms:
+    if "ucb" in plot_algorithms:
         plt.plot(xs_ucbe, regrets_ucbe, label="UCB-E", linewidth=1.5)
-    if "lrf" in algorithms:
+    if "lrf" in plot_algorithms:
         plt.plot(xs_lrf_plot, regrets_lrf_plot, label="UCB-E-LRF", linewidth=1.5)
-    if "gittins" in algorithms:
+    if "gittins" in plot_algorithms:
         gittins_label = (
             "Gittins (τ² = 1/(4B), per-cell DP)"
             if args.gittins_per_cell_dp
             else "Gittins (τ² = 1/(4B), batch-mean DP)"
         )
         plt.plot(xs_gittins, regrets_gittins, label=gittins_label, linewidth=1.5)
+        if gittins_stop_cum_eval is not None:
+            plt.axvline(
+                gittins_stop_cum_eval,
+                color="C2",
+                linestyle="--",
+                alpha=0.85,
+                linewidth=1.2,
+                label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
+            )
     plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")
     batch_desc_parts: list[str] = []
-    if "ucb" in algorithms or "lrf" in algorithms:
+    if "ucb" in plot_algorithms or "lrf" in plot_algorithms:
         batch_desc_parts.append(f"UCB/LRF batch={args.batch_size}")
-    if "gittins" in algorithms:
+    if "gittins" in plot_algorithms:
         batch_desc_parts.append(f"Gittins batch={args.gittins_batch_size}")
     batch_desc = ", ".join(batch_desc_parts) if batch_desc_parts else f"batch={args.batch_size}"
     sub = (
         f"seed={args.seed}, {batch_desc}, budget={args.eval_budget_fraction:.0%} of {n_cells} cells"
     )
-    if "lrf" in algorithms:
+    if "lrf" in plot_algorithms:
         sub += (
             f"\n(LRF: {args.warmup_percentage:.0%} random warm-up, then low-rank UCB; "
-            f"curve starts at ~{warmup_evals} evals)"
+            f"curve starts at ~{warmup_evals_lrf_trim} evals)"
         )
-    sub = f"algorithms={','.join(algorithms)} | " + sub
+    if merge_ucb_lrf is not None:
+        sub += f"\n(UCB/LRF merged from {merge_ucb_lrf.name})"
+    sub = f"algorithms={','.join(plot_algorithms)} | " + sub
     plt.title(f"Simple regret — {args.matrix.name}\n{sub}")
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -466,6 +546,7 @@ def main() -> int:
             regrets_lrf_plot=regrets_lrf_plot,
             xs_gittins=xs_gittins,
             regrets_gittins=regrets_gittins,
+            gittins_stop_cum_eval=gittins_stop_cum_eval,
             warmup_evals=warmup_evals,
             budget_evals=budget_evals,
             tau_sq_gittins=tau_sq_gittins,
@@ -489,26 +570,36 @@ def main() -> int:
                 "gittins_prior_variance": args.gittins_prior_variance,
                 "gittins_per_cell_dp": args.gittins_per_cell_dp,
                 "n_cells": n_cells,
-                "algorithms": algorithms,
+                "algorithms": plot_algorithms,
                 "title": f"Simple regret — {args.matrix.name}\n{sub}",
+                "gittins_stop_cum_eval": gittins_stop_cum_eval,
+                "merge_ucb_lrf_from": str(merge_ucb_lrf.resolve()) if merge_ucb_lrf else None,
+                "warmup_evals_lrf_plot_trim": warmup_evals_lrf_trim,
             },
         )
         print(f"Wrote traces {traces_path} and {traces_path.with_suffix('.meta.json')}")
 
     print(f"Wrote {args.out}")
-    if "ucb" in algorithms:
+    if "ucb" in plot_algorithms:
+        src = " (merged)" if merge_ucb_lrf and "ucb" not in algorithms else ""
         print(
-            f"UCB-E: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} / {budget_evals} budget evals"
+            f"UCB-E{src}: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} / {budget_evals} budget evals"
         )
-    if "lrf" in algorithms:
+    if "lrf" in plot_algorithms:
+        src = " (merged)" if merge_ucb_lrf and "lrf" not in algorithms else ""
         print(
-            f"UCB-E-LRF: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} / {budget_evals} budget evals "
-            f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals})"
+            f"UCB-E-LRF{src}: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} / {budget_evals} budget evals "
+            f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals_lrf_trim})"
         )
-    if "gittins" in algorithms:
+    if "gittins" in plot_algorithms:
+        stop_msg = (
+            f", nominal stop marker at cum_eval={gittins_stop_cum_eval} (curve to budget)"
+            if gittins_stop_cum_eval is not None
+            else ""
+        )
         print(
             f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} / {budget_evals} budget evals "
-            f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins})"
+            f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
         )
     return 0
 

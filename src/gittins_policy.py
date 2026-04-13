@@ -70,6 +70,9 @@ def gittins_index_exploration(
     cached_scores: torch.Tensor | None = None,
     recompute_arms: Iterable[int] | None = None,
     use_batch_mean_gittins_dp: bool = False,
+    allow_early_stop: bool = True,
+    sim_cum_eval: int | None = None,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
 ):
     """
     One step of Gittins-index exploration on a masked observation matrix.
@@ -81,6 +84,15 @@ def gittins_index_exploration(
     match that approximation, set ``obs_noise_variance`` to ``1.0 / (4 * batch_size)`` (or your
     chosen B). Default prior on each θ_k is N(0.7, 0.01); override with ``prior_mean`` and
     ``prior_variance``.
+
+    **Stopping / continuation:** Fully observed arms use their row **empirical mean** as the
+    comparison score. If the arm with the largest score is already fully observed and
+    ``allow_early_stop`` is True (default), return ``None`` so the simulator can end the run. If
+    ``allow_early_stop`` is False, fall back to the best **incomplete** arm so exploration can
+    continue (e.g. to a fixed eval budget). When ``natural_stop_cum_eval_holder`` is a one-element
+    list ``[None]`` and ``sim_cum_eval`` is the simulator’s cumulative eval count **before** this
+    step, the first time the argmax arm is fully observed we set ``holder[0]`` to that count (for
+    plotting a nominal stopping time).
 
     **Batch semantics (not a mixed pair minibatch):** compute the Gittins index for every arm,
     choose the single arm k* with the largest index, then evaluate **that method** on
@@ -120,6 +132,12 @@ def gittins_index_exploration(
         use_batch_mean_gittins_dp: If True, each DP step observes the **mean** of the next batch of
             per-cell draws (likelihood variance ``τ² / b`` for batch size ``b``), matching the idea
             that learning advances once per simulator batch instead of once per matrix cell.
+        allow_early_stop: If False, never return ``None`` just because the top-scoring arm is
+            complete; instead pull the best arm that still has free cells.
+        sim_cum_eval: Optional cumulative evaluations revealed **before** this policy step; used
+            with ``natural_stop_cum_eval_holder`` only.
+        natural_stop_cum_eval_holder: Optional ``[None]`` list; first natural-stop step sets
+            ``holder[0]`` to ``sim_cum_eval``.
 
     Returns:
         ``batch`` with shape ``(2, b)``, ``b ≤ batch_size``, or ``None`` if every cell is observed.
@@ -165,7 +183,6 @@ def gittins_index_exploration(
 
     for k in arm_indices:
         if completely_sensed_mask[k]:
-            scores[k] = float("-inf")
             continue
         t = int(counts[k].item())
         row = observed_matrix[k]
@@ -201,7 +218,30 @@ def gittins_index_exploration(
             )
         scores[k] = float(jax.device_get(g))
 
+    for k in range(m_methods):
+        if completely_sensed_mask[k]:
+            scores[k] = float(mus[k].item())
+
     best_method_index = int(torch.argmax(scores).item())
+    winner_complete = bool(completely_sensed_mask[best_method_index])
+    if (
+        winner_complete
+        and natural_stop_cum_eval_holder is not None
+        and len(natural_stop_cum_eval_holder) == 1
+        and natural_stop_cum_eval_holder[0] is None
+        and sim_cum_eval is not None
+    ):
+        natural_stop_cum_eval_holder[0] = int(sim_cum_eval)
+
+    if winner_complete:
+        if allow_early_stop:
+            return (None, mus) if return_mus else None
+        scores_eff = scores.clone()
+        scores_eff[completely_sensed_mask] = float("-inf")
+        if not torch.isfinite(scores_eff).any():
+            return (None, mus) if return_mus else None
+        best_method_index = int(torch.argmax(scores_eff).item())
+
     unobserved_column_indices = (
         observed_matrix[best_method_index].isnan().nonzero().flatten()
     )
