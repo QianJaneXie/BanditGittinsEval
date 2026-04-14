@@ -80,7 +80,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=root / "outputs" / "matrices",
+        default=root / "data" / "matrices",
         help="Where to write *.npy and manifest.json",
     )
     args = parser.parse_args()

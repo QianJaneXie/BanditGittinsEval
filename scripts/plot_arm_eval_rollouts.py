@@ -140,9 +140,13 @@ def _resolve_matrix(meta_path: Path, meta: dict, override: Path | None) -> Path:
     if override is not None:
         return override
     raw = Path(meta["matrix"])
-    candidates = [raw, meta_path.parent.parent / "matrices" / raw.name]
     repo_root = meta_path.resolve().parents[2]
-    candidates.append(repo_root / "outputs" / "matrices" / raw.name)
+    candidates = [
+        raw,
+        repo_root / "data" / "matrices" / raw.name,
+        meta_path.parent.parent / "matrices" / raw.name,
+        repo_root / "outputs" / "matrices" / raw.name,
+    ]
     for p in candidates:
         if p.is_file():
             return p
