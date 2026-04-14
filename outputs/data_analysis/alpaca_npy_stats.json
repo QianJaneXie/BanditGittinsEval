@@ -1,8 +1,8 @@
 {
-  "matrices_dir": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices",
+  "matrices_dir": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices",
   "rows": [
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding",
       "shape": [
         154,
@@ -27,7 +27,7 @@
       "neg2_positions": []
     },
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias",
       "shape": [
         153,
@@ -52,7 +52,7 @@
       "neg2_positions": []
     },
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding",
       "shape": [
         154,
@@ -82,7 +82,7 @@
       "neg2_positions": []
     },
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding",
       "shape": [
         154,
@@ -118,7 +118,7 @@
       ]
     },
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1",
       "shape": [
         154,
@@ -148,7 +148,7 @@
       ]
     },
     {
-      "file": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.npy",
+      "file": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.npy",
       "stem": "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2",
       "shape": [
         154,
