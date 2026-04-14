@@ -1,0 +1,63 @@
+Alpaca (GPT-4 Turbo weighted) — six 2D comparison matrices — .npy statistics summary
+Data source: matching .npy files under data/matrices/ exported from PKL.
+
+— Continuous probabilities (no rounding) —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: 0.0 / 0.9999999407 / 0.13569549299539244
+Unique value count: 16247
+Counts — -2: 0 | 0: 33 | 0.5: 1443 | 1: 0
+Strictly binary {0,1}: False; all values in [0,1]: True
+
+— Continuous probabilities + debias (row count may differ by 1) —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy
+shape: (153, 805)  dtype: float32
+min / max / mean: 0.0 / 0.9999999403953552 / 0.13237953186035156
+Unique value count: 8272
+Counts — -2: 0 | 0: 33 | 0.5: 1431 | 1: 0
+Strictly binary {0,1}: False; all values in [0,1]: True
+
+— Three-level discrete: {0, 0.5, 1} —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_non_trivial_rounding.npy
+shape: (154, 805)  dtype: float32
+min / max / mean: 0.0 / 1.0 / 0.1292288452386856
+Unique value count: 3
+All distinct values: [0.0, 0.5, 1.0]
+Counts — -2: 0 | 0: 107228 | 0.5: 1443 | 1: 15299
+Strictly binary {0,1}: False; all values in [0,1]: True
+
+— Four-level discrete: {-2, 0, 0.5, 1} (aggressive rounding; few 0.5s) —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_rounding.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 1.0 / 0.12345325481971445
+Unique value count: 4
+All distinct values: [-2.0, 0.0, 0.5, 1.0]
+Counts — -2: 1 | 0: 108655 | 0.5: 15 | 1: 15299
+Positions where -2 appears (row, col), 1 total: [[25, 150]]
+Strictly binary {0,1}: False; all values in [0,1]: False
+
+— Mostly like no rounding + small manual fixes (includes -2 sentinel) —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_1.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 0.9999999407 / 0.13567129359231106
+Unique value count: 16248
+Counts — -2: 1 | 0: 34 | 0.5: 1441 | 1: 0
+Positions where -2 appears (row, col), 1 total: [[25, 150]]
+Strictly binary {0,1}: False; all values in [0,1]: False
+
+— Four-level discrete (similar to rounding; even fewer 0.5s) —
+File: alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_option_2.npy
+shape: (154, 805)  dtype: float64
+min / max / mean: -2.0 / 1.0 / 0.12344518835202065
+Unique value count: 4
+All distinct values: [-2.0, 0.0, 0.5, 1.0]
+Counts — -2: 1 | 0: 108657 | 0.5: 13 | 1: 15299
+Positions where -2 appears (row, col), 1 total: [[25, 150]]
+Strictly binary {0,1}: False; all values in [0,1]: False
+
+— Consistency check (non_trivial_rounding) —
+Same shape as no_rounding: True
+Exactly matches non_trivial if no_rounding is thresholded with >0.5→1, <0.5→0, ==0.5→0.5: True
+Auxiliary counts: {'no_gt_0_5': 15299, 'no_lt_0_5': 107228, 'no_eq_0_5': 1443, 'nt_eq_1': 15299, 'nt_eq_0': 107228, 'nt_eq_0_5': 1443}
+
+Note: in rounding / option_2, many original 0.5 values (ties) are collapsed to 0 or 1; see the paper or generation code for the exact tie-break rule. This summary only reports statistics of the stored matrix values.

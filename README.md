@@ -17,7 +17,7 @@ Dependencies include `banditeval`, `torch`, `matplotlib`, and `jax` (see `pyproj
 
 Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus **cumulative matrix entries evaluated**. Writes a PNG and, by default, a compressed trace bundle for later replotting.
 
-**Basic run** (defaults assume a matrix under `outputs/matrices/`):
+**Basic run** (defaults assume a matrix under `data/matrices/`):
 
 ```bash
 python scripts/plot_simple_regret_gsm8k.py
@@ -50,7 +50,7 @@ python scripts/plot_simple_regret_gsm8k.py
 
 ```bash
 python scripts/plot_simple_regret_gsm8k.py \
-  --matrix outputs/matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --matrix data/matrices/gsm8k_1_samples_various_models_seed1.npy \
   --out outputs/figures/simple_regret_gittins_only.png \
   --algorithms gittins \
   --eval-budget-fraction 0.02 \
