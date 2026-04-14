@@ -45,6 +45,10 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 full run and simulate only Gittins (same matrix / seed / budget recommended).
 
 Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …``
+
+**Timing (``*_traces.meta.json``):** when traces are saved, ``timing`` records per-method wall-clock
+stats from ``time.time()`` (see ``summary.iter_total`` / ``summary.iter_step``). Pass
+``--timing-include-per-iter-series`` to also store every iteration's seconds in the meta file.
 """
 
 from __future__ import annotations
@@ -52,6 +56,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -139,7 +144,7 @@ def simulate(
     verbose: bool = False,
     log_prefix: str = "",
     pass_sim_cum_eval: bool = False,
-) -> tuple[list[float], list[int]]:
+) -> tuple[list[float], list[int], dict[str, Any]]:
     """Run until eval budget is reached, the matrix is exhausted, or ``batch is None``.
 
     Returns parallel lists: regret after each batch, and cumulative number of
@@ -164,14 +169,19 @@ def simulate(
     cum_evaluated: list[int] = []
     evaluated = 0
     tag = log_prefix or "sim"
+    iter_total_s: list[float] = []
+    iter_step_s: list[float] = []
 
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
             break
+        t_iter0 = time.time()
         call_kw = dict(step_kwargs)
         if pass_sim_cum_eval:
             call_kw["sim_cum_eval"] = evaluated
+        t_step0 = time.time()
         batch = step(obs, **call_kw)
+        t_step1 = time.time()
         if batch is None:
             break
         row_idx, col_idx = batch
@@ -194,7 +204,53 @@ def simulate(
                 flush=True,
             )
 
-    return regrets, cum_evaluated
+        t_iter1 = time.time()
+        iter_total_s.append(float(t_iter1 - t_iter0))
+        iter_step_s.append(float(t_step1 - t_step0))
+
+    timing = {
+        "clock": "time.time",
+        "unit": "seconds",
+        "iter_total_s": iter_total_s,
+        "iter_step_s": iter_step_s,
+    }
+    return regrets, cum_evaluated, timing
+
+
+def _timing_summary(times_s: list[float]) -> dict[str, float | int]:
+    if not times_s:
+        return {"n": 0}
+    arr = np.asarray(times_s, dtype=np.float64)
+    return {
+        "n": int(arr.size),
+        "total_s": float(arr.sum()),
+        "mean_s": float(arr.mean()),
+        "median_s": float(np.quantile(arr, 0.5)),
+        "p90_s": float(np.quantile(arr, 0.9)),
+        "p99_s": float(np.quantile(arr, 0.99)),
+        "min_s": float(arr.min()),
+        "max_s": float(arr.max()),
+    }
+
+
+def _timing_for_meta(
+    timing: dict[str, Any] | None, *, include_per_iter_series: bool
+) -> dict[str, Any] | None:
+    """Serialize simulate() timing for JSON meta (summary always; full series optional)."""
+    if timing is None:
+        return None
+    out: dict[str, Any] = {
+        "clock": timing["clock"],
+        "unit": timing["unit"],
+        "summary": {
+            "iter_total": _timing_summary(timing["iter_total_s"]),
+            "iter_step": _timing_summary(timing["iter_step_s"]),
+        },
+    }
+    if include_per_iter_series:
+        out["iter_total_s"] = list(timing["iter_total_s"])
+        out["iter_step_s"] = list(timing["iter_step_s"])
+    return out
 
 
 def save_trace_bundle(
@@ -343,6 +399,12 @@ def main() -> int:
         action="store_true",
         help="Print each simulation step: arms in batch, incumbent arm, simple regret",
     )
+    parser.add_argument(
+        "--timing-include-per-iter-series",
+        action="store_true",
+        help="When saving traces meta, include per-iteration time arrays (iter_total_s / iter_step_s); "
+        "default is summary statistics only to keep .meta.json small.",
+    )
     args = parser.parse_args()
 
     algorithms = list(dict.fromkeys(args.algorithms))
@@ -419,6 +481,9 @@ def main() -> int:
     regrets_gittins: list[float] = []
     xs_gittins: list[int] = []
     gittins_stop_cum_eval: int | None = None
+    timing_ucb: dict[str, Any] | None = None
+    timing_lrf: dict[str, Any] | None = None
+    timing_gittins: dict[str, Any] | None = None
 
     if merge_ucb_lrf is not None:
         z_merge = np.load(merge_ucb_lrf)
@@ -434,7 +499,7 @@ def main() -> int:
             return 1
 
     if "ucb" in algorithms:
-        regrets_ucbe, xs_ucbe = simulate(
+        regrets_ucbe, xs_ucbe, timing_ucb = simulate(
             ground_truth,
             upper_confidence_bound_exploration,
             step_kwargs={"a": args.a, "batch_size": args.batch_size, "return_mus": False},
@@ -442,7 +507,7 @@ def main() -> int:
             **sim_kwargs,
         )
     if "lrf" in algorithms:
-        regrets_lrf, xs_lrf = simulate(
+        regrets_lrf, xs_lrf, timing_lrf = simulate(
             ground_truth,
             upper_confidence_bound_exploration_low_rank_factorization,
             step_kwargs={
@@ -457,7 +522,7 @@ def main() -> int:
         )
     if "gittins" in algorithms:
         gittins_natural_stop_holder: list[int | None] = [None]
-        regrets_gittins, xs_gittins = simulate(
+        regrets_gittins, xs_gittins, timing_gittins = simulate(
             ground_truth,
             make_gittins_step_with_score_cache(
                 batch_size=args.gittins_batch_size,
@@ -536,6 +601,18 @@ def main() -> int:
         traces_path = args.traces_out
         if traces_path is None:
             traces_path = args.out.with_name(f"{args.out.stem}_traces.npz")
+        timing_meta = {
+            "ucb": _timing_for_meta(
+                timing_ucb, include_per_iter_series=args.timing_include_per_iter_series
+            ),
+            "lrf": _timing_for_meta(
+                timing_lrf, include_per_iter_series=args.timing_include_per_iter_series
+            ),
+            "gittins": _timing_for_meta(
+                timing_gittins, include_per_iter_series=args.timing_include_per_iter_series
+            ),
+            "per_iter_series_included": bool(args.timing_include_per_iter_series),
+        }
         save_trace_bundle(
             traces_path,
             xs_ucbe=xs_ucbe,
@@ -575,6 +652,7 @@ def main() -> int:
                 "gittins_stop_cum_eval": gittins_stop_cum_eval,
                 "merge_ucb_lrf_from": str(merge_ucb_lrf.resolve()) if merge_ucb_lrf else None,
                 "warmup_evals_lrf_plot_trim": warmup_evals_lrf_trim,
+                "timing": timing_meta,
             },
         )
         print(f"Wrote traces {traces_path} and {traces_path.with_suffix('.meta.json')}")
@@ -585,12 +663,38 @@ def main() -> int:
         print(
             f"UCB-E{src}: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} / {budget_evals} budget evals"
         )
+        if "ucb" in algorithms:
+            s_total = _timing_summary(timing_ucb["iter_total_s"])
+            s_step = _timing_summary(timing_ucb["iter_step_s"])
+            print(
+                "  timing (per-iteration): "
+                f"total mean={s_total.get('mean_s', float('nan')):.6f}s median={s_total.get('median_s', float('nan')):.6f}s p90={s_total.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_total.get('n', 0)})"
+            )
+            print(
+                "  timing (policy step only): "
+                f"mean={s_step.get('mean_s', float('nan')):.6f}s median={s_step.get('median_s', float('nan')):.6f}s p90={s_step.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_step.get('n', 0)})"
+            )
     if "lrf" in plot_algorithms:
         src = " (merged)" if merge_ucb_lrf and "lrf" not in algorithms else ""
         print(
             f"UCB-E-LRF{src}: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} / {budget_evals} budget evals "
             f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals_lrf_trim})"
         )
+        if "lrf" in algorithms:
+            s_total = _timing_summary(timing_lrf["iter_total_s"])
+            s_step = _timing_summary(timing_lrf["iter_step_s"])
+            print(
+                "  timing (per-iteration): "
+                f"total mean={s_total.get('mean_s', float('nan')):.6f}s median={s_total.get('median_s', float('nan')):.6f}s p90={s_total.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_total.get('n', 0)})"
+            )
+            print(
+                "  timing (policy step only): "
+                f"mean={s_step.get('mean_s', float('nan')):.6f}s median={s_step.get('median_s', float('nan')):.6f}s p90={s_step.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_step.get('n', 0)})"
+            )
     if "gittins" in plot_algorithms:
         stop_msg = (
             f", nominal stop marker at cum_eval={gittins_stop_cum_eval} (curve to budget)"
@@ -601,6 +705,19 @@ def main() -> int:
             f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} / {budget_evals} budget evals "
             f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
         )
+        if "gittins" in algorithms:
+            s_total = _timing_summary(timing_gittins["iter_total_s"])
+            s_step = _timing_summary(timing_gittins["iter_step_s"])
+            print(
+                "  timing (per-iteration): "
+                f"total mean={s_total.get('mean_s', float('nan')):.6f}s median={s_total.get('median_s', float('nan')):.6f}s p90={s_total.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_total.get('n', 0)})"
+            )
+            print(
+                "  timing (policy step only): "
+                f"mean={s_step.get('mean_s', float('nan')):.6f}s median={s_step.get('median_s', float('nan')):.6f}s p90={s_step.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_step.get('n', 0)})"
+            )
     return 0
 
 
