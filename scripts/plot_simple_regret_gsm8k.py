@@ -297,7 +297,7 @@ def main() -> int:
     parser.add_argument(
         "--matrix",
         type=Path,
-        default=root / "outputs" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
+        default=root / "data" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
         help="Path to (n_models, n_examples) accuracy matrix (.npy)",
     )
     parser.add_argument(

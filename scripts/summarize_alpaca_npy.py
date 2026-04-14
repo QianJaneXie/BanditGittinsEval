@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Load Alpaca GPT-4-turbo weighted 2D comparison matrices (*.npy) and write
-machine-readable stats plus a short Chinese text summary under outputs/data_analysis/.
+machine-readable stats plus a short text summary under outputs/data_analysis/.
 
 Matrices are produced by extract_matrices.py from the Zhang et al. benchmarks.
 """
@@ -151,21 +151,25 @@ def write_tsv(rows: list[dict[str, Any]], path: Path) -> None:
     path.write_text("".join(lines), encoding="utf-8")
 
 
-def build_chinese_summary(
+def build_summary_text(
     rows: list[dict[str, Any]],
     verification: dict[str, Any] | None,
 ) -> str:
     parts: list[str] = []
-    parts.append("Alpaca（GPT-4 Turbo weighted）六张 2D 比较矩阵 — .npy 统计摘要\n")
-    parts.append("数据来源：outputs/matrices 下由 PKL 导出的同名 .npy 文件。\n")
+    parts.append(
+        "Alpaca (GPT-4 Turbo weighted) — six 2D comparison matrices — .npy statistics summary\n"
+    )
+    parts.append(
+        "Data source: matching .npy files under data/matrices/ exported from PKL.\n"
+    )
 
     title_map = {
-        "no_rounding": "连续概率版（无舍入）",
-        "no_rounding_debias": "连续概率 + debias（行数可能少 1）",
-        "non_trivial_rounding": "三值离散：{0, 0.5, 1}",
-        "rounding": "四值离散：{-2, 0, 0.5, 1}（强舍入，0.5 很少）",
-        "option_1": "基本同无舍入 + 少量手工修正（含 -2 哨兵）",
-        "option_2": "四值离散（与 rounding 接近，0.5 更少）",
+        "no_rounding": "Continuous probabilities (no rounding)",
+        "no_rounding_debias": "Continuous probabilities + debias (row count may differ by 1)",
+        "non_trivial_rounding": "Three-level discrete: {0, 0.5, 1}",
+        "rounding": "Four-level discrete: {-2, 0, 0.5, 1} (aggressive rounding; few 0.5s)",
+        "option_1": "Mostly like no rounding + small manual fixes (includes -2 sentinel)",
+        "option_2": "Four-level discrete (similar to rounding; even fewer 0.5s)",
     }
 
     for r in rows:
@@ -174,40 +178,43 @@ def build_chinese_summary(
         label = title_map.get(short, short)
         sh = r["shape"]
         parts.append(f"\n— {label} —\n")
-        parts.append(f"文件: {r['stem']}.npy\n")
+        parts.append(f"File: {r['stem']}.npy\n")
         parts.append(f"shape: ({sh[0]}, {sh[1]})  dtype: {r['dtype']}\n")
         parts.append(
             f"min / max / mean: {r['min']} / {r['max']} / {r['mean']}\n"
             if r["mean"] is not None
             else ""
         )
-        parts.append(f"唯一取值数量: {r['num_unique_values']}\n")
+        parts.append(f"Unique value count: {r['num_unique_values']}\n")
         if "unique_values" in r:
-            parts.append(f"全部取值: {r['unique_values']}\n")
+            parts.append(f"All distinct values: {r['unique_values']}\n")
         parts.append(
-            f"计数 — -2: {r['count_neg2']} | 0: {r['count_0']} | 0.5: {r['count_0_5']} | 1: {r['count_1']}\n"
+            f"Counts — -2: {r['count_neg2']} | 0: {r['count_0']} | 0.5: {r['count_0_5']} | 1: {r['count_1']}\n"
         )
         if r["count_neg2"] and r["neg2_positions"]:
-            parts.append(f"-2 出现位置 (row, col)，共 {len(r['neg2_positions'])} 处: {r['neg2_positions']}\n")
+            n = len(r["neg2_positions"])
+            parts.append(f"Positions where -2 appears (row, col), {n} total: {r['neg2_positions']}\n")
         parts.append(
-            f"是否严格二元 0/1: {r['is_strict_0_1']}；是否全落在 [0,1]: {r['values_in_unit_interval']}\n"
+            f"Strictly binary {{0,1}}: {r['is_strict_0_1']}; all values in [0,1]: {r['values_in_unit_interval']}\n"
         )
 
     if verification:
-        parts.append("\n— 规则校验（non_trivial_rounding）—\n")
-        parts.append(f"与 no_rounding 同形状: {verification.get('match_shapes')}\n")
+        parts.append("\n— Consistency check (non_trivial_rounding) —\n")
+        parts.append(f"Same shape as no_rounding: {verification.get('match_shapes')}\n")
         v = verification.get("non_trivial_matches_threshold_rule")
         if v is not None:
             parts.append(
-                ">0.5→1, <0.5→0, ==0.5→0.5 是否与 non_trivial 矩阵完全一致: "
+                "Exactly matches non_trivial if no_rounding is thresholded with "
+                ">0.5→1, <0.5→0, ==0.5→0.5: "
                 f"{v}\n"
             )
         if "counts" in verification:
-            parts.append(f"辅助计数: {verification['counts']}\n")
+            parts.append(f"Auxiliary counts: {verification['counts']}\n")
 
     parts.append(
-        "\n说明：rounding / option_2 中大量原本的 0.5（平局）被进一步压成 0 或 1，"
-        "具体 tie-break 规则需对照论文实现或生成脚本；本摘要仅复述矩阵内数值统计。\n"
+        "\nNote: in rounding / option_2, many original 0.5 values (ties) are collapsed to 0 or 1; "
+        "see the paper or generation code for the exact tie-break rule. "
+        "This summary only reports statistics of the stored matrix values.\n"
     )
     return "".join(parts)
 
@@ -218,7 +225,7 @@ def main() -> int:
     parser.add_argument(
         "--matrices-dir",
         type=Path,
-        default=root / "outputs" / "matrices",
+        default=root / "data" / "matrices",
         help="Directory containing Alpaca .npy files",
     )
     parser.add_argument(
@@ -263,7 +270,7 @@ def main() -> int:
 
     tsv_path = out_dir / "alpaca_npy_stats.tsv"
     json_path = out_dir / "alpaca_npy_stats.json"
-    txt_path = out_dir / "alpaca_npy_summary_zh.txt"
+    txt_path = out_dir / "alpaca_npy_summary.txt"
 
     write_tsv(rows, tsv_path)
     payload = {
@@ -272,7 +279,7 @@ def main() -> int:
         "non_trivial_verification": verification,
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    txt_path.write_text(build_chinese_summary(rows, verification), encoding="utf-8")
+    txt_path.write_text(build_summary_text(rows, verification), encoding="utf-8")
 
     print(f"Wrote {tsv_path}")
     print(f"Wrote {json_path}")
