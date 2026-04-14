@@ -303,7 +303,7 @@ def main() -> int:
     parser.add_argument(
         "--gittins-prior-mean",
         type=float,
-        default=0.7,
+        default=0.2,
         help="μ_0 for θ_k ~ N(μ_0, v_0) in gittins_index_exploration",
     )
     parser.add_argument(

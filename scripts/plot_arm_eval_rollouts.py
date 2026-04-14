@@ -226,7 +226,7 @@ def main() -> int:
     lrf_device = str(meta.get("lrf_device", "cpu"))
     gittins_grid = int(meta.get("gittins_grid_points", 1025))
     gittins_cost = float(meta.get("gittins_cost", 1e-4))
-    gittins_prior_mean = float(meta.get("gittins_prior_mean", 0.7))
+    gittins_prior_mean = float(meta.get("gittins_prior_mean", 0.2))
     gittins_prior_variance = float(meta.get("gittins_prior_variance", 0.01))
     gittins_per_cell_dp = bool(meta.get("gittins_per_cell_dp", False))
 
