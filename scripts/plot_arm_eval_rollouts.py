@@ -48,7 +48,7 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
         m = int(obs.shape[0])
         scores = cache["scores"]
         if scores is None:
-            scores = torch.empty((m,), dtype=torch.float32)
+            scores = torch.full((m,), float("inf"), dtype=torch.float32)
             cache["scores"] = scores
             recompute_arms = None
         else:
