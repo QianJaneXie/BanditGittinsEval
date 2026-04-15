@@ -124,8 +124,8 @@ def gittins_index_exploration(
         cached_scores: Optional ``(n_arms,)`` float32 buffer updated **in place** when passed. After
             one step, only the pulled arm’s posterior changes, so pass the same buffer and set
             ``recompute_arms`` to that arm’s index to avoid recomputing every arm’s Gittins index.
-            First call: pass ``None`` (allocates internally) or pass a buffer with
-            ``recompute_arms=None`` to fill all arms.
+            First call: pass ``None`` (allocates internally with ``+inf`` placeholders, UCB-E-style)
+            or pass a buffer with ``recompute_arms=None`` to fill all arms.
         recompute_arms: Used only when ``cached_scores`` is not ``None``. If ``None``, recompute
             every arm that is not fully observed. Otherwise recompute only the listed arm indices
             (typically the arm evaluated on the previous step).
@@ -167,7 +167,7 @@ def gittins_index_exploration(
     n_pts = jnp.uint32(int(n_gittins_grid_points))
 
     if cached_scores is None:
-        scores = torch.empty((m_methods,), dtype=torch.float32)
+        scores = torch.full((m_methods,), float("inf"), dtype=torch.float32)
         arm_indices = range(m_methods)
     else:
         if cached_scores.shape != (m_methods,) or cached_scores.dtype != torch.float32:
