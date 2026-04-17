@@ -26,6 +26,14 @@ export CONDA_ENVS_PATH=/scratch/$USER/conda/envs
 export CONDA_PKGS_DIRS=/scratch/$USER/conda/pkgs
 conda activate gittins-torch
 
+# Non-interactive SLURM bash sometimes leaves `python` on the wrong PATH even after
+# `conda activate`. Always call the env interpreter explicitly.
+PYTHON="${CONDA_ENVS_PATH}/gittins-torch/bin/python"
+if [ ! -x "${PYTHON}" ]; then
+  echo "ERROR: missing interpreter: ${PYTHON}" >&2
+  exit 1
+fi
+
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
 cd "${SLURM_SUBMIT_DIR}"
@@ -36,12 +44,14 @@ OUT="outputs/figures/gsm8k/slurm_smoke.png"
 TRACES="outputs/figures/gsm8k/slurm_smoke_traces.npz"
 
 echo "pwd=$(pwd)"
-echo "python=$(which python)"
-python --version
+echo "python=${PYTHON}"
+echo "which python fallback=$(command -v python || true)"
+"${PYTHON}" --version
+"${PYTHON}" -c "import torch; print('torch', torch.__version__)"
 echo "matrix=${MATRIX}"
 ls -lh "${MATRIX}"
 
-python scripts/plot_simple_regret_gsm8k.py \
+"${PYTHON}" scripts/plot_simple_regret_gsm8k.py \
   --matrix "${MATRIX}" \
   --algorithms gittins \
   --eval-budget-fraction 0.02 \

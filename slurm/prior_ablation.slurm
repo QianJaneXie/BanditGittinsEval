@@ -32,6 +32,13 @@ export CONDA_ENVS_PATH=/scratch/$USER/conda/envs
 export CONDA_PKGS_DIRS=/scratch/$USER/conda/pkgs
 conda activate gittins-torch
 
+# See smoke_gsm8k.slurm: use explicit env python in batch jobs.
+PYTHON="${CONDA_ENVS_PATH}/gittins-torch/bin/python"
+if [ ! -x "${PYTHON}" ]; then
+  echo "ERROR: missing interpreter: ${PYTHON}" >&2
+  exit 1
+fi
+
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
 cd "${SLURM_SUBMIT_DIR}"
@@ -111,10 +118,11 @@ echo "MATRIX=${MATRIX}"
 echo "PRIOR mean=${PM} var=${PV}"
 echo "FIG=${FIG}"
 echo "TRACES=${TRACES}"
-echo "python=$(which python)"
-python --version
+echo "python=${PYTHON}"
+"${PYTHON}" --version
+"${PYTHON}" -c "import torch; print('torch', torch.__version__)"
 
-python scripts/plot_simple_regret_gsm8k.py \
+"${PYTHON}" scripts/plot_simple_regret_gsm8k.py \
   --matrix "${MATRIX}" \
   --algorithms gittins \
   --eval-budget-fraction 0.10 \
