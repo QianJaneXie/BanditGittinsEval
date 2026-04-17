@@ -109,6 +109,42 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
     return step
 
 
+def make_round_robin_step(*, batch_size: int) -> Callable[[torch.Tensor], torch.Tensor | None]:
+    """Round-robin baseline: cycle arms, evaluate ``batch_size`` new columns on that arm.
+
+    Incumbent recommendation is still the sample-mean argmax (handled by ``simulate()``).
+    """
+
+    state: dict[str, int] = {"next_arm": 0}
+
+    def step(obs: torch.Tensor, **_: object) -> torch.Tensor | None:
+        m, n = obs.shape
+        if m <= 0 or n <= 0:
+            return None
+
+        start = int(state["next_arm"]) % m
+        chosen: int | None = None
+        for i in range(m):
+            k = (start + i) % m
+            if torch.isnan(obs[k]).any():
+                chosen = k
+                break
+        if chosen is None:
+            return None
+
+        unobs = torch.isnan(obs[chosen]).nonzero().flatten()
+        if unobs.numel() == 0:
+            return None
+        bsz = min(int(batch_size), int(unobs.numel()))
+        perm = torch.randperm(int(unobs.numel()))[:bsz]
+        cols = unobs[perm].long()
+        rows = torch.full((bsz,), int(chosen), dtype=torch.long)
+        state["next_arm"] = (int(chosen) + 1) % m
+        return torch.stack([rows, cols])
+
+    return step
+
+
 def _lists_from_npz_trace(z: Any, xkey: str, ykey: str) -> tuple[list[int], list[float]]:
     x = z[xkey]
     y = z[ykey]
@@ -256,6 +292,8 @@ def _timing_for_meta(
 def save_trace_bundle(
     path: Path,
     *,
+    xs_rr: list[int],
+    regrets_rr: list[float],
     xs_ucbe: list[int],
     regrets_ucbe: list[float],
     xs_lrf: list[int],
@@ -274,6 +312,8 @@ def save_trace_bundle(
     stop_scalar = np.int64(-1 if gittins_stop_cum_eval is None else int(gittins_stop_cum_eval))
     np.savez_compressed(
         path,
+        rr_x=np.asarray(xs_rr, dtype=np.int64),
+        rr_regret=np.asarray(regrets_rr, dtype=np.float64),
         ucb_x=np.asarray(xs_ucbe, dtype=np.int64),
         ucb_regret=np.asarray(regrets_ucbe, dtype=np.float64),
         lrf_x_full=np.asarray(xs_lrf, dtype=np.int64),
@@ -382,7 +422,7 @@ def main() -> int:
     parser.add_argument(
         "--algorithms",
         nargs="+",
-        choices=["ucb", "lrf", "gittins"],
+        choices=["rr", "ucb", "lrf", "gittins"],
         default=["ucb", "lrf", "gittins"],
         metavar="NAME",
         help="Which algorithms to run and plot (default: all three). Example: --algorithms gittins",
@@ -478,11 +518,14 @@ def main() -> int:
     xs_ucbe: list[int] = []
     regrets_lrf: list[float] = []
     xs_lrf: list[int] = []
+    regrets_rr: list[float] = []
+    xs_rr: list[int] = []
     regrets_gittins: list[float] = []
     xs_gittins: list[int] = []
     gittins_stop_cum_eval: int | None = None
     timing_ucb: dict[str, Any] | None = None
     timing_lrf: dict[str, Any] | None = None
+    timing_rr: dict[str, Any] | None = None
     timing_gittins: dict[str, Any] | None = None
 
     if merge_ucb_lrf is not None:
@@ -520,6 +563,14 @@ def main() -> int:
             log_prefix="lrf",
             **sim_kwargs,
         )
+    if "rr" in algorithms:
+        regrets_rr, xs_rr, timing_rr = simulate(
+            ground_truth,
+            make_round_robin_step(batch_size=args.batch_size),
+            step_kwargs={},
+            log_prefix="rr",
+            **sim_kwargs,
+        )
     if "gittins" in algorithms:
         gittins_natural_stop_holder: list[int | None] = [None]
         regrets_gittins, xs_gittins, timing_gittins = simulate(
@@ -551,6 +602,8 @@ def main() -> int:
     )
 
     plt.figure(figsize=(8, 5))
+    if "rr" in plot_algorithms:
+        plt.plot(xs_rr, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
     if "ucb" in plot_algorithms:
         plt.plot(xs_ucbe, regrets_ucbe, label="UCB-E", linewidth=1.5)
     if "lrf" in plot_algorithms:
@@ -561,11 +614,13 @@ def main() -> int:
             if args.gittins_per_cell_dp
             else "Gittins (τ² = 1/(4B), batch-mean DP)"
         )
-        plt.plot(xs_gittins, regrets_gittins, label=gittins_label, linewidth=1.5)
+        (line_gittins,) = plt.plot(
+            xs_gittins, regrets_gittins, label=gittins_label, linewidth=1.5
+        )
         if gittins_stop_cum_eval is not None:
             plt.axvline(
                 gittins_stop_cum_eval,
-                color="C2",
+                color=line_gittins.get_color(),
                 linestyle="--",
                 alpha=0.85,
                 linewidth=1.2,
@@ -574,7 +629,7 @@ def main() -> int:
     plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")
     batch_desc_parts: list[str] = []
-    if "ucb" in plot_algorithms or "lrf" in plot_algorithms:
+    if "rr" in plot_algorithms or "ucb" in plot_algorithms or "lrf" in plot_algorithms:
         batch_desc_parts.append(f"UCB/LRF batch={args.batch_size}")
     if "gittins" in plot_algorithms:
         batch_desc_parts.append(f"Gittins batch={args.gittins_batch_size}")
@@ -602,6 +657,9 @@ def main() -> int:
         if traces_path is None:
             traces_path = args.out.with_name(f"{args.out.stem}_traces.npz")
         timing_meta = {
+            "rr": _timing_for_meta(
+                timing_rr, include_per_iter_series=args.timing_include_per_iter_series
+            ),
             "ucb": _timing_for_meta(
                 timing_ucb, include_per_iter_series=args.timing_include_per_iter_series
             ),
@@ -615,6 +673,8 @@ def main() -> int:
         }
         save_trace_bundle(
             traces_path,
+            xs_rr=xs_rr,
+            regrets_rr=regrets_rr,
             xs_ucbe=xs_ucbe,
             regrets_ucbe=regrets_ucbe,
             xs_lrf=xs_lrf,
@@ -658,6 +718,24 @@ def main() -> int:
         print(f"Wrote traces {traces_path} and {traces_path.with_suffix('.meta.json')}")
 
     print(f"Wrote {args.out}")
+    if "rr" in plot_algorithms:
+        print(
+            f"Round-robin: {len(regrets_rr)} batches, {xs_rr[-1] if xs_rr else 0} / {budget_evals} budget evals "
+            f"(B = {args.batch_size})"
+        )
+        if "rr" in algorithms:
+            s_total = _timing_summary(timing_rr["iter_total_s"])
+            s_step = _timing_summary(timing_rr["iter_step_s"])
+            print(
+                "  timing (per-iteration): "
+                f"total mean={s_total.get('mean_s', float('nan')):.6f}s median={s_total.get('median_s', float('nan')):.6f}s p90={s_total.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_total.get('n', 0)})"
+            )
+            print(
+                "  timing (policy step only): "
+                f"mean={s_step.get('mean_s', float('nan')):.6f}s median={s_step.get('median_s', float('nan')):.6f}s p90={s_step.get('p90_s', float('nan')):.6f}s "
+                f"(n={s_step.get('n', 0)})"
+            )
     if "ucb" in plot_algorithms:
         src = " (merged)" if merge_ucb_lrf and "ucb" not in algorithms else ""
         print(
