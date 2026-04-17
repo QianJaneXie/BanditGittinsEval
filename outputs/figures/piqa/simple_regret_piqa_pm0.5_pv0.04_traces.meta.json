@@ -1,0 +1,57 @@
+{
+  "matrix": "/scratch/yh6415/GittinsBanditEval/data/matrices/piqa_1_samples_various_models_seed1.npy",
+  "figure": "/scratch/yh6415/GittinsBanditEval/outputs/figures/piqa/simple_regret_piqa_pm0.5_pv0.04.png",
+  "traces": "/scratch/yh6415/GittinsBanditEval/outputs/figures/piqa/simple_regret_piqa_pm0.5_pv0.04_traces.npz",
+  "seed": 0,
+  "batch_size": 32,
+  "gittins_batch_size": 20,
+  "eval_budget_fraction": 0.1,
+  "ucb_a": 1,
+  "warmup_percentage": 0.05,
+  "lrf_device": "cpu",
+  "gittins_grid_points": 1025,
+  "gittins_cost": 0.0001,
+  "gittins_cost_per_arm": null,
+  "gittins_prior_mean": 0.5,
+  "gittins_prior_variance": 0.04,
+  "gittins_per_cell_dp": false,
+  "n_cells": 103000,
+  "algorithms": [
+    "gittins"
+  ],
+  "title": "Simple regret \u2014 piqa_1_samples_various_models_seed1.npy\nalgorithms=gittins | seed=0, Gittins batch=20, budget=10% of 103000 cells",
+  "gittins_stop_cum_eval": 4120,
+  "merge_ucb_lrf_from": null,
+  "warmup_evals_lrf_plot_trim": 5150,
+  "timing": {
+    "ucb": null,
+    "lrf": null,
+    "gittins": {
+      "clock": "time.time",
+      "unit": "seconds",
+      "summary": {
+        "iter_total": {
+          "n": 515,
+          "total_s": 70.57981252670288,
+          "mean_s": 0.13704817966350075,
+          "median_s": 0.10612726211547852,
+          "p90_s": 0.12308330535888674,
+          "p99_s": 0.21618615627288817,
+          "min_s": 0.0006434917449951172,
+          "max_s": 12.44603681564331
+        },
+        "iter_step": {
+          "n": 515,
+          "total_s": 70.34795236587524,
+          "mean_s": 0.13659796575898106,
+          "median_s": 0.10560727119445801,
+          "p90_s": 0.12255201339721683,
+          "p99_s": 0.21582345962524416,
+          "min_s": 0.0005309581756591797,
+          "max_s": 12.430780410766602
+        }
+      }
+    },
+    "per_iter_series_included": false
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "matrix": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\data\\matrices\\gsm8k_1_samples_various_models_seed1.npy",
+  "figure": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\figures\\gsm8k\\simple_regret_gsm8k_pm0.7_pv0.04.png",
+  "traces": "D:\\Study\\nyu2026spring\\project\\Efficient LLM Evaluation\\GittinsBanditEval\\outputs\\figures\\gsm8k\\simple_regret_gsm8k_pm0.7_pv0.04_traces.npz",
+  "seed": 0,
+  "batch_size": 32,
+  "gittins_batch_size": 20,
+  "eval_budget_fraction": 0.1,
+  "ucb_a": 1,
+  "warmup_percentage": 0.05,
+  "lrf_device": "cpu",
+  "gittins_grid_points": 1025,
+  "gittins_cost": 0.0001,
+  "gittins_cost_per_arm": null,
+  "gittins_prior_mean": 0.7,
+  "gittins_prior_variance": 0.04,
+  "gittins_per_cell_dp": false,
+  "n_cells": 122000,
+  "algorithms": [
+    "gittins"
+  ],
+  "title": "Simple regret \u2014 gsm8k_1_samples_various_models_seed1.npy\nalgorithms=gittins | seed=0, Gittins batch=20, budget=10% of 122000 cells",
+  "gittins_stop_cum_eval": 3680,
+  "merge_ucb_lrf_from": null,
+  "warmup_evals_lrf_plot_trim": 6100,
+  "timing": {
+    "ucb": null,
+    "lrf": null,
+    "gittins": {
+      "clock": "time.time",
+      "unit": "seconds",
+      "summary": {
+        "iter_total": {
+          "n": 610,
+          "total_s": 233.41997694969177,
+          "mean_s": 0.3826556999175275,
+          "median_s": 0.2914276123046875,
+          "p90_s": 0.45069587230682384,
+          "p99_s": 0.6084631419181823,
+          "min_s": 0.00278472900390625,
+          "max_s": 41.482287645339966
+        },
+        "iter_step": {
+          "n": 610,
+          "total_s": 231.7877643108368,
+          "mean_s": 0.37997994149317504,
+          "median_s": 0.28939759731292725,
+          "p90_s": 0.4415031433105469,
+          "p99_s": 0.607189655303955,
+          "min_s": 0.0021414756774902344,
+          "max_s": 41.44953155517578
+        }
+      }
+    },
+    "per_iter_series_included": false
+  }
+}

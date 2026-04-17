@@ -18,8 +18,8 @@
 #SBATCH --output=logs/gittins_prior_%j_%a.out
 #SBATCH --error=logs/gittins_prior_%j_%a.err
 #SBATCH --time=06:00:00
-#SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=192G
 #SBATCH --array=0-71
 
 set -euo pipefail
@@ -40,6 +40,13 @@ if [ ! -x "${PYTHON}" ]; then
 fi
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
+
+# Avoid XLA/LLVM OOM during JIT compilation on large MMLU matrices:
+# disable multi-threaded Eigen, cap interop threads, and enable persistent JAX cache.
+export XLA_FLAGS="--xla_cpu_multi_thread_eigen=false"
+export TF_NUM_INTEROP_THREADS=1
+export JAX_COMPILATION_CACHE_DIR="/scratch/${USER}/jax_cache"
+mkdir -p "$JAX_COMPILATION_CACHE_DIR"
 
 cd "${SLURM_SUBMIT_DIR}"
 mkdir -p logs
