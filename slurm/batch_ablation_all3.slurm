@@ -1,38 +1,43 @@
 #!/bin/bash
-# Prior ablation for Gittins (CPU, SLURM array).
-# - Outputs are written under outputs/figures/{gsm8k,piqa,mmlu}/
-# - Each array task runs one (dataset, prior) combination.
+# Batch-size ablation with all three algorithms on one plot (UCB-E, UCB-E-LRF, Gittins).
+# Uses the same 12 matrices as slurm/prior_ablation.slurm (GSM8K, PIQA, 10 MMLU subjects).
 #
-# Usage:
-#   1) Edit --account and conda env below.
-#   2) (Optional) override MMLU_SUBJECT, MATRIX_* via sbatch --export
-#      e.g. sbatch --export=ALL,MMLU_SUBJECT=world_religions slurm/prior_ablation.slurm
-#   3) sbatch slurm/prior_ablation.slurm
+# For each (dataset, batch size B): runs
+#   --algorithms ucb lrf gittins
+#   --batch-size B --gittins-batch-size B
+# so UCB/LRF and Gittins share the same per-step batch (fair comparison; τ² for Gittins uses 1/(4B)).
 #
-# Notes:
-# - This script uses scripts/plot_simple_regret_gsm8k.py for all datasets; it works for any matrix .npy.
-# - If your cluster uses different module names/paths, adjust the module load + conda.sh lines.
+# Prior is fixed to script defaults (μ=0.2, v=0.01) unless you edit PM/PV below.
+#
+# Total tasks: 12 datasets × 4 batch sizes = 48  →  --array=0-47
+#
+# Run:
+#   sbatch slurm/batch_ablation_all3.slurm
+#
+# Outputs (per task):
+#   outputs/figures/{gsm8k,piqa,mmlu}/simple_regret_<DATASET>_all3_bs<B>_pm*_pv*.png
+#   ..._traces.npz, ..._traces.meta.json
+# Logs:
+#   logs/batch_all3_%j_%a.out / .err
 
 #SBATCH --account=torch_pr_790_general
-#SBATCH --job-name=gittins_prior
-#SBATCH --output=logs/gittins_prior_%j_%a.out
-#SBATCH --error=logs/gittins_prior_%j_%a.err
-#SBATCH --time=06:00:00
+#SBATCH --job-name=batch_all3
+#SBATCH --output=logs/batch_all3_%j_%a.out
+#SBATCH --error=logs/batch_all3_%j_%a.err
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
-#SBATCH --array=0-71
+#SBATCH --array=0-47
 
 set -euo pipefail
 
 module load anaconda3/2025.06
 source /share/apps/anaconda3/2025.06/etc/profile.d/conda.sh
 
-# Envs live on scratch (recommended); keep this for batch jobs.
 export CONDA_ENVS_PATH=/scratch/$USER/conda/envs
 export CONDA_PKGS_DIRS=/scratch/$USER/conda/pkgs
 conda activate gittins-torch
 
-# See smoke_gsm8k.slurm: use explicit env python in batch jobs.
 PYTHON="${CONDA_ENVS_PATH}/gittins-torch/bin/python"
 if [ ! -x "${PYTHON}" ]; then
   echo "ERROR: missing interpreter: ${PYTHON}" >&2
@@ -45,17 +50,15 @@ cd "${SLURM_SUBMIT_DIR}"
 mkdir -p logs
 mkdir -p outputs/figures/gsm8k outputs/figures/piqa outputs/figures/mmlu
 
-# ---------- dataset matrices ----------
+# ---------- same matrices as prior_ablation.slurm ----------
 MATRIX_GSM8K_DEFAULT="data/matrices/gsm8k_1_samples_various_models_seed1.npy"
 MATRIX_PIQA_DEFAULT="data/matrices/piqa_1_samples_various_models_seed1.npy"
-# MMLU matrices in this repo live under data/MMLU_matrix/*.npy
 MMLU_DIR_DEFAULT="data/MMLU_matrix"
 
 MATRIX_GSM8K="${MATRIX_GSM8K:-$MATRIX_GSM8K_DEFAULT}"
 MATRIX_PIQA="${MATRIX_PIQA:-$MATRIX_PIQA_DEFAULT}"
 MMLU_DIR="${MMLU_DIR:-$MMLU_DIR_DEFAULT}"
 
-# Pick 10 MMLU subjects: top-5 by #cols + top-5 with 200–300 cols (precomputed from this repo).
 MMLU_SUBJECTS=(
   professional_law
   moral_scenarios
@@ -69,22 +72,19 @@ MMLU_SUBJECTS=(
   security_studies
 )
 
-# ---------- prior grid (6 combos) ----------
-# prior_idx in [0..5]
-prior_idx=$(( SLURM_ARRAY_TASK_ID % 6 ))
-case "${prior_idx}" in
-  0) PM=0.5; PV=0.01 ;;
-  1) PM=0.5; PV=0.02 ;;
-  2) PM=0.5; PV=0.04 ;;
-  3) PM=0.2; PV=0.01 ;;
-  4) PM=0.2; PV=0.04 ;;
-  5) PM=0.3; PV=0.04 ;;
-  *) echo "bad prior_idx=${prior_idx}" >&2; exit 2 ;;
+# ---------- batch grid (4 values; meeting: try 8/16/20/32) ----------
+NUM_BS=4
+batch_idx=$(( SLURM_ARRAY_TASK_ID % NUM_BS ))
+case "${batch_idx}" in
+  0) B=8 ;;
+  1) B=16 ;;
+  2) B=20 ;;
+  3) B=32 ;;
+  *) echo "bad batch_idx=${batch_idx}" >&2; exit 2 ;;
 esac
 
-# ---------- dataset selection (12 datasets = 2 + 10 MMLU) ----------
-# dataset_idx in [0..11]
-dataset_idx=$(( SLURM_ARRAY_TASK_ID / 6 ))
+# ---------- dataset index [0..11] ----------
+dataset_idx=$(( SLURM_ARRAY_TASK_ID / NUM_BS ))
 case "${dataset_idx}" in
   0)
     DATASET="gsm8k"
@@ -109,12 +109,18 @@ case "${dataset_idx}" in
     ;;
 esac
 
-FIG="${OUT_DIR}/simple_regret_${DATASET}_pm${PM}_pv${PV}.png"
-TRACES="${OUT_DIR}/simple_regret_${DATASET}_pm${PM}_pv${PV}_traces.npz"
+# Fixed prior (match script defaults; change here if you want one grid for all runs)
+PM="${PM:-0.2}"
+PV="${PV:-0.01}"
+
+STEM="simple_regret_${DATASET}_all3_bs${B}_pm${PM}_pv${PV}"
+FIG="${OUT_DIR}/${STEM}.png"
+TRACES="${OUT_DIR}/${STEM}_traces.npz"
 
 echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
 echo "DATASET=${DATASET}"
 echo "MATRIX=${MATRIX}"
+echo "B=${B} (UCB/LRF batch-size == Gittins batch-size)"
 echo "PRIOR mean=${PM} var=${PV}"
 echo "FIG=${FIG}"
 echo "TRACES=${TRACES}"
@@ -124,10 +130,13 @@ echo "python=${PYTHON}"
 
 "${PYTHON}" scripts/plot_simple_regret_gsm8k.py \
   --matrix "${MATRIX}" \
-  --algorithms gittins \
+  --algorithms ucb lrf gittins \
+  --batch-size "${B}" \
+  --gittins-batch-size "${B}" \
   --eval-budget-fraction 0.10 \
   --gittins-prior-mean "${PM}" \
   --gittins-prior-variance "${PV}" \
   --out "${FIG}" \
   --traces-out "${TRACES}"
 
+echo "DONE. Wrote ${FIG}"
