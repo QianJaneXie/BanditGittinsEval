@@ -8,7 +8,7 @@
 #   logs/smoke_gsm8k_<jobid>.out
 #   outputs/figures/gsm8k/slurm_smoke.png
 
-#SBATCH --account=pr_790_general
+#SBATCH --account=torch_pr_790_general
 #SBATCH --job-name=gsm8k_smoke
 #SBATCH --output=logs/smoke_gsm8k_%j.out
 #SBATCH --error=logs/smoke_gsm8k_%j.err
@@ -23,7 +23,8 @@ source /share/apps/anaconda3/2025.06/etc/profile.d/conda.sh
 
 # If your envs live on scratch, keep this for batch jobs too.
 export CONDA_ENVS_PATH=/scratch/$USER/conda/envs
-conda activate gittins-cpu
+export CONDA_PKGS_DIRS=/scratch/$USER/conda/pkgs
+conda activate gittins-torch
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 

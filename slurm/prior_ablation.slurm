@@ -13,7 +13,7 @@
 # - This script uses scripts/plot_simple_regret_gsm8k.py for all datasets; it works for any matrix .npy.
 # - If your cluster uses different module names/paths, adjust the module load + conda.sh lines.
 
-#SBATCH --account=pr_790_general
+#SBATCH --account=torch_pr_790_general
 #SBATCH --job-name=gittins_prior
 #SBATCH --output=logs/gittins_prior_%j_%a.out
 #SBATCH --error=logs/gittins_prior_%j_%a.err
@@ -29,7 +29,8 @@ source /share/apps/anaconda3/2025.06/etc/profile.d/conda.sh
 
 # Envs live on scratch (recommended); keep this for batch jobs.
 export CONDA_ENVS_PATH=/scratch/$USER/conda/envs
-conda activate gittins-cpu
+export CONDA_PKGS_DIRS=/scratch/$USER/conda/pkgs
+conda activate gittins-torch
 
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
 
