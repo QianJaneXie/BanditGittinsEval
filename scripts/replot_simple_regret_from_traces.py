@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
-"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret_gsm8k.py."""
+"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret_gsm8k.py.
+
+**Gittins x-axis:** ``evals`` (cost-unaware style: cumulative matrix entries revealed) vs
+``original_cost`` (cost-aware: cumulative monetary cost stored in ``gittins_x_original_cost``, same
+units as the cost vector used at simulation time—e.g. **USD per 1M input tokens** for GSM8K pricing
+JSON). The default cost-axis label matches the main script’s GSM8K figures.
+"""
 
 from __future__ import annotations
+
+# Same label as plot_simple_regret_gsm8k for GSM8K cost-aware runs; change if your traces use other units.
+_GITTINS_COST_AWARE_XLABEL = "Cumulative cost (USD per 1M input tokens)"
 
 import argparse
 import json
@@ -30,7 +39,8 @@ def main() -> int:
         "--gittins-x-axis",
         choices=["evals", "original_cost"],
         default="evals",
-        help="Gittins curve only: x = cumulative evals or cumulative original cost (if present in npz)",
+        help="Gittins only: evals = cumulative matrix entries (cost-unaware-style); original_cost = "
+        "cumulative monetary cost when traces contain gittins_x_original_cost (e.g. USD per 1M in-tokens for GSM8K pricing)",
     )
     args = parser.parse_args()
 
@@ -75,7 +85,7 @@ def main() -> int:
         _plot_if_nonempty("lrf_x_plot", "lrf_regret_plot", "UCB-E-LRF")
     gittins_x_key = "gittins_x_original_cost" if gittins_cost_x else "gittins_x"
     gittins_label = (
-        "Gittins (τ² = 1/(4B), x = cum. original cost)"
+        "Gittins (τ² = 1/(4B), cost-aware, x = cum. cost)"
         if gittins_cost_x
         else "Gittins (τ² = 1/(4B))"
     )
@@ -92,7 +102,7 @@ def main() -> int:
                 label=f"Gittins nominal stop ({stop} evals)",
             )
     if gittins_cost_x:
-        plt.xlabel("Cumulative cost (original units)")
+        plt.xlabel(_GITTINS_COST_AWARE_XLABEL)
     else:
         plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")

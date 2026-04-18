@@ -31,11 +31,12 @@ small budget), use ``--algorithms gittins`` and ``--eval-budget-fraction 0.02`` 
 Use ``--verbose`` to print each step: distinct arms in the batch, incumbent arm, and simple regret
 (tagged ``ucb`` / ``lrf`` / ``gittins`` when multiple algorithms run).
 
-**Gittins cost:** ``--gittins-cost-mode unaware`` uses unit cost 1.0 per transition per arm in the Gittins
-DP and plots regret vs cumulative evaluations. ``--gittins-cost-mode aware`` requires
-``--gittins-cost-vector``: the DP uses original per-arm costs (scaled inside ``gittins_policy`` via
-``cost_scaling_factor``); the figure plots Gittins regret vs cumulative **original** cost. If UCB/LRF
-(or RR) run alongside cost-aware Gittins, the figure uses two panels (evals vs cost).
+**Gittins cost** (same semantics as ``gittins_policy.cost_per_transition``): ``--gittins-cost-mode
+unaware`` passes **1.0** per arm (uniform cost) and plots regret vs cumulative matrix evaluations.
+``--gittins-cost-mode aware`` loads **per-arm monetary costs** (e.g. dollars per transition) from
+``--gittins-cost-vector``; the DP scales them via ``cost_scaling_factor``. For this repository’s
+GSM8K pricing JSON, values are **USD per 1M input tokens** and the cumulative-cost axis uses that
+unit. If UCB/LRF (or RR) run alongside cost-aware Gittins, the figure uses two panels (evals vs cost).
 
 **Traces:** by default, cumulative-evaluation counts and simple regret series are written next to the
 figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-traces``). Arrays:
@@ -44,7 +45,9 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 - ``lrf_x_full``, ``lrf_regret_full`` — UCB-E-LRF full trace (empty if not run)
 - ``lrf_x_plot``, ``lrf_regret_plot`` — LRF segment used in the figure (cum eval ≥ ``warmup_evals``)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
-- ``gittins_x_original_cost`` — cumulative **original** per-cell cost after each Gittins step (same length as ``gittins_regret`` when Gittins runs)
+- ``gittins_x_original_cost`` — cumulative monetary cost after each step (same units as the cost
+  vector; GSM8K pricing: **USD per 1M input tokens**). Same length as ``gittins_regret`` when
+  cost-aware Gittins runs.
 - scalar ``gittins_stop_cum_eval`` — first cumulative eval count (before that policy step) where the
   top-scoring arm was already fully observed (nominal stopping time); ``-1`` if that never occurred.
   The Gittins regret curve still runs to the eval budget when using the simple-regret script.
@@ -54,7 +57,9 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 ``--merge-ucb-lrf-from PREVIOUS_traces.npz`` to copy UCB-E and UCB-E-LRF series from an earlier
 full run and simulate only Gittins (same matrix / seed / budget recommended).
 
-Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …`` (pass ``--gittins-x-axis original_cost`` there to plot Gittins vs cumulative original cost).
+Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …`` (use
+``--gittins-x-axis original_cost`` for cumulative monetary cost vs ``evals`` for cost-unaware-style
+x-axis; see replot script for axis labels).
 
 **Timing (``*_traces.meta.json``):** when traces are saved, ``timing`` records per-method wall-clock
 stats from ``time.time()`` (see ``summary.iter_total`` / ``summary.iter_step``). Pass
@@ -87,6 +92,9 @@ if str(_repo_root / "src") not in sys.path:
 from gittins_policy import gittins_index_exploration
 
 T = TypeVar("T", int, float)
+
+# GSM8K cost-aware figures: cumulative axis label (matches ``estimated_cost_per_1m_input_tokens``).
+_GITTINS_COST_AWARE_CUMULATIVE_XLABEL = "Cumulative cost (USD per 1M input tokens)"
 
 
 @dataclass(frozen=True)
@@ -150,7 +158,8 @@ def _json_to_cost_1d(data: object, n_arms: int) -> np.ndarray:
 
 def load_gittins_cost_vector_from_file(path: Path, n_arms: int) -> torch.Tensor:
     """
-    Load per-arm per-cell costs from disk → ``(n_arms,)`` float64 tensor.
+    Load per-arm per-cell costs from disk → ``(n_arms,)`` float64 tensor. **Units:** match your file
+    (GSM8K ``configurations`` JSON uses **USD per 1M input tokens** per ``estimated_cost_per_1m_input_tokens``).
 
     - ``.npy``: ``numpy.load`` (shape ``(n_arms,)``).
     - ``.json``: flat array / ``cost_per_arm`` list, or GSM8K ``configurations`` export (keys ``\"0\"``…
@@ -339,7 +348,7 @@ def _trim_trace_from_cum_eval(xs: list[int], ys: list[T], min_x: int) -> tuple[l
 def _cumulative_cost_at_eval_stop(
     xs_eval: list[int], xs_cost: list[float], stop_eval: int | None
 ) -> float | None:
-    """First step where cumulative evals reach ``stop_eval``; return matching cumulative original cost."""
+    """First step where cumulative evals reach ``stop_eval``; return matching cumulative cost (cost-vector units)."""
     if stop_eval is None or stop_eval < 0 or not xs_eval or not xs_cost:
         return None
     for i, e in enumerate(xs_eval):
@@ -378,8 +387,9 @@ def simulate(
     ``sim_cum_eval=<cumulative evals so far>`` (for Gittins nominal stopping-time bookkeeping).
 
     If ``per_arm_original_cost`` is a length-``(n_arms,)`` tensor, ``timing["cum_original_cost"]``
-    records cumulative **original** cost after each batch: per-arm unit cost times **number of cells**
-    revealed in that batch (``c_k * n_cells_in_batch``).
+    records cumulative monetary cost after each batch in the same units as ``per_arm_original_cost``
+    (e.g. dollars per transition when cost-aware; GSM8K JSON: **USD per 1M input tokens**), summed as
+    ``c_k * n_cells_in_batch`` per step.
 
     No new batch is started once cumulative evaluations have reached
     ``max_evaluations`` (total evals never exceed that cap).
@@ -547,11 +557,11 @@ def save_trace_bundle(
 
 
 _GITTINS_COST_EPILOG = """
-Gittins cost modes (--gittins-cost-mode):
-  unaware — DP uses cost 1.0 per transition per arm; plot Gittins vs cumulative evals.
-  aware — requires --gittins-cost-vector (JSON or .npy per-arm costs in original units); DP scales them
-    via cost_scaling_factor in gittins_policy; plot Gittins vs cumulative original cost (two panels
-    if UCB/LRF/RR also run). JSON shapes: flat array, cost_per_arm/costs/cost, or GSM8K pricing export.
+Gittins cost modes (--gittins-cost-mode), matching gittins_policy.cost_per_transition:
+  unaware — per-arm cost 1.0 (uniform); plot Gittins vs cumulative matrix evaluations.
+  aware — per-arm monetary costs from --gittins-cost-vector (GSM8K JSON: USD per 1M input tokens);
+    DP scales via cost_scaling_factor; plot Gittins vs cumulative cost (two panels if UCB/LRF/RR run).
+  JSON shapes: flat array, cost_per_arm/costs/cost, or GSM8K configurations export.
 """
 
 
@@ -621,8 +631,8 @@ def main() -> int:
         type=str,
         choices=["unaware", "aware"],
         default="unaware",
-        help="unaware: Gittins DP uses cost 1.0 per arm; plot vs evals. aware: DP uses --gittins-cost-vector "
-        "(scaled in policy); plot Gittins vs cumulative original cost.",
+        help="unaware: uniform cost 1.0 per arm (see gittins_policy); plot vs evals. aware: monetary "
+        "per-arm costs from --gittins-cost-vector (GSM8K: USD per 1M input tokens); plot vs cumulative cost.",
     )
     parser.add_argument(
         "--gittins-cost",
@@ -636,7 +646,8 @@ def main() -> int:
         type=Path,
         default=None,
         metavar="FILE",
-        help="Required for --gittins-cost-mode aware: per-arm costs (JSON or .npy). Ignored when unaware.",
+        help="Required for --gittins-cost-mode aware: per-arm monetary costs (JSON or .npy); GSM8K export "
+        "uses USD per 1M input tokens. Ignored when unaware.",
     )
     parser.add_argument(
         "--gittins-per-cell-dp",
@@ -900,7 +911,7 @@ def main() -> int:
     two_panel = gittins_cost_aware_plot and plot_eval_curves
     if gittins_cost_aware_plot:
         gittins_label = (
-            f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware, x = cum. original cost)"
+            f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware, x = cum. cost)"
         )
     else:
         gittins_label = f"Gittins (τ² = 1/(4B), {gittins_dp_part})"
@@ -933,7 +944,7 @@ def main() -> int:
                     linewidth=1.2,
                     label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
                 )
-        ax1.set_xlabel("Cumulative cost (original units)")
+        ax1.set_xlabel(_GITTINS_COST_AWARE_CUMULATIVE_XLABEL)
         ax1.set_ylabel("Simple regret")
         ax1.grid(True, alpha=0.3)
         ax1.legend(loc="best")
@@ -959,7 +970,7 @@ def main() -> int:
                 linewidth=1.2,
                 label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
             )
-        ax.set_xlabel("Cumulative cost (original units)")
+        ax.set_xlabel(_GITTINS_COST_AWARE_CUMULATIVE_XLABEL)
         ax.set_ylabel("Simple regret")
         plt.title(f"Simple regret — {args.matrix.name}\n{sub}")
         plt.legend()
