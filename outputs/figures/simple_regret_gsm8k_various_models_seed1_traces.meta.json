@@ -1,5 +1,5 @@
 {
-  "matrix": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/outputs/matrices/gsm8k_1_samples_various_models_seed1.npy",
+  "matrix": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/data/matrices/gsm8k_1_samples_various_models_seed1.npy",
   "figure": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/outputs/figures/simple_regret_gsm8k_various_models_seed1.png",
   "traces": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/outputs/figures/simple_regret_gsm8k_various_models_seed1_traces.npz",
   "seed": 0,
@@ -24,5 +24,36 @@
   "title": "Simple regret \u2014 gsm8k_1_samples_various_models_seed1.npy\nalgorithms=ucb,lrf,gittins | seed=0, UCB/LRF batch=32, Gittins batch=20, budget=10% of 122000 cells\n(LRF: 5% random warm-up, then low-rank UCB; curve starts at ~6100 evals)\n(UCB/LRF merged from simple_regret_gsm8k_various_models_seed1_traces.npz)",
   "gittins_stop_cum_eval": 4480,
   "merge_ucb_lrf_from": "/Users/qianxie/Desktop/Curriculum/Graduate/Research/BanditGittinsEval/outputs/figures/simple_regret_gsm8k_various_models_seed1_traces.npz",
-  "warmup_evals_lrf_plot_trim": 6100
+  "warmup_evals_lrf_plot_trim": 6100,
+  "timing": {
+    "ucb": null,
+    "lrf": null,
+    "gittins": {
+      "clock": "time.time",
+      "unit": "seconds",
+      "summary": {
+        "iter_total": {
+          "n": 610,
+          "total_s": 117.44581723213196,
+          "mean_s": 0.1925341266100524,
+          "median_s": 0.14745354652404785,
+          "p90_s": 0.23134129047393828,
+          "p99_s": 0.35671090126037536,
+          "min_s": 0.0011110305786132812,
+          "max_s": 20.41550302505493
+        },
+        "iter_step": {
+          "n": 610,
+          "total_s": 117.17455101013184,
+          "mean_s": 0.19208942788546202,
+          "median_s": 0.14708852767944336,
+          "p90_s": 0.23086256980896025,
+          "p99_s": 0.3562091374397272,
+          "min_s": 0.0008370876312255859,
+          "max_s": 20.399153232574463
+        }
+      }
+    },
+    "per_iter_series_included": false
+  }
 }
