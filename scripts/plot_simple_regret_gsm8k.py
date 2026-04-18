@@ -25,7 +25,9 @@ so the curve begins where that policy starts (at ~5% cumulative evals when the d
 warm-up and 10% total).
 
 **Experiments:** ``--experiment NAME`` (default ``gsm8k_various_model``) picks a registered matrix and
-figure path from ``experiment_specs()``; ``--matrix`` / ``--out`` override those defaults.
+figure path from ``experiment_specs()``; ``--matrix`` / ``--out`` override those defaults. Gittins
+prior defaults to N(0.5, 0.04); the ``gsm8k_various_model`` preset uses N(0.2, 0.01). Override with
+``--gittins-prior-mean`` / ``--gittins-prior-variance``.
 
 By default all three algorithms are simulated and plotted. For a quick test (e.g. Gittins only with a
 small budget), use ``--algorithms gittins`` and ``--eval-budget-fraction 0.02`` (or similar).
@@ -105,6 +107,9 @@ class ExperimentSpec:
 
     matrix: Path
     out: Path
+    # Optional Gittins prior θ_k ~ N(μ_0, v_0); None → use global default N(0.5, 0.04) unless CLI overrides.
+    gittins_prior_mean: float | None = None
+    gittins_prior_variance: float | None = None
 
 
 def experiment_specs(root: Path) -> dict[str, ExperimentSpec]:
@@ -115,6 +120,24 @@ def experiment_specs(root: Path) -> dict[str, ExperimentSpec]:
             out=root / "outputs" / "figures" / "simple_regret_gsm8k_various_models_seed1.png",
         ),
     }
+
+
+def _resolve_gittins_prior(spec: ExperimentSpec, args: Namespace) -> tuple[float, float]:
+    """Global default N(0.5, 0.04); experiments may set GSM8K to N(0.2, 0.01). CLI always wins."""
+    default_mean, default_var = 0.5, 0.04
+    if args.gittins_prior_mean is not None:
+        mean = float(args.gittins_prior_mean)
+    elif spec.gittins_prior_mean is not None:
+        mean = float(spec.gittins_prior_mean)
+    else:
+        mean = default_mean
+    if args.gittins_prior_variance is not None:
+        var = float(args.gittins_prior_variance)
+    elif spec.gittins_prior_variance is not None:
+        var = float(spec.gittins_prior_variance)
+    else:
+        var = default_var
+    return mean, var
 
 
 def _is_gsm8k_configurations_pricing(data: object) -> bool:
