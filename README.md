@@ -42,11 +42,23 @@ python scripts/plot_simple_regret_gsm8k.py
 | `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. This repo’s GSM8K pricing JSON uses **USD per 1M input tokens**; plot Gittins vs cumulative cost in that unit when `aware` (two panels if UCB/LRF/RR also run) |
 | `--gittins-cost C` | Ignored for cost-unaware Gittins (DP uses `1.0`); kept for compatibility |
 | `--gittins-cost-vector FILE` | Required for `aware`: per-arm costs (JSON or `.npy`; GSM8K: USD per 1M input tokens). Ignored when `unaware` |
-| `--gittins-prior-mean`, `--gittins-prior-variance` | Prior \(\theta_k \sim \mathcal{N}(\mu_0, v_0)\) for Gittins |
+| `--gittins-prior-mean`, `--gittins-prior-variance` | Prior \(\theta_k \sim \mathcal{N}(\mu_0, v_0)\) for Gittins (optional; see **Gittins prior** below) |
 | `--gittins-per-cell-dp` | Use one DP stage per matrix cell (slow); default is **batch-mean** DP aligned with `--gittins-batch-size` |
 | `--traces-out PATH` | Where to save `*_traces.npz` (default: same directory as `--out`, stem + `_traces.npz`) |
 | `--no-save-traces` | Skip writing trace `.npz` and `.meta.json` |
 | `--verbose` | Print each batch: distinct arms, incumbent, simple regret |
+
+### Gittins prior (\(\theta_k \sim \mathcal{N}(\mu_0, v_0)\))
+
+The script resolves \((\mu_0, v_0)\) in this order:
+
+1. **CLI** — if you pass `--gittins-prior-mean` and/or `--gittins-prior-variance`, those values override everything else (omit a flag to leave that component to the next steps).
+2. **Experiment preset** — `experiment_specs()` in `plot_simple_regret_gsm8k.py` can set optional `gittins_prior_mean` / `gittins_prior_variance` per `--experiment` name.
+3. **Global default** — **\(\mu_0 = 0.5\)**, **\(v_0 = 0.04\)** (i.e. **N(0.5, 0.04)**) when the preset does not fix them.
+
+The **`gsm8k_various_model`** preset uses **N(0.2, 0.01)** so GSM8K runs match the intended prior without extra flags. Add other experiments by extending `ExperimentSpec` the same way.
+
+The resolved pair is stored in `*_traces.meta.json` as `gittins_prior_mean` and `gittins_prior_variance`.
 
 **Example: small budget, Gittins only (cost-unaware, default):**
 
