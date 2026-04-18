@@ -15,8 +15,10 @@ Compared algorithms:
     bound on [0, 1]). Gittins uses **batch-mean DP** (one DP stage per that batch) by default; pass
     ``--gittins-per-cell-dp`` for one DP stage per matrix cell instead. UCB-E / LRF use ``--batch-size``.
 
-The horizontal axis is cumulative matrix entries evaluated. By default all policies use the same
-total budget (``--eval-budget-fraction``, e.g. 10% of cells). UCB-E runs over the full budget from
+The horizontal axis is cumulative matrix entries evaluated (cost-unaware) or cumulative cost
+(cost-aware). **Budget:** ``--eval-budget-fraction`` caps **evaluations** as a fraction of matrix
+cells when ``--gittins-cost-mode unaware``; when **aware**, the same fraction applies to **total
+monetary cost** to fill the whole matrix (each cell of arm ``k`` costs ``c_k``). UCB-E runs over the full budget from
 the first query. UCB-E-LRF spends ``--warmup-percentage`` (e.g. 5%) on uniform random probing, then
 runs the low-rank UCB rule for the rest; **only the post–warm-up segment** is drawn for UCB-E-LRF
 so the curve begins where that policy starts (at ~5% cumulative evals when the defaults are 5%
@@ -372,16 +374,20 @@ def simulate(
     *,
     step_kwargs: dict,
     seed: int,
-    max_evaluations: int,
+    max_evaluations: int | None = None,
+    max_cumulative_cost: float | None = None,
     verbose: bool = False,
     log_prefix: str = "",
     pass_sim_cum_eval: bool = False,
     per_arm_original_cost: torch.Tensor | None = None,
 ) -> tuple[list[float], list[int], dict[str, Any]]:
-    """Run until eval budget is reached, the matrix is exhausted, or ``batch is None``.
+    """Run until a budget is reached, the matrix is exhausted, or ``batch is None``.
 
     Returns parallel lists: regret after each batch, and cumulative number of
     entries revealed (batch sizes summed), including warm-up queries for LRF.
+
+    Pass at least one of ``max_evaluations`` (cap on revealed cells) or ``max_cumulative_cost``
+    (cap on cumulative monetary cost, requires ``per_arm_original_cost``).
 
     If ``pass_sim_cum_eval`` is True, each ``step`` call also receives
     ``sim_cum_eval=<cumulative evals so far>`` (for Gittins nominal stopping-time bookkeeping).
@@ -391,13 +397,18 @@ def simulate(
     (e.g. dollars per transition when cost-aware; GSM8K JSON: **USD per 1M input tokens**), summed as
     ``c_k * n_cells_in_batch`` per step.
 
-    No new batch is started once cumulative evaluations have reached
-    ``max_evaluations`` (total evals never exceed that cap).
+    No new batch is started once cumulative evaluations reach ``max_evaluations`` (if set) or
+    cumulative cost reaches ``max_cumulative_cost`` (if set, checked at the start of each iteration).
 
     If ``verbose``, prints after each batch: distinct row indices (arms) in the batch,
     incumbent arm (empirical best row, used for simple regret), and simple regret.
     """
     torch.manual_seed(seed)
+
+    if max_evaluations is None and max_cumulative_cost is None:
+        raise ValueError("simulate requires max_evaluations and/or max_cumulative_cost")
+    if max_cumulative_cost is not None and per_arm_original_cost is None:
+        raise ValueError("max_cumulative_cost requires per_arm_original_cost")
 
     if per_arm_original_cost is not None and tuple(per_arm_original_cost.shape) != (
         ground_truth.shape[0],
@@ -422,6 +433,8 @@ def simulate(
 
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
+            break
+        if max_cumulative_cost is not None and total_original_cost >= max_cumulative_cost:
             break
         t_iter0 = time.time()
         call_kw = dict(step_kwargs)
@@ -471,6 +484,15 @@ def simulate(
     if per_arm_original_cost is not None:
         timing["cum_original_cost"] = cum_original_cost
     return regrets, cum_evaluated, timing
+
+
+def _final_cum_cost(timing: dict[str, Any] | None) -> float | None:
+    if timing is None:
+        return None
+    c = timing.get("cum_original_cost")
+    if not c:
+        return None
+    return float(c[-1])
 
 
 def _timing_summary(times_s: list[float]) -> dict[str, float | int]:
@@ -610,7 +632,8 @@ def main() -> int:
         "--eval-budget-fraction",
         type=float,
         default=0.10,
-        help="Stop each run after this fraction of matrix cells have been evaluated (default: 10%%)",
+        help="Budget fraction: cost-unaware = fraction of matrix cells (eval cap); cost-aware = fraction "
+        "of total cost to evaluate the full matrix (sum over arms of c_k × n_examples) (default: 10%%)",
     )
     parser.add_argument("--ucb-a", type=int, default=1, dest="a")
     parser.add_argument(
@@ -750,7 +773,6 @@ def main() -> int:
     n_arms = int(ground_truth.shape[0])
 
     cost_vector_path: Path | None = args.gittins_cost_vector
-    gittins_per_arm_original_for_trace: torch.Tensor | None = None
     if args.gittins_cost_mode == "aware":
         if cost_vector_path is None:
             print("--gittins-cost-mode aware requires --gittins-cost-vector", file=sys.stderr)
@@ -763,7 +785,6 @@ def main() -> int:
         except (ValueError, OSError, json.JSONDecodeError) as e:
             print(f"gittins cost vector: {e}", file=sys.stderr)
             return 1
-        gittins_per_arm_original_for_trace = gittins_cost_tensor
     else:
         if cost_vector_path is not None:
             print(
@@ -774,25 +795,51 @@ def main() -> int:
         gittins_cost_tensor = torch.full((n_arms,), 1.0, dtype=torch.float64)
 
     n_cells = int(ground_truth.numel())
-    budget_evals = max(1, int(round(args.eval_budget_fraction * n_cells)))
+    n_examples = int(ground_truth.shape[1])
+    total_full_matrix_cost: float | None = None
+    budget_max_cumulative_cost: float | None = None
+    if args.gittins_cost_mode == "aware":
+        total_full_matrix_cost = float(n_examples * gittins_cost_tensor.sum().item())
+        budget_max_cumulative_cost = float(args.eval_budget_fraction) * total_full_matrix_cost
+        budget_max_evals = n_cells
+    else:
+        budget_max_evals = max(1, int(round(args.eval_budget_fraction * n_cells)))
+
     warmup_evals = int(np.ceil(args.warmup_percentage * n_cells))
     warmup_evals_lrf_trim = warmup_evals
 
-    if "lrf" in algorithms and warmup_evals >= budget_evals:
+    budget_evals = budget_max_evals
+
+    if "lrf" in algorithms and warmup_evals >= budget_max_evals:
         print(
-            "Warm-up threshold (ceil(warmup %% × n)) must be < eval budget; "
+            "Warm-up threshold (ceil(warmup %% × n)) must be < eval budget cap; "
             "raise --eval-budget-fraction or lower --warmup-percentage.",
             file=sys.stderr,
         )
         return 1
 
+    if args.gittins_cost_mode == "aware" and "lrf" in algorithms and total_full_matrix_cost is not None:
+        max_c = float(gittins_cost_tensor.max().item())
+        if warmup_evals * max_c > budget_max_cumulative_cost:
+            print(
+                "Warning: worst-case LRF warm-up cost (warmup_evals × max arm cost) exceeds "
+                f"cost budget {budget_max_cumulative_cost:.6g}; consider lowering --warmup-percentage.",
+                file=sys.stderr,
+            )
+
     tau_sq_gittins = 1.0 / (4.0 * float(args.gittins_batch_size))
 
-    sim_kwargs = {
+    sim_kwargs: dict[str, Any] = {
         "seed": args.seed,
-        "max_evaluations": budget_evals,
+        "max_evaluations": budget_max_evals,
         "verbose": args.verbose,
     }
+    if budget_max_cumulative_cost is not None:
+        sim_kwargs["max_cumulative_cost"] = budget_max_cumulative_cost
+
+    per_arm_cost_for_simulate: torch.Tensor | None = (
+        gittins_cost_tensor if args.gittins_cost_mode == "aware" else None
+    )
 
     regrets_ucbe: list[float] = []
     xs_ucbe: list[int] = []
@@ -828,6 +875,7 @@ def main() -> int:
             upper_confidence_bound_exploration,
             step_kwargs={"a": args.a, "batch_size": args.batch_size, "return_mus": False},
             log_prefix="ucb",
+            per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
     if "lrf" in algorithms:
@@ -842,6 +890,7 @@ def main() -> int:
                 "device": args.lrf_device,
             },
             log_prefix="lrf",
+            per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
     if "rr" in algorithms:
@@ -850,6 +899,7 @@ def main() -> int:
             make_round_robin_step(batch_size=args.batch_size),
             step_kwargs={},
             log_prefix="rr",
+            per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
     if "gittins" in algorithms:
@@ -871,7 +921,7 @@ def main() -> int:
             step_kwargs={},
             log_prefix="gittins",
             pass_sim_cum_eval=True,
-            per_arm_original_cost=gittins_per_arm_original_for_trace,
+            per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
         gittins_stop_cum_eval = gittins_natural_stop_holder[0]
@@ -890,10 +940,18 @@ def main() -> int:
     if "gittins" in plot_algorithms:
         batch_desc_parts.append(f"Gittins batch={args.gittins_batch_size}")
     batch_desc = ", ".join(batch_desc_parts) if batch_desc_parts else f"batch={args.batch_size}"
-    sub = (
-        f"seed={args.seed}, {batch_desc}, budget={args.eval_budget_fraction:.0%} of {n_cells} cells, "
-        f"gittins_cost_mode={args.gittins_cost_mode}"
-    )
+    if (
+        args.gittins_cost_mode == "aware"
+        and total_full_matrix_cost is not None
+        and budget_max_cumulative_cost is not None
+    ):
+        budget_str = (
+            f"budget={args.eval_budget_fraction:.0%} of full-matrix cost "
+            f"(cap {budget_max_cumulative_cost:.4g} / {total_full_matrix_cost:.4g} USD per 1M in-tokens)"
+        )
+    else:
+        budget_str = f"budget={args.eval_budget_fraction:.0%} of {n_cells} cells (eval cap)"
+    sub = f"seed={args.seed}, {batch_desc}, {budget_str}, gittins_cost_mode={args.gittins_cost_mode}"
     if "lrf" in plot_algorithms:
         sub += (
             f"\n(LRF: {args.warmup_percentage:.0%} random warm-up, then low-rank UCB; "
@@ -1067,6 +1125,11 @@ def main() -> int:
                 "gittins_prior_variance": args.gittins_prior_variance,
                 "gittins_per_cell_dp": args.gittins_per_cell_dp,
                 "n_cells": n_cells,
+                "budget_stops_by": "cumulative_cost"
+                if args.gittins_cost_mode == "aware"
+                else "evaluations",
+                "total_full_matrix_cost": total_full_matrix_cost,
+                "budget_max_cumulative_cost": budget_max_cumulative_cost,
                 "algorithms": plot_algorithms,
                 "title": f"Simple regret — {args.matrix.name}\n{sub}",
                 "gittins_stop_cum_eval": gittins_stop_cum_eval,
@@ -1078,11 +1141,21 @@ def main() -> int:
         print(f"Wrote traces {traces_path} and {traces_path.with_suffix('.meta.json')}")
 
     print(f"Wrote {args.out}")
+    cost_aware_budget = (
+        args.gittins_cost_mode == "aware" and budget_max_cumulative_cost is not None
+    )
     if "rr" in plot_algorithms:
-        print(
-            f"Round-robin: {len(regrets_rr)} batches, {xs_rr[-1] if xs_rr else 0} / {budget_evals} budget evals "
-            f"(B = {args.batch_size})"
-        )
+        if cost_aware_budget and "rr" in algorithms:
+            print(
+                f"Round-robin: {len(regrets_rr)} batches, {xs_rr[-1] if xs_rr else 0} evals, "
+                f"cum cost {(_final_cum_cost(timing_rr) or 0.0):.6g} / {budget_max_cumulative_cost:.6g} "
+                f"(B = {args.batch_size})"
+            )
+        else:
+            print(
+                f"Round-robin: {len(regrets_rr)} batches, {xs_rr[-1] if xs_rr else 0} / {budget_evals} budget evals "
+                f"(B = {args.batch_size})"
+            )
         if "rr" in algorithms:
             s_total = _timing_summary(timing_rr["iter_total_s"])
             s_step = _timing_summary(timing_rr["iter_step_s"])
@@ -1098,9 +1171,15 @@ def main() -> int:
             )
     if "ucb" in plot_algorithms:
         src = " (merged)" if merge_ucb_lrf and "ucb" not in algorithms else ""
-        print(
-            f"UCB-E{src}: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} / {budget_evals} budget evals"
-        )
+        if cost_aware_budget and "ucb" in algorithms:
+            print(
+                f"UCB-E{src}: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} evals, "
+                f"cum cost {(_final_cum_cost(timing_ucb) or 0.0):.6g} / {budget_max_cumulative_cost:.6g}"
+            )
+        else:
+            print(
+                f"UCB-E{src}: {len(regrets_ucbe)} batches, {xs_ucbe[-1] if xs_ucbe else 0} / {budget_evals} budget evals"
+            )
         if "ucb" in algorithms:
             s_total = _timing_summary(timing_ucb["iter_total_s"])
             s_step = _timing_summary(timing_ucb["iter_step_s"])
@@ -1116,10 +1195,17 @@ def main() -> int:
             )
     if "lrf" in plot_algorithms:
         src = " (merged)" if merge_ucb_lrf and "lrf" not in algorithms else ""
-        print(
-            f"UCB-E-LRF{src}: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} / {budget_evals} budget evals "
-            f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals_lrf_trim})"
-        )
+        if cost_aware_budget and "lrf" in algorithms:
+            print(
+                f"UCB-E-LRF{src}: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} evals, "
+                f"cum cost {(_final_cum_cost(timing_lrf) or 0.0):.6g} / {budget_max_cumulative_cost:.6g} "
+                f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals_lrf_trim})"
+            )
+        else:
+            print(
+                f"UCB-E-LRF{src}: {len(regrets_lrf)} batches, {xs_lrf[-1] if xs_lrf else 0} / {budget_evals} budget evals "
+                f"({len(regrets_lrf_plot)} plotted points from cum_eval ≥ {warmup_evals_lrf_trim})"
+            )
         if "lrf" in algorithms:
             s_total = _timing_summary(timing_lrf["iter_total_s"])
             s_step = _timing_summary(timing_lrf["iter_step_s"])
@@ -1139,10 +1225,17 @@ def main() -> int:
             if gittins_stop_cum_eval is not None
             else ""
         )
-        print(
-            f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} / {budget_evals} budget evals "
-            f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
-        )
+        if cost_aware_budget and "gittins" in algorithms:
+            print(
+                f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} evals, "
+                f"cum cost {(_final_cum_cost(timing_gittins) or 0.0):.6g} / {budget_max_cumulative_cost:.6g} "
+                f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
+            )
+        else:
+            print(
+                f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} / {budget_evals} budget evals "
+                f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
+            )
         if "gittins" in algorithms:
             s_total = _timing_summary(timing_gittins["iter_total_s"])
             s_step = _timing_summary(timing_gittins["iter_step_s"])

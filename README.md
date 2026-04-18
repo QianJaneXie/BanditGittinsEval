@@ -31,7 +31,7 @@ python scripts/plot_simple_regret_gsm8k.py
 | `--matrix PATH` | `(n_models, n_examples)` accuracy matrix `.npy` (overrides experiment default) |
 | `--out PATH` | Output figure (PNG) (overrides experiment default) |
 | `--seed N` | RNG seed for exploration |
-| `--eval-budget-fraction F` | Stop after `F × (rows × cols)` evaluations (default `0.1`) |
+| `--eval-budget-fraction F` | **Unaware:** stop after `F × (rows × cols)` evaluations. **Aware:** stop after cumulative spend reaches `F ×` (total cost to evaluate every cell: `n_examples × sum_k c_k` in pricing units) (default `0.1`) |
 | `--algorithms ucb lrf gittins` | Subset of algorithms to run (default: all three). Example: `--algorithms gittins` for a quick test |
 | `--batch-size B` | UCB-E and UCB-E-LRF: cells per batch (default `32`) |
 | `--gittins-batch-size B` | Gittins: batch size and \(B\) in \(\tau^2 = 1/(4B)\) (default `20`) |
