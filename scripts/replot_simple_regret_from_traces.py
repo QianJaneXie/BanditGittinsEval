@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
-"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret_gsm8k.py."""
+"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret_gsm8k.py.
+
+**Gittins x-axis:** ``evals`` (cost-unaware style: cumulative matrix entries revealed) vs
+``original_cost`` (cost-aware: cumulative monetary cost stored in ``gittins_x_original_cost``, same
+units as the cost vector used at simulation time—e.g. **USD per 1M input tokens** for GSM8K pricing
+JSON). The default cost-axis label matches the main script’s GSM8K figures.
+"""
 
 from __future__ import annotations
+
+# Same label as plot_simple_regret_gsm8k for GSM8K cost-aware runs; change if your traces use other units.
+_GITTINS_COST_AWARE_XLABEL = "Cumulative cost (USD per 1M input tokens)"
 
 import argparse
 import json
@@ -26,6 +35,13 @@ def main() -> int:
         default=None,
         help="Output figure path (default: same stem as traces, .png)",
     )
+    parser.add_argument(
+        "--gittins-x-axis",
+        choices=["evals", "original_cost"],
+        default="evals",
+        help="Gittins only: evals = cumulative matrix entries (cost-unaware-style); original_cost = "
+        "cumulative monetary cost when traces contain gittins_x_original_cost (e.g. USD per 1M in-tokens for GSM8K pricing)",
+    )
     args = parser.parse_args()
 
     if not args.traces.is_file():
@@ -49,11 +65,32 @@ def main() -> int:
         if x.size > 0:
             plt.plot(x, y, label=label, linewidth=1.5)
 
+    gittins_cost_x = (
+        args.gittins_x_axis == "original_cost"
+        and "gittins_x_original_cost" in z.files
+        and z["gittins_x_original_cost"].size > 0
+        and z["gittins_regret"].size > 0
+        and z["gittins_x_original_cost"].shape == z["gittins_regret"].shape
+    )
+    if args.gittins_x_axis == "original_cost" and not gittins_cost_x:
+        print(
+            "Warning: original-cost x-axis requested but traces lack gittins_x_original_cost; "
+            "using cumulative evals for Gittins.",
+            file=sys.stderr,
+        )
+
     plt.figure(figsize=(8, 5))
-    _plot_if_nonempty("ucb_x", "ucb_regret", "UCB-E")
-    _plot_if_nonempty("lrf_x_plot", "lrf_regret_plot", "UCB-E-LRF")
-    _plot_if_nonempty("gittins_x", "gittins_regret", "Gittins (τ² = 1/(4B))")
-    if "gittins_stop_cum_eval" in z.files:
+    if not gittins_cost_x:
+        _plot_if_nonempty("ucb_x", "ucb_regret", "UCB-E")
+        _plot_if_nonempty("lrf_x_plot", "lrf_regret_plot", "UCB-E-LRF")
+    gittins_x_key = "gittins_x_original_cost" if gittins_cost_x else "gittins_x"
+    gittins_label = (
+        "Gittins (τ² = 1/(4B), cost-aware, x = cum. cost)"
+        if gittins_cost_x
+        else "Gittins (τ² = 1/(4B))"
+    )
+    _plot_if_nonempty(gittins_x_key, "gittins_regret", gittins_label)
+    if "gittins_stop_cum_eval" in z.files and not gittins_cost_x:
         stop = int(z["gittins_stop_cum_eval"].reshape(()))
         if stop >= 0:
             plt.axvline(
@@ -64,7 +101,10 @@ def main() -> int:
                 linewidth=1.2,
                 label=f"Gittins nominal stop ({stop} evals)",
             )
-    plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
+    if gittins_cost_x:
+        plt.xlabel(_GITTINS_COST_AWARE_XLABEL)
+    else:
+        plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
     plt.ylabel("Simple regret")
     plt.title(title or "Simple regret (from traces)")
     plt.legend()

@@ -63,7 +63,8 @@ def gittins_index_exploration(
     prior_mean: float = 0.5,
     prior_variance: float = 0.04,
     obs_noise_variance: float = 0.01,
-    cost_per_transition: float | Sequence[float] | torch.Tensor = 1e-4,
+    cost_per_transition: float | Sequence[float] | torch.Tensor = 1.0,
+    cost_scaling_factor: float = 1e-4,
     n_gittins_grid_points: int = 2**10 + 1,
     batch_size: int = 32,
     return_mus: bool = False,
@@ -110,13 +111,19 @@ def gittins_index_exploration(
         prior_variance: v_0 in the Gaussian prior on each θ_k (default 0.01).
         obs_noise_variance: τ² in Y | θ_k ~ N(θ_k, τ²). With the 1/(4B) bound above, τ² is
             approximately 1/(4B) when B = ``batch_size``.
-        cost_per_transition: Cost per **transition** in the Gittins DP for each arm. A scalar
-            applies to every arm; otherwise pass a sequence or ``(n_arms,)`` tensor with one value
-            per row of ``observed_matrix``. The default is ``1e-4`` for light testing.
+        cost_per_transition: Cost per **transition** in the Gittins DP for each arm, in **original**
+            units—for example ``1.0`` for every arm in a cost-unaware setting, or per-arm values in
+            monetary units (e.g. dollars per transition) in a cost-aware setting. A scalar applies to
+            every arm; otherwise pass a sequence or
+            ``(n_arms,)`` tensor with one value per row of ``observed_matrix``. The DP uses
+            ``cost_per_transition * cost_scaling_factor`` so you can keep interpretable costs while
+            matching the numerical scale of the reward side (default: ``1.0`` homogeneous cost).
             If ``use_batch_mean_gittins_dp`` is False (default), each transition is one new per-cell
             observation and the horizon has ``n_examples`` stages. If True, each transition is one
             **batch mean** (mean of up to ``batch_size`` new cells), so the horizon has one stage per
             future batch (about ``ceil(remaining / batch_size)`` from the current posterior).
+        cost_scaling_factor: Multiplier applied to ``cost_per_transition`` before the DP (default
+            ``1e-4``). Set to ``1.0`` if ``cost_per_transition`` is already scaled for the solver.
         n_gittins_grid_points: Grid size for tabular Q (see ``tabular_q_estimate``).
         batch_size: Number of **examples** to evaluate on the chosen arm this step (capped by how
             many columns are still NaN in that row).
@@ -163,7 +170,7 @@ def gittins_index_exploration(
     if completely_sensed_mask.sum() == m_methods:
         return (None, mus) if return_mus else None
 
-    arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods)
+    arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
     n_pts = jnp.uint32(int(n_gittins_grid_points))
 
     if cached_scores is None:

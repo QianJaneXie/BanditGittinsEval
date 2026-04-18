@@ -1,0 +1,1954 @@
+{
+  "0": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "1": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "2": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "3": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "4": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "5": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "6": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "7": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "8": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "9": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "10": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "11": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "12": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "13": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "14": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "15": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "16": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "17": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "18": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "19": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "20": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "21": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "22": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "23": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "24": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "25": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "26": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "27": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "28": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "29": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "30": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "31": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "32": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "33": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "34": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "35": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "36": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "37": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "38": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "39": {
+    "dataset_name": "gsm8k",
+    "model_name": "codellama",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "model_cost_key": "codellama"
+  },
+  "40": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "41": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "42": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "43": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "44": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "45": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "46": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "47": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "48": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "49": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "50": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2_large",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2_large"
+  },
+  "51": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "52": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "53": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "54": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "55": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "56": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "57": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "58": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "59": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "60": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "61": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "62": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "63": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "64": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "65": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "66": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "67": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "68": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "69": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "70": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "71": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "72": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "73": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "74": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "75": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "76": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "77": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "78": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "79": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "80": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "81": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "82": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "83": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "84": {
+    "dataset_name": "gsm8k",
+    "model_name": "llemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 3.2,
+    "model_cost_key": "llemma_7b"
+  },
+  "85": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "86": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "87": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "88": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "89": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "90": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "91": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "92": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "93": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "94": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "95": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "96": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "97": {
+    "dataset_name": "gsm8k",
+    "model_name": "llama2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "llama2_7b"
+  },
+  "98": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "99": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "100": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "101": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "102": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "103": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "104": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "105": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "106": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "107": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "empty",
+    "temperature": 0.0,
+    "num_samples": 1,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "108": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "109": {
+    "dataset_name": "gsm8k",
+    "model_name": "gpt2",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.3,
+    "model_cost_key": "gpt2"
+  },
+  "110": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu"
+  },
+  "111": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "112": {
+    "dataset_name": "gsm8k",
+    "model_name": "gemma_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "gemma_7b"
+  },
+  "113": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "empty",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "114": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "115": {
+    "dataset_name": "gsm8k",
+    "model_name": "tulu2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "tulu2"
+  },
+  "116": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 128,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  },
+  "117": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "empty",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "118": {
+    "dataset_name": "gsm8k",
+    "model_name": "phi2",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.25,
+    "model_cost_key": "phi2"
+  },
+  "119": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 1.0,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "120": {
+    "dataset_name": "gsm8k",
+    "model_name": "mistral_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.45,
+    "model_cost_key": "mistral_7b"
+  },
+  "121": {
+    "dataset_name": "gsm8k",
+    "model_name": "starcoder2_7b",
+    "prompt_name": "step_by_step",
+    "temperature": 0.5,
+    "num_samples": 64,
+    "max_tokens": 512,
+    "num_questions": 1000,
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:2",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 2*output_cost"
+    },
+    "estimated_cost_per_1m_input_tokens": 0.6,
+    "model_cost_key": "starcoder2_7b"
+  }
+}
