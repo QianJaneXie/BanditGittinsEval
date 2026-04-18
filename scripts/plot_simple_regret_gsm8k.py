@@ -40,14 +40,21 @@ unaware`` passes **1.0** per arm (uniform cost) and plots regret vs cumulative m
 ``--gittins-cost-mode aware`` loads **per-arm monetary costs** (e.g. dollars per transition) from
 ``--gittins-cost-vector``; the DP scales them via ``cost_scaling_factor``. For this repository’s
 GSM8K pricing JSON, values are **USD per 1M input tokens** and the cumulative-cost axis uses that
-unit. If UCB/LRF (or RR) run alongside cost-aware Gittins, the figure uses two panels (evals vs cost).
+unit. If UCB/LRF (or RR) run alongside cost-aware Gittins, the figure plots **one** panel with
+cumulative cost on the x-axis for every curve when traces include per-method cumulative cost (saved
+automatically for new runs). Legacy trace bundles without ``ucb_x_original_cost`` /
+``lrf_x_original_cost`` still use two panels (evals vs cost).
 
 **Traces:** by default, cumulative-evaluation counts and simple regret series are written next to the
 figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-traces``). Arrays:
 
 - ``ucb_x``, ``ucb_regret`` — UCB-E (empty if not run)
+- ``ucb_x_original_cost`` — cumulative monetary cost after each UCB batch (cost-aware only; same units
+  as the cost vector)
 - ``lrf_x_full``, ``lrf_regret_full`` — UCB-E-LRF full trace (empty if not run)
 - ``lrf_x_plot``, ``lrf_regret_plot`` — LRF segment used in the figure (cum eval ≥ ``warmup_evals``)
+- ``lrf_x_original_cost``, ``lrf_x_plot_original_cost`` — full and post–warm-up cumulative cost for LRF
+  (cost-aware only)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
 - ``gittins_x_original_cost`` — cumulative monetary cost after each step (same units as the cost
   vector; GSM8K pricing: **USD per 1M input tokens**). Same length as ``gittins_regret`` when
@@ -76,6 +83,7 @@ import argparse
 import json
 import sys
 import time
+from argparse import Namespace
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, TypeVar
@@ -118,6 +126,8 @@ def experiment_specs(root: Path) -> dict[str, ExperimentSpec]:
         "gsm8k_various_model": ExperimentSpec(
             matrix=root / "data" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
             out=root / "outputs" / "figures" / "simple_regret_gsm8k_various_models_seed1.png",
+            gittins_prior_mean=0.2,
+            gittins_prior_variance=0.01,
         ),
     }
 
@@ -370,6 +380,28 @@ def _trim_trace_from_cum_eval(xs: list[int], ys: list[T], min_x: int) -> tuple[l
     return list(ox), list(oy)
 
 
+def _cost_series_aligned(xs_eval: list[int], xs_cost: list[float], regrets: list[float]) -> bool:
+    """True when cumulative-cost x-axis can pair with regret (same length, non-empty)."""
+    return (
+        len(xs_eval) == len(xs_cost) == len(regrets) and len(xs_cost) > 0
+    )
+
+
+def _cost_aligned_if_curve(
+    *,
+    want_curve: bool,
+    xs_eval: list[int],
+    xs_cost: list[float],
+    regrets: list[float],
+) -> bool:
+    """If we draw this policy's curve (non-empty regret), require aligned cost series; else OK."""
+    if not want_curve:
+        return True
+    if not regrets:
+        return True
+    return _cost_series_aligned(xs_eval, xs_cost, regrets)
+
+
 def _cumulative_cost_at_eval_stop(
     xs_eval: list[int], xs_cost: list[float], stop_eval: int | None
 ) -> float | None:
@@ -565,6 +597,10 @@ def save_trace_bundle(
     regrets_lrf: list[float],
     xs_lrf_plot: list[int],
     regrets_lrf_plot: list[float],
+    xs_rr_original_cost: list[float] | None,
+    xs_ucbe_original_cost: list[float] | None,
+    xs_lrf_original_cost: list[float] | None,
+    xs_lrf_plot_original_cost: list[float] | None,
     xs_gittins: list[int],
     regrets_gittins: list[float],
     xs_gittins_original_cost: list[float] | None,
@@ -586,6 +622,22 @@ def save_trace_bundle(
         lrf_regret_full=np.asarray(regrets_lrf, dtype=np.float64),
         lrf_x_plot=np.asarray(xs_lrf_plot, dtype=np.int64),
         lrf_regret_plot=np.asarray(regrets_lrf_plot, dtype=np.float64),
+        rr_x_original_cost=np.asarray(
+            xs_rr_original_cost if xs_rr_original_cost is not None else [],
+            dtype=np.float64,
+        ),
+        ucb_x_original_cost=np.asarray(
+            xs_ucbe_original_cost if xs_ucbe_original_cost is not None else [],
+            dtype=np.float64,
+        ),
+        lrf_x_original_cost=np.asarray(
+            xs_lrf_original_cost if xs_lrf_original_cost is not None else [],
+            dtype=np.float64,
+        ),
+        lrf_x_plot_original_cost=np.asarray(
+            xs_lrf_plot_original_cost if xs_lrf_plot_original_cost is not None else [],
+            dtype=np.float64,
+        ),
         gittins_x=np.asarray(xs_gittins, dtype=np.int64),
         gittins_regret=np.asarray(regrets_gittins, dtype=np.float64),
         gittins_x_original_cost=np.asarray(
@@ -605,7 +657,8 @@ _GITTINS_COST_EPILOG = """
 Gittins cost modes (--gittins-cost-mode), matching gittins_policy.cost_per_transition:
   unaware — per-arm cost 1.0 (uniform); plot Gittins vs cumulative matrix evaluations.
   aware — per-arm monetary costs from --gittins-cost-vector (GSM8K JSON: USD per 1M input tokens);
-    DP scales via cost_scaling_factor; plot Gittins vs cumulative cost (two panels if UCB/LRF/RR run).
+    DP scales via cost_scaling_factor; plot vs cumulative cost (one panel for all policies when traces
+    include UCB/LRF cost series; legacy traces may still use two panels).
   JSON shapes: flat array, cost_per_arm/costs/cost, or GSM8K configurations export.
 """
 
@@ -703,14 +756,16 @@ def main() -> int:
     parser.add_argument(
         "--gittins-prior-mean",
         type=float,
-        default=0.2,
-        help="μ_0 for θ_k ~ N(μ_0, v_0) in gittins_index_exploration",
+        default=None,
+        metavar="μ0",
+        help="μ_0 for θ_k ~ N(μ_0, v_0). Default N(0.5, 0.04); experiment gsm8k_various_model uses (0.2, 0.01) unless set.",
     )
     parser.add_argument(
         "--gittins-prior-variance",
         type=float,
-        default=0.01,
-        help="v_0 for θ_k ~ N(μ_0, v_0) in gittins_index_exploration",
+        default=None,
+        metavar="V0",
+        help="v_0 for θ_k ~ N(μ_0, v_0). Default N(0.5, 0.04); experiment gsm8k_various_model uses (0.2, 0.01) unless set.",
     )
     parser.add_argument(
         "--traces-out",
@@ -756,6 +811,8 @@ def main() -> int:
         args.matrix = spec.matrix
     if args.out is None:
         args.out = spec.out
+
+    gittins_prior_mean, gittins_prior_variance = _resolve_gittins_prior(spec, args)
 
     algorithms = list(dict.fromkeys(args.algorithms))
     merge_ucb_lrf = args.merge_ucb_lrf_from
@@ -866,10 +923,13 @@ def main() -> int:
 
     regrets_ucbe: list[float] = []
     xs_ucbe: list[int] = []
+    xs_ucbe_original: list[float] = []
     regrets_lrf: list[float] = []
     xs_lrf: list[int] = []
+    xs_lrf_original: list[float] = []
     regrets_rr: list[float] = []
     xs_rr: list[int] = []
+    xs_rr_original: list[float] = []
     regrets_gittins: list[float] = []
     xs_gittins: list[int] = []
     xs_gittins_original: list[float] = []
@@ -891,6 +951,12 @@ def main() -> int:
                 file=sys.stderr,
             )
             return 1
+        if "ucb_x_original_cost" in z_merge.files and z_merge["ucb_x_original_cost"].size:
+            xs_ucbe_original = z_merge["ucb_x_original_cost"].astype(np.float64).tolist()
+        if "lrf_x_original_cost" in z_merge.files and z_merge["lrf_x_original_cost"].size:
+            xs_lrf_original = z_merge["lrf_x_original_cost"].astype(np.float64).tolist()
+        if "rr_x_original_cost" in z_merge.files and z_merge["rr_x_original_cost"].size:
+            xs_rr_original = z_merge["rr_x_original_cost"].astype(np.float64).tolist()
 
     if "ucb" in algorithms:
         regrets_ucbe, xs_ucbe, timing_ucb = simulate(
@@ -901,6 +967,7 @@ def main() -> int:
             per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
+        xs_ucbe_original = list(timing_ucb.get("cum_original_cost", []))
     if "lrf" in algorithms:
         regrets_lrf, xs_lrf, timing_lrf = simulate(
             ground_truth,
@@ -916,6 +983,7 @@ def main() -> int:
             per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
+        xs_lrf_original = list(timing_lrf.get("cum_original_cost", []))
     if "rr" in algorithms:
         regrets_rr, xs_rr, timing_rr = simulate(
             ground_truth,
@@ -925,6 +993,7 @@ def main() -> int:
             per_arm_original_cost=per_arm_cost_for_simulate,
             **sim_kwargs,
         )
+        xs_rr_original = list(timing_rr.get("cum_original_cost", []))
     if "gittins" in algorithms:
         gittins_natural_stop_holder: list[int | None] = [None]
         regrets_gittins, xs_gittins, timing_gittins = simulate(
@@ -935,8 +1004,8 @@ def main() -> int:
                 obs_noise_variance=tau_sq_gittins,
                 cost_per_transition=gittins_cost_tensor,
                 n_gittins_grid_points=args.gittins_grid_points,
-                prior_mean=args.gittins_prior_mean,
-                prior_variance=args.gittins_prior_variance,
+                prior_mean=gittins_prior_mean,
+                prior_variance=gittins_prior_variance,
                 use_batch_mean_gittins_dp=not args.gittins_per_cell_dp,
                 allow_early_stop=False,
                 natural_stop_cum_eval_holder=gittins_natural_stop_holder,
@@ -955,6 +1024,9 @@ def main() -> int:
     plot_algorithms = ["ucb", "lrf", "gittins"] if merge_ucb_lrf is not None else algorithms
     xs_lrf_plot, regrets_lrf_plot = _trim_trace_from_cum_eval(
         xs_lrf, regrets_lrf, warmup_evals_lrf_trim
+    )
+    xs_lrf_plot_original, _ = _trim_trace_from_cum_eval(
+        xs_lrf, xs_lrf_original, warmup_evals_lrf_trim
     )
 
     batch_desc_parts: list[str] = []
@@ -989,15 +1061,80 @@ def main() -> int:
         args.gittins_cost_mode == "aware" and "gittins" in plot_algorithms
     )
     plot_eval_curves = any(a in plot_algorithms for a in ("rr", "ucb", "lrf"))
-    two_panel = gittins_cost_aware_plot and plot_eval_curves
-    if gittins_cost_aware_plot:
-        gittins_label = (
-            f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware, x = cum. cost)"
+    single_panel_cost = (
+        gittins_cost_aware_plot
+        and plot_eval_curves
+        and _cost_series_aligned(xs_gittins, xs_gittins_original, regrets_gittins)
+        and _cost_aligned_if_curve(
+            want_curve="rr" in plot_algorithms,
+            xs_eval=xs_rr,
+            xs_cost=xs_rr_original,
+            regrets=regrets_rr,
         )
+        and _cost_aligned_if_curve(
+            want_curve="ucb" in plot_algorithms,
+            xs_eval=xs_ucbe,
+            xs_cost=xs_ucbe_original,
+            regrets=regrets_ucbe,
+        )
+        and _cost_aligned_if_curve(
+            want_curve="lrf" in plot_algorithms,
+            xs_eval=xs_lrf_plot,
+            xs_cost=xs_lrf_plot_original,
+            regrets=regrets_lrf_plot,
+        )
+    )
+    two_panel = gittins_cost_aware_plot and plot_eval_curves and not single_panel_cost
+    if merge_ucb_lrf is not None and two_panel and gittins_cost_aware_plot:
+        print(
+            "Note: --merge-ucb-lrf-from bundle lacks aligned UCB/LRF cumulative cost series "
+            "(ucb_x_original_cost / lrf_x_original_cost); using two panels. Regenerate the source "
+            "traces with the current script for a single cost-axis figure.",
+            file=sys.stderr,
+        )
+    if gittins_cost_aware_plot:
+        if single_panel_cost:
+            gittins_label = f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware)"
+        else:
+            gittins_label = (
+                f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware, x = cum. cost)"
+            )
     else:
         gittins_label = f"Gittins (τ² = 1/(4B), {gittins_dp_part})"
 
-    if two_panel:
+    if single_panel_cost:
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+        if "rr" in plot_algorithms and regrets_rr:
+            ax.plot(xs_rr_original, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
+        if "ucb" in plot_algorithms and regrets_ucbe:
+            ax.plot(xs_ucbe_original, regrets_ucbe, label="UCB-E", linewidth=1.5)
+        if "lrf" in plot_algorithms and regrets_lrf_plot:
+            ax.plot(xs_lrf_plot_original, regrets_lrf_plot, label="UCB-E-LRF", linewidth=1.5)
+        if "gittins" in plot_algorithms:
+            (line_g,) = ax.plot(
+                xs_gittins_original, regrets_gittins, label=gittins_label, linewidth=1.5
+            )
+            stop_cost = _cumulative_cost_at_eval_stop(
+                xs_gittins, xs_gittins_original, gittins_stop_cum_eval
+            )
+            if gittins_stop_cum_eval is not None and stop_cost is not None:
+                ax.axvline(
+                    stop_cost,
+                    color=line_g.get_color(),
+                    linestyle="--",
+                    alpha=0.85,
+                    linewidth=1.2,
+                    label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
+                )
+        ax.set_xlabel(_GITTINS_COST_AWARE_CUMULATIVE_XLABEL)
+        ax.set_ylabel("Simple regret")
+        ax.grid(True, alpha=0.3)
+        ax.legend(loc="best")
+        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        fig.suptitle(f"Simple regret — {args.matrix.name}\n{sub}", fontsize=10, y=1.0)
+        plt.savefig(args.out, dpi=150)
+        plt.close()
+    elif two_panel:
         fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8, 9), sharey=True)
         if "rr" in plot_algorithms:
             ax0.plot(xs_rr, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
@@ -1118,6 +1255,10 @@ def main() -> int:
             regrets_lrf=regrets_lrf,
             xs_lrf_plot=xs_lrf_plot,
             regrets_lrf_plot=regrets_lrf_plot,
+            xs_rr_original_cost=xs_rr_original if xs_rr_original else None,
+            xs_ucbe_original_cost=xs_ucbe_original if xs_ucbe_original else None,
+            xs_lrf_original_cost=xs_lrf_original if xs_lrf_original else None,
+            xs_lrf_plot_original_cost=xs_lrf_plot_original if xs_lrf_plot_original else None,
             xs_gittins=xs_gittins,
             regrets_gittins=regrets_gittins,
             xs_gittins_original_cost=xs_gittins_original,
@@ -1144,8 +1285,8 @@ def main() -> int:
                 if cost_vector_path and args.gittins_cost_mode == "aware"
                 else None,
                 "experiment": args.experiment,
-                "gittins_prior_mean": args.gittins_prior_mean,
-                "gittins_prior_variance": args.gittins_prior_variance,
+                "gittins_prior_mean": gittins_prior_mean,
+                "gittins_prior_variance": gittins_prior_variance,
                 "gittins_per_cell_dp": args.gittins_per_cell_dp,
                 "n_cells": n_cells,
                 "budget_stops_by": "cumulative_cost"
