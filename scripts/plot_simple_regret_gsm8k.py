@@ -22,11 +22,20 @@ runs the low-rank UCB rule for the rest; **only the post–warm-up segment** is 
 so the curve begins where that policy starts (at ~5% cumulative evals when the defaults are 5%
 warm-up and 10% total).
 
+**Experiments:** ``--experiment NAME`` (default ``gsm8k_various_model``) picks a registered matrix and
+figure path from ``experiment_specs()``; ``--matrix`` / ``--out`` override those defaults.
+
 By default all three algorithms are simulated and plotted. For a quick test (e.g. Gittins only with a
 small budget), use ``--algorithms gittins`` and ``--eval-budget-fraction 0.02`` (or similar).
 
 Use ``--verbose`` to print each step: distinct arms in the batch, incumbent arm, and simple regret
 (tagged ``ucb`` / ``lrf`` / ``gittins`` when multiple algorithms run).
+
+**Gittins cost:** ``--gittins-cost-mode unaware`` uses unit cost 1.0 per transition per arm in the Gittins
+DP and plots regret vs cumulative evaluations. ``--gittins-cost-mode aware`` requires
+``--gittins-cost-vector``: the DP uses original per-arm costs (scaled inside ``gittins_policy`` via
+``cost_scaling_factor``); the figure plots Gittins regret vs cumulative **original** cost. If UCB/LRF
+(or RR) run alongside cost-aware Gittins, the figure uses two panels (evals vs cost).
 
 **Traces:** by default, cumulative-evaluation counts and simple regret series are written next to the
 figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-traces``). Arrays:
@@ -35,6 +44,7 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 - ``lrf_x_full``, ``lrf_regret_full`` — UCB-E-LRF full trace (empty if not run)
 - ``lrf_x_plot``, ``lrf_regret_plot`` — LRF segment used in the figure (cum eval ≥ ``warmup_evals``)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
+- ``gittins_x_original_cost`` — cumulative **original** per-cell cost after each Gittins step (same length as ``gittins_regret`` when Gittins runs)
 - scalar ``gittins_stop_cum_eval`` — first cumulative eval count (before that policy step) where the
   top-scoring arm was already fully observed (nominal stopping time); ``-1`` if that never occurred.
   The Gittins regret curve still runs to the eval budget when using the simple-regret script.
@@ -44,7 +54,7 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
 ``--merge-ucb-lrf-from PREVIOUS_traces.npz`` to copy UCB-E and UCB-E-LRF series from an earlier
 full run and simulate only Gittins (same matrix / seed / budget recommended).
 
-Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …``
+Replot without resimulating: ``python scripts/replot_simple_regret_from_traces.py --traces …`` (pass ``--gittins-x-axis original_cost`` there to plot Gittins vs cumulative original cost).
 
 **Timing (``*_traces.meta.json``):** when traces are saved, ``timing`` records per-method wall-clock
 stats from ``time.time()`` (see ``summary.iter_total`` / ``summary.iter_step``). Pass
@@ -57,6 +67,7 @@ import argparse
 import json
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -76,6 +87,170 @@ if str(_repo_root / "src") not in sys.path:
 from gittins_policy import gittins_index_exploration
 
 T = TypeVar("T", int, float)
+
+
+@dataclass(frozen=True)
+class ExperimentSpec:
+    """Named experiment: default matrix and figure output (paths relative to repo root)."""
+
+    matrix: Path
+    out: Path
+
+
+def experiment_specs(root: Path) -> dict[str, ExperimentSpec]:
+    """Register targets here (e.g. ``gsm8k_various_model``); CLI ``--matrix`` / ``--out`` override."""
+    return {
+        "gsm8k_various_model": ExperimentSpec(
+            matrix=root / "data" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
+            out=root / "outputs" / "figures" / "simple_regret_gsm8k_various_models_seed1.png",
+        ),
+    }
+
+
+def _is_gsm8k_configurations_pricing(data: object) -> bool:
+    """``data_analysis/pricing/..._configurations_...json`` shape: {\"0\": {\"estimated_cost_per_1m_input_tokens\": ...}, ...}."""
+    if not isinstance(data, dict) or "0" not in data:
+        return False
+    z = data["0"]
+    return isinstance(z, dict) and "estimated_cost_per_1m_input_tokens" in z
+
+
+def _json_gsm8k_configurations_to_1d(data: dict, n_arms: int) -> np.ndarray:
+    out: list[float] = []
+    for i in range(n_arms):
+        k = str(i)
+        if k not in data:
+            raise ValueError(f"missing configuration key {k!r} (expected 0..{n_arms - 1})")
+        row = data[k]
+        if not isinstance(row, dict) or "estimated_cost_per_1m_input_tokens" not in row:
+            raise ValueError(f"entry {k!r} must include estimated_cost_per_1m_input_tokens")
+        out.append(float(row["estimated_cost_per_1m_input_tokens"]))
+    return np.asarray(out, dtype=np.float64)
+
+
+def _json_to_cost_1d(data: object, n_arms: int) -> np.ndarray:
+    """Interpret JSON root as a length-``n_arms`` vector (list or dict with an array field)."""
+    if isinstance(data, list):
+        arr = np.asarray(data, dtype=np.float64).reshape(-1)
+    elif isinstance(data, dict):
+        for key in ("cost_per_arm", "costs", "cost"):
+            if key in data and isinstance(data[key], list):
+                arr = np.asarray(data[key], dtype=np.float64).reshape(-1)
+                break
+        else:
+            raise ValueError(
+                "JSON object must contain a list field: cost_per_arm, costs, or cost (or use a JSON array at the root)"
+            )
+    else:
+        raise ValueError("JSON root must be an array or an object with a cost array")
+    if arr.shape != (n_arms,):
+        raise ValueError(f"cost vector length must be n_arms={n_arms}, got {arr.shape[0]}")
+    return arr
+
+
+def load_gittins_cost_vector_from_file(path: Path, n_arms: int) -> torch.Tensor:
+    """
+    Load per-arm per-cell costs from disk → ``(n_arms,)`` float64 tensor.
+
+    - ``.npy``: ``numpy.load`` (shape ``(n_arms,)``).
+    - ``.json``: flat array / ``cost_per_arm`` list, or GSM8K ``configurations`` export (keys ``\"0\"``…
+      with ``estimated_cost_per_1m_input_tokens`` per arm).
+
+    Call this first, then pass the returned tensor into ``gittins_index_exploration`` (via
+    ``make_gittins_step_with_score_cache``) and ``simulate(..., per_arm_original_cost=...)``.
+    """
+    if not path.is_file():
+        raise FileNotFoundError(str(path))
+    suf = path.suffix.lower()
+    if suf == ".npy":
+        arr = np.squeeze(np.load(path))
+    elif suf == ".json":
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if _is_gsm8k_configurations_pricing(data):
+            arr = _json_gsm8k_configurations_to_1d(data, n_arms)
+        else:
+            arr = _json_to_cost_1d(data, n_arms)
+    else:
+        text = path.read_text(encoding="utf-8").strip()
+        try:
+            data = json.loads(text)
+            if _is_gsm8k_configurations_pricing(data):
+                arr = _json_gsm8k_configurations_to_1d(data, n_arms)
+            else:
+                arr = _json_to_cost_1d(data, n_arms)
+        except (json.JSONDecodeError, ValueError):
+            arr = np.squeeze(np.load(path))
+    arr = np.asarray(arr, dtype=np.float64).reshape(-1)
+    if arr.shape != (n_arms,):
+        raise ValueError(f"cost vector must have shape (n_arms,) = ({n_arms},); got {arr.shape}")
+    return torch.tensor(arr, dtype=torch.float64)
+
+
+def parse_gittins_cost_string(s: str, n_arms: int) -> torch.Tensor:
+    """Build ``(n_arms,)`` float64 cost tensor: float, comma-separated list, or JSON array."""
+    s = s.strip()
+    if not s:
+        raise ValueError("empty gittins cost string")
+    if s.startswith("["):
+        data = json.loads(s)
+        if not isinstance(data, list):
+            raise ValueError("JSON cost must be a list of numbers")
+        arr = np.asarray(data, dtype=np.float64).reshape(-1)
+        if arr.shape != (n_arms,):
+            raise ValueError(f"expected {n_arms} values in JSON list, got {arr.shape[0]}")
+        return torch.tensor(arr, dtype=torch.float64)
+    if "," in s:
+        parts = [p.strip() for p in s.split(",") if p.strip()]
+        if len(parts) == 1:
+            return torch.full((n_arms,), float(parts[0]), dtype=torch.float64)
+        if len(parts) != n_arms:
+            raise ValueError(f"expected {n_arms} comma-separated values, got {len(parts)}")
+        return torch.tensor([float(p) for p in parts], dtype=torch.float64)
+    return torch.full((n_arms,), float(s), dtype=torch.float64)
+
+
+def gittins_cost_to_meta_string(tensor: torch.Tensor) -> str:
+    """Compact string for ``*_traces.meta.json``: scalar if all entries equal, else JSON array."""
+    t = tensor.detach().cpu().reshape(-1).to(torch.float64)
+    if t.numel() == 1 or bool(torch.all(t == t[0]).item()):
+        return str(float(t[0].item()))
+    return json.dumps([float(x) for x in t.tolist()])
+
+
+def load_gittins_cost_from_meta(meta: dict, n_arms: int) -> torch.Tensor:
+    """Rebuild ``(n_arms,)`` costs from trace meta (legacy paths and embedded JSON). Used by ``plot_arm_eval_rollouts``."""
+    legacy = meta.get("gittins_cost_per_arm")
+    if legacy:
+        p = Path(legacy)
+        if p.is_file():
+            c_np = np.squeeze(np.load(p))
+            if c_np.shape != (n_arms,):
+                raise ValueError(
+                    f"legacy gittins_cost_per_arm must have shape (n_arms,) = ({n_arms},); "
+                    f"got {c_np.shape}"
+                )
+            return torch.tensor(c_np, dtype=torch.float64)
+
+    raw = meta.get("gittins_cost", "1.0")
+    if isinstance(raw, list):
+        arr = np.asarray(raw, dtype=np.float64).reshape(-1)
+        if arr.shape != (n_arms,):
+            raise ValueError(f"gittins_cost list must have length {n_arms}, got {arr.shape[0]}")
+        return torch.tensor(arr, dtype=torch.float64)
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        return torch.full((n_arms,), float(raw), dtype=torch.float64)
+
+    s = str(raw).strip()
+    p = Path(s)
+    if p.suffix == ".npy" and p.is_file():
+        c_np = np.squeeze(np.load(p))
+        if c_np.shape != (n_arms,):
+            raise ValueError(
+                f"gittins_cost .npy must have shape (n_arms,) = ({n_arms},); got {c_np.shape}"
+            )
+        return torch.tensor(c_np, dtype=torch.float64)
+
+    return parse_gittins_cost_string(s, n_arms)
 
 
 def make_gittins_step_with_score_cache(**gittins_kwargs):
@@ -161,6 +336,18 @@ def _trim_trace_from_cum_eval(xs: list[int], ys: list[T], min_x: int) -> tuple[l
     return list(ox), list(oy)
 
 
+def _cumulative_cost_at_eval_stop(
+    xs_eval: list[int], xs_cost: list[float], stop_eval: int | None
+) -> float | None:
+    """First step where cumulative evals reach ``stop_eval``; return matching cumulative original cost."""
+    if stop_eval is None or stop_eval < 0 or not xs_eval or not xs_cost:
+        return None
+    for i, e in enumerate(xs_eval):
+        if e >= stop_eval:
+            return float(xs_cost[i]) if i < len(xs_cost) else float(xs_cost[-1])
+    return float(xs_cost[-1])
+
+
 def incumbent_from_empirical_means(observed: torch.Tensor) -> int:
     """Recommend arm with largest row nan-mean; rows with no data are excluded."""
     row_means = torch.nanmean(observed, dim=1)
@@ -180,6 +367,7 @@ def simulate(
     verbose: bool = False,
     log_prefix: str = "",
     pass_sim_cum_eval: bool = False,
+    per_arm_original_cost: torch.Tensor | None = None,
 ) -> tuple[list[float], list[int], dict[str, Any]]:
     """Run until eval budget is reached, the matrix is exhausted, or ``batch is None``.
 
@@ -189,6 +377,10 @@ def simulate(
     If ``pass_sim_cum_eval`` is True, each ``step`` call also receives
     ``sim_cum_eval=<cumulative evals so far>`` (for Gittins nominal stopping-time bookkeeping).
 
+    If ``per_arm_original_cost`` is a length-``(n_arms,)`` tensor, ``timing["cum_original_cost"]``
+    records cumulative **original** cost after each batch: per-arm unit cost times **number of cells**
+    revealed in that batch (``c_k * n_cells_in_batch``).
+
     No new batch is started once cumulative evaluations have reached
     ``max_evaluations`` (total evals never exceed that cap).
 
@@ -197,13 +389,23 @@ def simulate(
     """
     torch.manual_seed(seed)
 
+    if per_arm_original_cost is not None and tuple(per_arm_original_cost.shape) != (
+        ground_truth.shape[0],
+    ):
+        raise ValueError(
+            "per_arm_original_cost must have shape (n_arms,) = "
+            f"({ground_truth.shape[0]},); got {tuple(per_arm_original_cost.shape)}"
+        )
+
     obs = torch.full_like(ground_truth, float("nan"))
     true_means = ground_truth.mean(dim=1)
     mu_star = float(true_means.max().item())
 
     regrets: list[float] = []
     cum_evaluated: list[int] = []
+    cum_original_cost: list[float] = []
     evaluated = 0
+    total_original_cost = 0.0
     tag = log_prefix or "sim"
     iter_total_s: list[float] = []
     iter_step_s: list[float] = []
@@ -225,6 +427,12 @@ def simulate(
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
 
+        if per_arm_original_cost is not None:
+            pulled_arm = int(row_idx[0].item())
+            unit = float(per_arm_original_cost[pulled_arm].item())
+            total_original_cost += unit * n_batch
+            cum_original_cost.append(total_original_cost)
+
         arm = incumbent_from_empirical_means(obs)
         mu_sel = float(true_means[arm].item())
         simple_regret = mu_star - mu_sel
@@ -244,12 +452,14 @@ def simulate(
         iter_total_s.append(float(t_iter1 - t_iter0))
         iter_step_s.append(float(t_step1 - t_step0))
 
-    timing = {
+    timing: dict[str, Any] = {
         "clock": "time.time",
         "unit": "seconds",
         "iter_total_s": iter_total_s,
         "iter_step_s": iter_step_s,
     }
+    if per_arm_original_cost is not None:
+        timing["cum_original_cost"] = cum_original_cost
     return regrets, cum_evaluated, timing
 
 
@@ -302,6 +512,7 @@ def save_trace_bundle(
     regrets_lrf_plot: list[float],
     xs_gittins: list[int],
     regrets_gittins: list[float],
+    xs_gittins_original_cost: list[float] | None,
     gittins_stop_cum_eval: int | None,
     warmup_evals: int,
     budget_evals: int,
@@ -322,6 +533,10 @@ def save_trace_bundle(
         lrf_regret_plot=np.asarray(regrets_lrf_plot, dtype=np.float64),
         gittins_x=np.asarray(xs_gittins, dtype=np.int64),
         gittins_regret=np.asarray(regrets_gittins, dtype=np.float64),
+        gittins_x_original_cost=np.asarray(
+            xs_gittins_original_cost if xs_gittins_original_cost is not None else [],
+            dtype=np.float64,
+        ),
         gittins_stop_cum_eval=stop_scalar,
         warmup_evals=np.int64(warmup_evals),
         budget_evals=np.int64(budget_evals),
@@ -331,20 +546,42 @@ def save_trace_bundle(
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 
+_GITTINS_COST_EPILOG = """
+Gittins cost modes (--gittins-cost-mode):
+  unaware — DP uses cost 1.0 per transition per arm; plot Gittins vs cumulative evals.
+  aware — requires --gittins-cost-vector (JSON or .npy per-arm costs in original units); DP scales them
+    via cost_scaling_factor in gittins_policy; plot Gittins vs cumulative original cost (two panels
+    if UCB/LRF/RR also run). JSON shapes: flat array, cost_per_arm/costs/cost, or GSM8K pricing export.
+"""
+
+
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
-    parser = argparse.ArgumentParser(description=__doc__)
+    specs = experiment_specs(root)
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        epilog=_GITTINS_COST_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        choices=sorted(specs.keys()),
+        default="gsm8k_various_model",
+        metavar="NAME",
+        help="Which preset to run (default matrix and --out); override with --matrix / --out.",
+    )
     parser.add_argument(
         "--matrix",
         type=Path,
-        default=root / "data" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
-        help="Path to (n_models, n_examples) accuracy matrix (.npy)",
+        default=None,
+        help="Path to (n_models, n_examples) accuracy matrix (.npy); default from --experiment",
     )
     parser.add_argument(
         "--out",
         type=Path,
-        default=root / "outputs" / "figures" / "simple_regret_gsm8k_various_models_seed1.png",
-        help="Where to save the figure",
+        default=None,
+        help="Where to save the figure; default from --experiment",
     )
     parser.add_argument("--seed", type=int, default=0, help="RNG seed for exploration randomness")
     parser.add_argument(
@@ -380,16 +617,26 @@ def main() -> int:
         help="Tabular Q grid resolution for gittins_index_exploration",
     )
     parser.add_argument(
-        "--gittins-cost",
-        type=float,
-        default=1e-4,
-        help="Default Gittins DP cost per transition (scalar for all arms unless --gittins-cost-per-arm)",
+        "--gittins-cost-mode",
+        type=str,
+        choices=["unaware", "aware"],
+        default="unaware",
+        help="unaware: Gittins DP uses cost 1.0 per arm; plot vs evals. aware: DP uses --gittins-cost-vector "
+        "(scaled in policy); plot Gittins vs cumulative original cost.",
     )
     parser.add_argument(
-        "--gittins-cost-per-arm",
+        "--gittins-cost",
+        type=float,
+        default=1.0,
+        metavar="C",
+        help="Unused for Gittins cost-unaware mode (DP uses 1.0). Reserved for uniform non-1 scenarios.",
+    )
+    parser.add_argument(
+        "--gittins-cost-vector",
         type=Path,
         default=None,
-        help="Optional .npy vector of shape (n_arms,) — per-arm transition cost; overrides --gittins-cost",
+        metavar="FILE",
+        help="Required for --gittins-cost-mode aware: per-arm costs (JSON or .npy). Ignored when unaware.",
     )
     parser.add_argument(
         "--gittins-per-cell-dp",
@@ -447,6 +694,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    spec = specs[args.experiment]
+    if args.matrix is None:
+        args.matrix = spec.matrix
+    if args.out is None:
+        args.out = spec.out
+
     algorithms = list(dict.fromkeys(args.algorithms))
     merge_ucb_lrf = args.merge_ucb_lrf_from
     if merge_ucb_lrf is not None:
@@ -460,13 +713,19 @@ def main() -> int:
             print(f"--merge-ucb-lrf-from not found: {merge_ucb_lrf}", file=sys.stderr)
             return 1
 
+    if args.gittins_cost_mode == "aware" and "gittins" not in algorithms:
+        print(
+            "--gittins-cost-mode aware requires --algorithms to include gittins",
+            file=sys.stderr,
+        )
+        return 1
+
     if args.batch_size <= 0:
         print("--batch-size must be positive", file=sys.stderr)
         return 1
     if args.gittins_batch_size <= 0:
         print("--gittins-batch-size must be positive", file=sys.stderr)
         return 1
-
     if not args.matrix.is_file():
         print(f"Matrix not found: {args.matrix}", file=sys.stderr)
         return 1
@@ -479,19 +738,29 @@ def main() -> int:
     ground_truth = torch.tensor(gt_np, dtype=torch.float32)
     n_arms = int(ground_truth.shape[0])
 
-    gittins_cost = float(args.gittins_cost)
-    if args.gittins_cost_per_arm is not None:
-        if not args.gittins_cost_per_arm.is_file():
-            print(f"--gittins-cost-per-arm not found: {args.gittins_cost_per_arm}", file=sys.stderr)
+    cost_vector_path: Path | None = args.gittins_cost_vector
+    gittins_per_arm_original_for_trace: torch.Tensor | None = None
+    if args.gittins_cost_mode == "aware":
+        if cost_vector_path is None:
+            print("--gittins-cost-mode aware requires --gittins-cost-vector", file=sys.stderr)
             return 1
-        c_np = np.squeeze(np.load(args.gittins_cost_per_arm))
-        if c_np.shape != (n_arms,):
+        try:
+            gittins_cost_tensor = load_gittins_cost_vector_from_file(cost_vector_path, n_arms)
+        except FileNotFoundError:
+            print(f"gittins cost file not found: {cost_vector_path}", file=sys.stderr)
+            return 1
+        except (ValueError, OSError, json.JSONDecodeError) as e:
+            print(f"gittins cost vector: {e}", file=sys.stderr)
+            return 1
+        gittins_per_arm_original_for_trace = gittins_cost_tensor
+    else:
+        if cost_vector_path is not None:
             print(
-                f"--gittins-cost-per-arm must have shape (n_arms,) = ({n_arms},), got {c_np.shape}",
+                "Note: --gittins-cost-vector ignored in cost-unaware mode "
+                "(Gittins DP uses 1.0 per transition per arm).",
                 file=sys.stderr,
             )
-            return 1
-        gittins_cost = torch.tensor(c_np, dtype=torch.float64)
+        gittins_cost_tensor = torch.full((n_arms,), 1.0, dtype=torch.float64)
 
     n_cells = int(ground_truth.numel())
     budget_evals = max(1, int(round(args.eval_budget_fraction * n_cells)))
@@ -522,6 +791,7 @@ def main() -> int:
     xs_rr: list[int] = []
     regrets_gittins: list[float] = []
     xs_gittins: list[int] = []
+    xs_gittins_original: list[float] = []
     gittins_stop_cum_eval: int | None = None
     timing_ucb: dict[str, Any] | None = None
     timing_lrf: dict[str, Any] | None = None
@@ -579,7 +849,7 @@ def main() -> int:
                 batch_size=args.gittins_batch_size,
                 return_mus=False,
                 obs_noise_variance=tau_sq_gittins,
-                cost_per_transition=gittins_cost,
+                cost_per_transition=gittins_cost_tensor,
                 n_gittins_grid_points=args.gittins_grid_points,
                 prior_mean=args.gittins_prior_mean,
                 prior_variance=args.gittins_prior_variance,
@@ -590,9 +860,11 @@ def main() -> int:
             step_kwargs={},
             log_prefix="gittins",
             pass_sim_cum_eval=True,
+            per_arm_original_cost=gittins_per_arm_original_for_trace,
             **sim_kwargs,
         )
         gittins_stop_cum_eval = gittins_natural_stop_holder[0]
+        xs_gittins_original = list(timing_gittins.get("cum_original_cost", []))
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -601,33 +873,6 @@ def main() -> int:
         xs_lrf, regrets_lrf, warmup_evals_lrf_trim
     )
 
-    plt.figure(figsize=(8, 5))
-    if "rr" in plot_algorithms:
-        plt.plot(xs_rr, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
-    if "ucb" in plot_algorithms:
-        plt.plot(xs_ucbe, regrets_ucbe, label="UCB-E", linewidth=1.5)
-    if "lrf" in plot_algorithms:
-        plt.plot(xs_lrf_plot, regrets_lrf_plot, label="UCB-E-LRF", linewidth=1.5)
-    if "gittins" in plot_algorithms:
-        gittins_label = (
-            "Gittins (τ² = 1/(4B), per-cell DP)"
-            if args.gittins_per_cell_dp
-            else "Gittins (τ² = 1/(4B), batch-mean DP)"
-        )
-        (line_gittins,) = plt.plot(
-            xs_gittins, regrets_gittins, label=gittins_label, linewidth=1.5
-        )
-        if gittins_stop_cum_eval is not None:
-            plt.axvline(
-                gittins_stop_cum_eval,
-                color=line_gittins.get_color(),
-                linestyle="--",
-                alpha=0.85,
-                linewidth=1.2,
-                label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
-            )
-    plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
-    plt.ylabel("Simple regret")
     batch_desc_parts: list[str] = []
     if "rr" in plot_algorithms or "ucb" in plot_algorithms or "lrf" in plot_algorithms:
         batch_desc_parts.append(f"UCB/LRF batch={args.batch_size}")
@@ -635,7 +880,8 @@ def main() -> int:
         batch_desc_parts.append(f"Gittins batch={args.gittins_batch_size}")
     batch_desc = ", ".join(batch_desc_parts) if batch_desc_parts else f"batch={args.batch_size}"
     sub = (
-        f"seed={args.seed}, {batch_desc}, budget={args.eval_budget_fraction:.0%} of {n_cells} cells"
+        f"seed={args.seed}, {batch_desc}, budget={args.eval_budget_fraction:.0%} of {n_cells} cells, "
+        f"gittins_cost_mode={args.gittins_cost_mode}"
     )
     if "lrf" in plot_algorithms:
         sub += (
@@ -645,12 +891,111 @@ def main() -> int:
     if merge_ucb_lrf is not None:
         sub += f"\n(UCB/LRF merged from {merge_ucb_lrf.name})"
     sub = f"algorithms={','.join(plot_algorithms)} | " + sub
-    plt.title(f"Simple regret — {args.matrix.name}\n{sub}")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(args.out, dpi=150)
-    plt.close()
+
+    gittins_dp_part = "per-cell DP" if args.gittins_per_cell_dp else "batch-mean DP"
+    gittins_cost_aware_plot = (
+        args.gittins_cost_mode == "aware" and "gittins" in plot_algorithms
+    )
+    plot_eval_curves = any(a in plot_algorithms for a in ("rr", "ucb", "lrf"))
+    two_panel = gittins_cost_aware_plot and plot_eval_curves
+    if gittins_cost_aware_plot:
+        gittins_label = (
+            f"Gittins (τ² = 1/(4B), {gittins_dp_part}, cost-aware, x = cum. original cost)"
+        )
+    else:
+        gittins_label = f"Gittins (τ² = 1/(4B), {gittins_dp_part})"
+
+    if two_panel:
+        fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(8, 9), sharey=True)
+        if "rr" in plot_algorithms:
+            ax0.plot(xs_rr, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
+        if "ucb" in plot_algorithms:
+            ax0.plot(xs_ucbe, regrets_ucbe, label="UCB-E", linewidth=1.5)
+        if "lrf" in plot_algorithms:
+            ax0.plot(xs_lrf_plot, regrets_lrf_plot, label="UCB-E-LRF", linewidth=1.5)
+        ax0.set_xlabel("Cumulative examples evaluated (matrix entries revealed)")
+        ax0.set_ylabel("Simple regret")
+        ax0.grid(True, alpha=0.3)
+        ax0.legend(loc="best")
+        if "gittins" in plot_algorithms:
+            (line_g,) = ax1.plot(
+                xs_gittins_original, regrets_gittins, label=gittins_label, linewidth=1.5
+            )
+            stop_cost = _cumulative_cost_at_eval_stop(
+                xs_gittins, xs_gittins_original, gittins_stop_cum_eval
+            )
+            if gittins_stop_cum_eval is not None and stop_cost is not None:
+                ax1.axvline(
+                    stop_cost,
+                    color=line_g.get_color(),
+                    linestyle="--",
+                    alpha=0.85,
+                    linewidth=1.2,
+                    label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
+                )
+        ax1.set_xlabel("Cumulative cost (original units)")
+        ax1.set_ylabel("Simple regret")
+        ax1.grid(True, alpha=0.3)
+        ax1.legend(loc="best")
+        plt.tight_layout(rect=[0, 0, 1, 0.97])
+        fig.suptitle(f"Simple regret — {args.matrix.name}\n{sub}", fontsize=10, y=1.0)
+        plt.savefig(args.out, dpi=150)
+        plt.close()
+    elif gittins_cost_aware_plot:
+        plt.figure(figsize=(8, 5))
+        ax = plt.gca()
+        (line_g,) = ax.plot(
+            xs_gittins_original, regrets_gittins, label=gittins_label, linewidth=1.5
+        )
+        stop_cost = _cumulative_cost_at_eval_stop(
+            xs_gittins, xs_gittins_original, gittins_stop_cum_eval
+        )
+        if gittins_stop_cum_eval is not None and stop_cost is not None:
+            ax.axvline(
+                stop_cost,
+                color=line_g.get_color(),
+                linestyle="--",
+                alpha=0.85,
+                linewidth=1.2,
+                label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
+            )
+        ax.set_xlabel("Cumulative cost (original units)")
+        ax.set_ylabel("Simple regret")
+        plt.title(f"Simple regret — {args.matrix.name}\n{sub}")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(args.out, dpi=150)
+        plt.close()
+    else:
+        plt.figure(figsize=(8, 5))
+        if "rr" in plot_algorithms:
+            plt.plot(xs_rr, regrets_rr, label="Round-robin (sample mean)", linewidth=1.5)
+        if "ucb" in plot_algorithms:
+            plt.plot(xs_ucbe, regrets_ucbe, label="UCB-E", linewidth=1.5)
+        if "lrf" in plot_algorithms:
+            plt.plot(xs_lrf_plot, regrets_lrf_plot, label="UCB-E-LRF", linewidth=1.5)
+        if "gittins" in plot_algorithms:
+            (line_gittins,) = plt.plot(
+                xs_gittins, regrets_gittins, label=gittins_label, linewidth=1.5
+            )
+            if gittins_stop_cum_eval is not None:
+                plt.axvline(
+                    gittins_stop_cum_eval,
+                    color=line_gittins.get_color(),
+                    linestyle="--",
+                    alpha=0.85,
+                    linewidth=1.2,
+                    label=f"Gittins nominal stop ({gittins_stop_cum_eval} evals)",
+                )
+        plt.xlabel("Cumulative examples evaluated (matrix entries revealed)")
+        plt.ylabel("Simple regret")
+        plt.title(f"Simple regret — {args.matrix.name}\n{sub}")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(args.out, dpi=150)
+        plt.close()
 
     if not args.no_save_traces:
         traces_path = args.traces_out
@@ -683,6 +1028,7 @@ def main() -> int:
             regrets_lrf_plot=regrets_lrf_plot,
             xs_gittins=xs_gittins,
             regrets_gittins=regrets_gittins,
+            xs_gittins_original_cost=xs_gittins_original,
             gittins_stop_cum_eval=gittins_stop_cum_eval,
             warmup_evals=warmup_evals,
             budget_evals=budget_evals,
@@ -699,10 +1045,13 @@ def main() -> int:
                 "warmup_percentage": args.warmup_percentage,
                 "lrf_device": args.lrf_device,
                 "gittins_grid_points": args.gittins_grid_points,
-                "gittins_cost": args.gittins_cost,
-                "gittins_cost_per_arm": str(args.gittins_cost_per_arm.resolve())
-                if args.gittins_cost_per_arm is not None
+                "gittins_cost": gittins_cost_to_meta_string(gittins_cost_tensor),
+                "gittins_cost_mode": args.gittins_cost_mode,
+                "gittins_cost_scale": 1e-4,
+                "gittins_cost_vector_file": str(cost_vector_path.resolve())
+                if cost_vector_path and args.gittins_cost_mode == "aware"
                 else None,
+                "experiment": args.experiment,
                 "gittins_prior_mean": args.gittins_prior_mean,
                 "gittins_prior_variance": args.gittins_prior_variance,
                 "gittins_per_cell_dp": args.gittins_per_cell_dp,
