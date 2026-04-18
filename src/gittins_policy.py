@@ -61,7 +61,7 @@ def gittins_index_exploration(
     observed_matrix: torch.Tensor,
     *,
     prior_mean: float = 0.5,
-    prior_variance: float = 0.01,
+    prior_variance: float = 0.04,
     obs_noise_variance: float = 0.01,
     cost_per_transition: float | Sequence[float] | torch.Tensor = 1e-4,
     n_gittins_grid_points: int = 2**10 + 1,
@@ -82,7 +82,7 @@ def gittins_index_exploration(
     [0, 1]-valued outcomes uses τ² approximately 1/(4B), where **B is** ``batch_size`` (examples per
     arm per step). To
     match that approximation, set ``obs_noise_variance`` to ``1.0 / (4 * batch_size)`` (or your
-    chosen B). Default prior on each θ_k is N(0.5, 0.01); override with ``prior_mean`` and
+    chosen B). Default prior on each θ_k is N(0.5, 0.04); override with ``prior_mean`` and
     ``prior_variance``.
 
     **Stopping / continuation:** Fully observed arms use their row **empirical mean** as the
