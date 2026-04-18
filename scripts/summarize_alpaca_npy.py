@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Load Alpaca GPT-4-turbo weighted 2D comparison matrices (*.npy) and write
-machine-readable stats plus a short text summary under outputs/data_analysis/.
+machine-readable stats plus a short text summary under data_analysis/.
 
 Matrices are produced by extract_matrices.py from the Zhang et al. benchmarks.
 """
@@ -221,7 +221,7 @@ def build_summary_text(
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
-    parser = argparse.ArgumentParser(description="Summarize Alpaca *.npy matrices to outputs/data_analysis/.")
+    parser = argparse.ArgumentParser(description="Summarize Alpaca *.npy matrices to data_analysis/.")
     parser.add_argument(
         "--matrices-dir",
         type=Path,
@@ -231,7 +231,7 @@ def main() -> int:
     parser.add_argument(
         "--out-dir",
         type=Path,
-        default=root / "outputs" / "data_analysis",
+        default=root / "data_analysis",
         help="Where to write alpaca_npy_stats.* and summary txt",
     )
     args = parser.parse_args()
