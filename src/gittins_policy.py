@@ -112,7 +112,9 @@ def gittins_index_exploration(
         obs_noise_variance: τ² in Y | θ_k ~ N(θ_k, τ²). With the 1/(4B) bound above, τ² is
             approximately 1/(4B) when B = ``batch_size``.
         cost_per_transition: Cost per **transition** in the Gittins DP for each arm, in **original**
-            units (e.g. dollars). A scalar applies to every arm; otherwise pass a sequence or
+            units—for example ``1.0`` for every arm in a cost-unaware setting, or per-arm values in
+            monetary units (e.g. dollars per transition) in a cost-aware setting. A scalar applies to
+            every arm; otherwise pass a sequence or
             ``(n_arms,)`` tensor with one value per row of ``observed_matrix``. The DP uses
             ``cost_per_transition * cost_scaling_factor`` so you can keep interpretable costs while
             matching the numerical scale of the reward side (default: ``1.0`` homogeneous cost).
