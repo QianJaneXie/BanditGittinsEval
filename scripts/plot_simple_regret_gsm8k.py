@@ -1025,7 +1025,8 @@ def main() -> int:
     xs_lrf_plot, regrets_lrf_plot = _trim_trace_from_cum_eval(
         xs_lrf, regrets_lrf, warmup_evals_lrf_trim
     )
-    xs_lrf_plot_original, _ = _trim_trace_from_cum_eval(
+    # Returns (trimmed cum eval, trimmed ys); ys must be cumulative cost for cost-axis LRF plots.
+    _, xs_lrf_plot_original = _trim_trace_from_cum_eval(
         xs_lrf, xs_lrf_original, warmup_evals_lrf_trim
     )
 
