@@ -6,7 +6,7 @@ The trace bundle only stores regret curves; this script reads the sibling ``.met
 as ``--traces``), reloads the accuracy matrix, and **re-runs** the same three policies with the same
 parameters so per-arm cumulative sample counts match the original simulation (same seed).
 
-Self-contained: does not modify or rely on ``simulate`` in ``plot_simple_regret_gsm8k.py``.
+Imports :func:`load_gittins_cost_from_meta` from ``plot_simple_regret_gsm8k`` (same cost parsing as the main script). Does not use ``simulate`` from that file. When trace meta has ``budget_stops_by: cumulative_cost`` (cost-aware runs), the re-simulation stops at ``budget_max_cumulative_cost`` like ``plot_simple_regret_gsm8k.py``.
 
 Plots one column of panels (UCB-E, UCB-E-LRF, Gittins): x = batch iteration index (step
 ``1 … T``), y = cumulative **batch pulls** per arm — a batch counts once for each distinct arm that
@@ -34,7 +34,15 @@ from banditeval.bandits import (
 _repo_root = Path(__file__).resolve().parents[1]
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
+_scripts_dir = Path(__file__).resolve().parent
+if str(_scripts_dir) not in sys.path:
+    sys.path.insert(0, str(_scripts_dir))
 
+from plot_simple_regret_gsm8k import (  # noqa: E402
+    incumbent_from_empirical_means,
+    incumbent_from_gittins_posterior,
+    load_gittins_cost_from_meta,
+)
 from gittins_policy import gittins_index_exploration  # noqa: E402
 
 
@@ -69,26 +77,27 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
     return step
 
 
-def _incumbent_from_empirical_means(observed: torch.Tensor) -> int:
-    row_means = torch.nanmean(observed, dim=1)
-    scores = torch.where(torch.isnan(row_means), torch.full_like(row_means, -float("inf")), row_means)
-    if not torch.isfinite(scores).any():
-        return 0
-    return int(torch.argmax(scores).item())
-
-
 def simulate_with_batch_pull_snapshots(
     ground_truth: torch.Tensor,
     step: Callable[..., torch.Tensor | None],
     *,
     step_kwargs: dict,
     seed: int,
-    max_evaluations: int,
+    max_evaluations: int | None = None,
+    max_cumulative_cost: float | None = None,
+    per_arm_original_cost: torch.Tensor | None = None,
+    pass_sim_cum_eval: bool = False,
+    incumbent_fn: Callable[[torch.Tensor], int] | None = None,
     verbose: bool = False,
     log_prefix: str = "",
     batch_pull_snapshots: list[np.ndarray] | None = None,
 ) -> tuple[list[float], list[int]]:
     """Same loop as ``plot_simple_regret_gsm8k.simulate``, plus optional cumulative batch-pull snapshots."""
+    if max_evaluations is None and max_cumulative_cost is None:
+        raise ValueError("simulate_with_batch_pull_snapshots requires max_evaluations and/or max_cumulative_cost")
+    if max_cumulative_cost is not None and per_arm_original_cost is None:
+        raise ValueError("max_cumulative_cost requires per_arm_original_cost")
+
     torch.manual_seed(seed)
 
     obs = torch.full_like(ground_truth, float("nan"))
@@ -98,6 +107,7 @@ def simulate_with_batch_pull_snapshots(
     regrets: list[float] = []
     cum_evaluated: list[int] = []
     evaluated = 0
+    total_original_cost = 0.0
     tag = log_prefix or "sim"
     n_arms = int(ground_truth.shape[0])
     cumulative_batch_pulls = np.zeros(n_arms, dtype=np.int64)
@@ -105,7 +115,12 @@ def simulate_with_batch_pull_snapshots(
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
             break
-        batch = step(obs, **step_kwargs)
+        if max_cumulative_cost is not None and total_original_cost >= max_cumulative_cost:
+            break
+        call_kw = dict(step_kwargs)
+        if pass_sim_cum_eval:
+            call_kw["sim_cum_eval"] = evaluated
+        batch = step(obs, **call_kw)
         if batch is None:
             break
         row_idx, col_idx = batch
@@ -113,7 +128,15 @@ def simulate_with_batch_pull_snapshots(
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
 
-        arm = _incumbent_from_empirical_means(obs)
+        if per_arm_original_cost is not None:
+            pulled_arm = int(row_idx[0].item())
+            unit = float(per_arm_original_cost[pulled_arm].item())
+            total_original_cost += unit * n_batch
+
+        if incumbent_fn is not None:
+            arm = incumbent_fn(obs)
+        else:
+            arm = incumbent_from_empirical_means(obs)
         mu_sel = float(true_means[arm].item())
         simple_regret = mu_star - mu_sel
         regrets.append(simple_regret)
@@ -229,16 +252,32 @@ def main() -> int:
     warmup_pct = float(meta["warmup_percentage"])
     lrf_device = str(meta.get("lrf_device", "cpu"))
     gittins_grid = int(meta.get("gittins_grid_points", 1025))
-    gittins_cost = float(meta.get("gittins_cost", 1e-4))
+    try:
+        gittins_cost_tensor = load_gittins_cost_from_meta(meta, n_arms)
+    except (ValueError, OSError) as e:
+        print(f"Could not load Gittins costs from meta: {e}", file=sys.stderr)
+        return 1
+    gittins_cost_scale = float(meta.get("gittins_cost_scale", 1.0))
     gittins_prior_mean = float(meta.get("gittins_prior_mean", 0.2))
     gittins_prior_variance = float(meta.get("gittins_prior_variance", 0.01))
     gittins_per_cell_dp = bool(meta.get("gittins_per_cell_dp", False))
 
-    sim_kwargs = {
-        "seed": seed,
-        "max_evaluations": budget_evals,
-        "verbose": False,
-    }
+    budget_stops_by = str(meta.get("budget_stops_by", "evaluations"))
+    if budget_stops_by == "cumulative_cost" and meta.get("gittins_cost_mode") == "aware":
+        bmc = float(meta["budget_max_cumulative_cost"])
+        sim_kwargs = {
+            "seed": seed,
+            "max_evaluations": budget_evals,
+            "max_cumulative_cost": bmc,
+            "per_arm_original_cost": gittins_cost_tensor,
+            "verbose": False,
+        }
+    else:
+        sim_kwargs = {
+            "seed": seed,
+            "max_evaluations": budget_evals,
+            "verbose": False,
+        }
 
     cmap = plt.colormaps["turbo"]
     colors = cmap(np.linspace(0.0, 1.0, n_arms, endpoint=False))
@@ -285,7 +324,8 @@ def main() -> int:
                 batch_size=gittins_batch_size,
                 return_mus=False,
                 obs_noise_variance=tau_sq,
-                cost_per_transition=gittins_cost,
+                cost_per_transition=gittins_cost_tensor,
+                cost_scaling_factor=gittins_cost_scale,
                 n_gittins_grid_points=gittins_grid,
                 prior_mean=gittins_prior_mean,
                 prior_variance=gittins_prior_variance,
@@ -294,6 +334,13 @@ def main() -> int:
             step_kwargs={},
             log_prefix="gittins",
             batch_pull_snapshots=snaps,
+            pass_sim_cum_eval=True,
+            incumbent_fn=lambda obs: incumbent_from_gittins_posterior(
+                obs,
+                prior_mean=gittins_prior_mean,
+                prior_variance=gittins_prior_variance,
+                tau_sq=tau_sq,
+            ),
             **sim_kwargs,
         )
         it = list(range(1, len(snaps) + 1))
@@ -311,9 +358,16 @@ def main() -> int:
     for ax, (title, xs, counts) in zip(axes, panels):
         _plot_arm_panel(ax, xs, counts, title, colors)
 
+    if budget_stops_by == "cumulative_cost" and meta.get("gittins_cost_mode") == "aware":
+        bmc = float(meta.get("budget_max_cumulative_cost", 0.0))
+        budget_line = (
+            f"seed={seed}, budget=stop at cum. cost {bmc:.4g} (cap from meta), ≤{budget_evals} evals, "
+            f"{n_arms} arms (re-run from trace meta)"
+        )
+    else:
+        budget_line = f"seed={seed}, budget={budget_evals} evals, {n_arms} arms (re-run from trace meta)"
     fig.suptitle(
-        f"Per-arm cumulative batch pulls vs iteration — {matrix_path.name}\n"
-        f"seed={seed}, budget={budget_evals} evals, {n_arms} arms (re-run from trace meta)",
+        f"Per-arm cumulative batch pulls vs iteration — {matrix_path.name}\n{budget_line}",
         fontsize=11,
     )
 

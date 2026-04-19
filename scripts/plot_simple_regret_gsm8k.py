@@ -5,8 +5,10 @@ revealing masked entries, and plot simple regret:
 
     μ* − μ_{âₜ}
 
-where μ* is the best true row mean and âₜ is the model with highest empirical mean (among rows
-with at least one observation) after each batch.
+where μ* is the best true row mean and âₜ is the recommended model after each batch. For UCB-E /
+UCB-E-LRF / round-robin, âₜ is the arm with largest **row empirical mean** (among rows with data).
+For **Gittins**, âₜ uses the **conjugate Gaussian posterior mean** per arm (same N(μ₀, v₀) prior and
+τ² as in ``gittins_index_exploration``), not the sample mean.
 
 Compared algorithms:
   - upper_confidence_bound_exploration (UCB-E)
@@ -101,7 +103,7 @@ _repo_root = Path(__file__).resolve().parents[1]
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
-from gittins_policy import gittins_index_exploration
+from gittins_policy import _normal_normal_posterior, gittins_index_exploration
 
 T = TypeVar("T", int, float)
 
@@ -423,6 +425,30 @@ def incumbent_from_empirical_means(observed: torch.Tensor) -> int:
     return int(torch.argmax(scores).item())
 
 
+def incumbent_from_gittins_posterior(
+    observed: torch.Tensor,
+    *,
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq: float,
+) -> int:
+    """Argmax arm by conjugate posterior mean E[θ_k | data], matching the Gittins Gaussian model."""
+    observed = observed.detach()
+    m = int(observed.shape[0])
+    scores = torch.empty((m,), dtype=torch.float64)
+    for k in range(m):
+        row = observed[k]
+        valid = ~torch.isnan(row)
+        t = int(valid.sum().item())
+        if t == 0:
+            scores[k] = prior_mean
+        else:
+            obs_sum = float(row[valid].sum().item())
+            mu_k, _ = _normal_normal_posterior(prior_mean, prior_variance, tau_sq, obs_sum, t)
+            scores[k] = mu_k
+    return int(torch.argmax(scores).item())
+
+
 def simulate(
     ground_truth: torch.Tensor,
     step: Callable[..., torch.Tensor | None],
@@ -435,6 +461,7 @@ def simulate(
     log_prefix: str = "",
     pass_sim_cum_eval: bool = False,
     per_arm_original_cost: torch.Tensor | None = None,
+    incumbent_fn: Callable[[torch.Tensor], int] | None = None,
 ) -> tuple[list[float], list[int], dict[str, Any]]:
     """Run until a budget is reached, the matrix is exhausted, or ``batch is None``.
 
@@ -452,11 +479,14 @@ def simulate(
     (e.g. dollars per transition when cost-aware; GSM8K JSON: **USD per 1M input tokens**), summed as
     ``c_k * n_cells_in_batch`` per step.
 
+    If ``incumbent_fn`` is set, it maps ``observed_matrix`` → incumbent arm index for simple regret;
+    otherwise ``incumbent_from_empirical_means`` is used.
+
     No new batch is started once cumulative evaluations reach ``max_evaluations`` (if set) or
     cumulative cost reaches ``max_cumulative_cost`` (if set, checked at the start of each iteration).
 
     If ``verbose``, prints after each batch: distinct row indices (arms) in the batch,
-    incumbent arm (empirical best row, used for simple regret), and simple regret.
+    incumbent arm (used for simple regret), and simple regret.
     """
     torch.manual_seed(seed)
 
@@ -511,7 +541,10 @@ def simulate(
             total_original_cost += unit * n_batch
             cum_original_cost.append(total_original_cost)
 
-        arm = incumbent_from_empirical_means(obs)
+        if incumbent_fn is not None:
+            arm = incumbent_fn(obs)
+        else:
+            arm = incumbent_from_empirical_means(obs)
         mu_sel = float(true_means[arm].item())
         simple_regret = mu_star - mu_sel
         regrets.append(simple_regret)
@@ -1014,6 +1047,12 @@ def main() -> int:
             log_prefix="gittins",
             pass_sim_cum_eval=True,
             per_arm_original_cost=per_arm_cost_for_simulate,
+            incumbent_fn=lambda obs: incumbent_from_gittins_posterior(
+                obs,
+                prior_mean=gittins_prior_mean,
+                prior_variance=gittins_prior_variance,
+                tau_sq=tau_sq_gittins,
+            ),
             **sim_kwargs,
         )
         gittins_stop_cum_eval = gittins_natural_stop_holder[0]
@@ -1025,7 +1064,8 @@ def main() -> int:
     xs_lrf_plot, regrets_lrf_plot = _trim_trace_from_cum_eval(
         xs_lrf, regrets_lrf, warmup_evals_lrf_trim
     )
-    xs_lrf_plot_original, _ = _trim_trace_from_cum_eval(
+    # Returns (trimmed cum eval, trimmed ys); ys must be cumulative cost for cost-axis LRF plots.
+    _, xs_lrf_plot_original = _trim_trace_from_cum_eval(
         xs_lrf, xs_lrf_original, warmup_evals_lrf_trim
     )
 
@@ -1287,6 +1327,11 @@ def main() -> int:
                 "experiment": args.experiment,
                 "gittins_prior_mean": gittins_prior_mean,
                 "gittins_prior_variance": gittins_prior_variance,
+                **(
+                    {"gittins_simple_regret_incumbent": "posterior_mean"}
+                    if "gittins" in algorithms
+                    else {}
+                ),
                 "gittins_per_cell_dp": args.gittins_per_cell_dp,
                 "n_cells": n_cells,
                 "budget_stops_by": "cumulative_cost"
