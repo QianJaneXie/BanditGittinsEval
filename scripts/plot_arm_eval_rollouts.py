@@ -38,7 +38,11 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
-from plot_simple_regret_gsm8k import load_gittins_cost_from_meta  # noqa: E402
+from plot_simple_regret_gsm8k import (  # noqa: E402
+    incumbent_from_empirical_means,
+    incumbent_from_gittins_posterior,
+    load_gittins_cost_from_meta,
+)
 from gittins_policy import gittins_index_exploration  # noqa: E402
 
 
@@ -73,14 +77,6 @@ def make_gittins_step_with_score_cache(**gittins_kwargs):
     return step
 
 
-def _incumbent_from_empirical_means(observed: torch.Tensor) -> int:
-    row_means = torch.nanmean(observed, dim=1)
-    scores = torch.where(torch.isnan(row_means), torch.full_like(row_means, -float("inf")), row_means)
-    if not torch.isfinite(scores).any():
-        return 0
-    return int(torch.argmax(scores).item())
-
-
 def simulate_with_batch_pull_snapshots(
     ground_truth: torch.Tensor,
     step: Callable[..., torch.Tensor | None],
@@ -91,6 +87,7 @@ def simulate_with_batch_pull_snapshots(
     max_cumulative_cost: float | None = None,
     per_arm_original_cost: torch.Tensor | None = None,
     pass_sim_cum_eval: bool = False,
+    incumbent_fn: Callable[[torch.Tensor], int] | None = None,
     verbose: bool = False,
     log_prefix: str = "",
     batch_pull_snapshots: list[np.ndarray] | None = None,
@@ -136,7 +133,10 @@ def simulate_with_batch_pull_snapshots(
             unit = float(per_arm_original_cost[pulled_arm].item())
             total_original_cost += unit * n_batch
 
-        arm = _incumbent_from_empirical_means(obs)
+        if incumbent_fn is not None:
+            arm = incumbent_fn(obs)
+        else:
+            arm = incumbent_from_empirical_means(obs)
         mu_sel = float(true_means[arm].item())
         simple_regret = mu_star - mu_sel
         regrets.append(simple_regret)
@@ -335,6 +335,12 @@ def main() -> int:
             log_prefix="gittins",
             batch_pull_snapshots=snaps,
             pass_sim_cum_eval=True,
+            incumbent_fn=lambda obs: incumbent_from_gittins_posterior(
+                obs,
+                prior_mean=gittins_prior_mean,
+                prior_variance=gittins_prior_variance,
+                tau_sq=tau_sq,
+            ),
             **sim_kwargs,
         )
         it = list(range(1, len(snaps) + 1))
