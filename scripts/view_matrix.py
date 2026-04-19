@@ -4,7 +4,7 @@ Inspect .npy matrix files: shape/dtype/stats, optional corner preview, full prin
 (for small arrays), or CSV export (for viewing every cell in Excel / editor).
 
 Batch: use --export-csv-dir DIR to write every *.npy under the given path(s) as
-DIR/<stem>.csv (no positional paths defaults to <repo>/data/matrices).
+DIR/<stem>.csv (no positional paths defaults to <repo>/data/benchmark_matrices).
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def main() -> int:
         nargs="*",
         default=None,
         help="One or more .npy files, a directory (all *.npy), or glob patterns. "
-        "Omit when using --export-csv-dir to export from data/matrices by default.",
+        "Omit when using --export-csv-dir to export from data/benchmark_matrices by default.",
     )
     parser.add_argument("--preview-rows", type=int, default=8, help="Rows of top-left preview")
     parser.add_argument("--preview-cols", type=int, default=12, help="Cols of top-left preview")
@@ -147,7 +147,7 @@ def main() -> int:
         type=Path,
         metavar="DIR",
         help="Write each matched .npy to DIR/<stem>.csv (one line of stats per file; no matrix preview). "
-        "If no paths are given, exports all *.npy from <repo>/data/matrices.",
+        "If no paths are given, exports all *.npy from <repo>/data/benchmark_matrices.",
     )
     args = parser.parse_args()
 
@@ -157,9 +157,9 @@ def main() -> int:
 
     paths_in: list[str] = list(args.paths) if args.paths else []
     if not paths_in and args.export_csv_dir is not None:
-        paths_in = [str(root / "data" / "matrices")]
+        paths_in = [str(root / "data" / "benchmark_matrices")]
     elif not paths_in:
-        parser.error("need at least one PATH, or use --export-csv-dir alone to export default data/matrices")
+        parser.error("need at least one PATH, or use --export-csv-dir alone to export default data/benchmark_matrices")
 
     paths = expand_paths(paths_in)
     if not paths:

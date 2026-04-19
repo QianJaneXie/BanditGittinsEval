@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Per-arm evaluation rollouts aligned with ``*_traces.npz`` from ``plot_simple_regret_gsm8k.py``.
+Per-arm evaluation rollouts aligned with ``*_traces.npz`` from ``plot_simple_regret.py``.
 
 The trace bundle only stores regret curves; this script reads the sibling ``.meta.json`` (same stem
 as ``--traces``), reloads the accuracy matrix, and **re-runs** the same three policies with the same
 parameters so per-arm cumulative sample counts match the original simulation (same seed).
 
-Self-contained: does not modify or rely on ``simulate`` in ``plot_simple_regret_gsm8k.py``.
+Self-contained: does not modify or rely on ``simulate`` in ``plot_simple_regret.py``.
 
 Plots one column of panels (UCB-E, UCB-E-LRF, Gittins): x = batch iteration index (step
 ``1 … T``), y = cumulative **batch pulls** per arm — a batch counts once for each distinct arm that
@@ -88,7 +88,7 @@ def simulate_with_batch_pull_snapshots(
     log_prefix: str = "",
     batch_pull_snapshots: list[np.ndarray] | None = None,
 ) -> tuple[list[float], list[int]]:
-    """Same loop as ``plot_simple_regret_gsm8k.simulate``, plus optional cumulative batch-pull snapshots."""
+    """Same loop as ``plot_simple_regret.simulate``, plus optional cumulative batch-pull snapshots."""
     torch.manual_seed(seed)
 
     obs = torch.full_like(ground_truth, float("nan"))
@@ -143,7 +143,10 @@ def _resolve_matrix(meta_path: Path, meta: dict, override: Path | None) -> Path:
     repo_root = meta_path.resolve().parents[2]
     candidates = [
         raw,
+        repo_root / "data" / "benchmark_matrices" / raw.name,
+        repo_root / "data" / "mmlu_matrices" / raw.name,
         repo_root / "data" / "matrices" / raw.name,
+        meta_path.parent.parent / "benchmark_matrices" / raw.name,
         meta_path.parent.parent / "matrices" / raw.name,
         repo_root / "outputs" / "matrices" / raw.name,
     ]
