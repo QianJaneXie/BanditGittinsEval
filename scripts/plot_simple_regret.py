@@ -27,8 +27,9 @@ so the curve begins where that policy starts (at ~5% cumulative evals when the d
 warm-up and 10% total).
 
 **Experiments:** ``--experiment NAME`` (default ``gsm8k_various_model``) picks a registered matrix and
-figure path from ``experiment_specs()``; ``--matrix`` / ``--out`` override those defaults. Gittins
-prior defaults to N(0.5, 0.04); the ``gsm8k_various_model`` preset uses N(0.2, 0.01). Override with
+figure path from ``experiment_specs()``; ``--matrix`` / ``--out`` override those defaults so the script
+is benchmark-agnostic (any ``(n_models, n_examples)`` accuracy ``.npy`` works). Gittins prior defaults
+to N(0.5, 0.04); the ``gsm8k_various_model`` preset uses N(0.2, 0.01). Override with
 ``--gittins-prior-mean`` / ``--gittins-prior-variance``.
 
 By default all three algorithms are simulated and plotted. For a quick test (e.g. Gittins only with a
@@ -40,9 +41,10 @@ Use ``--verbose`` to print each step: distinct arms in the batch, incumbent arm,
 **Gittins cost** (same semantics as ``gittins_policy.cost_per_transition``): ``--gittins-cost-mode
 unaware`` passes **1.0** per arm (uniform cost) and plots regret vs cumulative matrix evaluations.
 ``--gittins-cost-mode aware`` loads **per-arm monetary costs** (e.g. dollars per transition) from
-``--gittins-cost-vector``; the DP scales them via ``cost_scaling_factor``. For this repository’s
-GSM8K pricing JSON, values are **USD per 1M input tokens** and the cumulative-cost axis uses that
-unit. If UCB/LRF (or RR) run alongside cost-aware Gittins, the figure plots **one** panel with
+``--gittins-cost-vector``; the DP scales them via ``cost_scaling_factor``. For the bundled GSM8K
+configurations pricing JSON, values are **USD per 1M input tokens** and the cumulative-cost axis
+uses that unit (other pricing files follow whatever unit the file declares). If UCB/LRF (or RR) run
+alongside cost-aware Gittins, the figure plots **one** panel with
 cumulative cost on the x-axis for every curve when traces include per-method cumulative cost (saved
 automatically for new runs). Legacy trace bundles without ``ucb_x_original_cost`` /
 ``lrf_x_original_cost`` still use two panels (evals vs cost).
@@ -59,8 +61,8 @@ figure as ``<figure_stem>_traces.npz`` (see ``--traces-out`` / ``--no-save-trace
   (cost-aware only)
 - ``gittins_x``, ``gittins_regret`` — Gittins (empty if not run)
 - ``gittins_x_original_cost`` — cumulative monetary cost after each step (same units as the cost
-  vector; GSM8K pricing: **USD per 1M input tokens**). Same length as ``gittins_regret`` when
-  cost-aware Gittins runs.
+  vector; bundled GSM8K configurations pricing JSON: **USD per 1M input tokens**). Same length as
+  ``gittins_regret`` when cost-aware Gittins runs.
 - scalar ``gittins_stop_cum_eval`` — first cumulative eval count (before that policy step) where the
   top-scoring arm was already fully observed (nominal stopping time); ``-1`` if that never occurred.
   The Gittins regret curve still runs to the eval budget when using the simple-regret script.
@@ -107,7 +109,9 @@ from gittins_policy import _normal_normal_posterior, gittins_index_exploration
 
 T = TypeVar("T", int, float)
 
-# GSM8K cost-aware figures: cumulative axis label (matches ``estimated_cost_per_1m_input_tokens``).
+# Cost-aware figures default x-axis label (matches the bundled GSM8K configurations pricing JSON,
+# which stores ``estimated_cost_per_1m_input_tokens``). Other pricing files may use other units;
+# adjust this label if you switch.
 _GITTINS_COST_AWARE_CUMULATIVE_XLABEL = "Cumulative cost (USD per 1M input tokens)"
 
 
@@ -123,19 +127,26 @@ class ExperimentSpec:
 
 
 def experiment_specs(root: Path) -> dict[str, ExperimentSpec]:
-    """Register targets here (e.g. ``gsm8k_various_model``); CLI ``--matrix`` / ``--out`` override."""
+    """Register named presets here. Each preset only fixes default ``--matrix`` / ``--out`` (and
+    optionally a Gittins prior); CLI flags always override. Add new benchmarks by appending an entry."""
     return {
         "gsm8k_various_model": ExperimentSpec(
-            matrix=root / "data" / "matrices" / "gsm8k_1_samples_various_models_seed1.npy",
+            matrix=root / "data" / "BanditEval_matrices" / "gsm8k_1_samples_various_models_seed1.npy",
             out=root / "outputs" / "figures" / "simple_regret_gsm8k_various_models_seed1.png",
             gittins_prior_mean=0.2,
             gittins_prior_variance=0.01,
+        ),
+        "piqa_various_models": ExperimentSpec(
+            matrix=root / "data" / "BanditEval_matrices" / "piqa_1_samples_various_models_seed1.npy",
+            out=root / "outputs" / "figures" / "simple_regret_piqa_various_models_seed1.png",
         ),
     }
 
 
 def _resolve_gittins_prior(spec: ExperimentSpec, args: Namespace) -> tuple[float, float]:
-    """Global default N(0.5, 0.04); experiments may set GSM8K to N(0.2, 0.01). CLI always wins."""
+    """Resolve Gittins prior (μ_0, v_0): CLI > experiment preset > global default N(0.5, 0.04).
+
+    The ``gsm8k_various_model`` preset, for example, sets N(0.2, 0.01)."""
     default_mean, default_var = 0.5, 0.04
     if args.gittins_prior_mean is not None:
         mean = float(args.gittins_prior_mean)
@@ -152,15 +163,17 @@ def _resolve_gittins_prior(spec: ExperimentSpec, args: Namespace) -> tuple[float
     return mean, var
 
 
-def _is_gsm8k_configurations_pricing(data: object) -> bool:
-    """``data_analysis/pricing/..._configurations_...json`` shape: {\"0\": {\"estimated_cost_per_1m_input_tokens\": ...}, ...}."""
+def _is_configurations_pricing(data: object) -> bool:
+    """Detect ``data_analysis/pricing/..._configurations_...json`` shape:
+    ``{"0": {"estimated_cost_per_1m_input_tokens": ...}, "1": {...}, ...}``. The bundled GSM8K
+    pricing JSON uses this layout; any benchmark that matches the same shape is also accepted."""
     if not isinstance(data, dict) or "0" not in data:
         return False
     z = data["0"]
     return isinstance(z, dict) and "estimated_cost_per_1m_input_tokens" in z
 
 
-def _json_gsm8k_configurations_to_1d(data: dict, n_arms: int) -> np.ndarray:
+def _json_configurations_to_1d(data: dict, n_arms: int) -> np.ndarray:
     out: list[float] = []
     for i in range(n_arms):
         k = str(i)
@@ -196,11 +209,12 @@ def _json_to_cost_1d(data: object, n_arms: int) -> np.ndarray:
 def load_gittins_cost_vector_from_file(path: Path, n_arms: int) -> torch.Tensor:
     """
     Load per-arm per-cell costs from disk → ``(n_arms,)`` float64 tensor. **Units:** match your file
-    (GSM8K ``configurations`` JSON uses **USD per 1M input tokens** per ``estimated_cost_per_1m_input_tokens``).
+    (the bundled GSM8K ``configurations`` JSON uses **USD per 1M input tokens** per
+    ``estimated_cost_per_1m_input_tokens``).
 
     - ``.npy``: ``numpy.load`` (shape ``(n_arms,)``).
-    - ``.json``: flat array / ``cost_per_arm`` list, or GSM8K ``configurations`` export (keys ``\"0\"``…
-      with ``estimated_cost_per_1m_input_tokens`` per arm).
+    - ``.json``: flat array / ``cost_per_arm`` list, or a ``configurations`` export (keys ``\"0\"``…
+      with ``estimated_cost_per_1m_input_tokens`` per arm; same shape as the bundled GSM8K file).
 
     Call this first, then pass the returned tensor into ``gittins_index_exploration`` (via
     ``make_gittins_step_with_score_cache``) and ``simulate(..., per_arm_original_cost=...)``.
@@ -212,16 +226,16 @@ def load_gittins_cost_vector_from_file(path: Path, n_arms: int) -> torch.Tensor:
         arr = np.squeeze(np.load(path))
     elif suf == ".json":
         data = json.loads(path.read_text(encoding="utf-8"))
-        if _is_gsm8k_configurations_pricing(data):
-            arr = _json_gsm8k_configurations_to_1d(data, n_arms)
+        if _is_configurations_pricing(data):
+            arr = _json_configurations_to_1d(data, n_arms)
         else:
             arr = _json_to_cost_1d(data, n_arms)
     else:
         text = path.read_text(encoding="utf-8").strip()
         try:
             data = json.loads(text)
-            if _is_gsm8k_configurations_pricing(data):
-                arr = _json_gsm8k_configurations_to_1d(data, n_arms)
+            if _is_configurations_pricing(data):
+                arr = _json_configurations_to_1d(data, n_arms)
             else:
                 arr = _json_to_cost_1d(data, n_arms)
         except (json.JSONDecodeError, ValueError):
@@ -476,7 +490,8 @@ def simulate(
 
     If ``per_arm_original_cost`` is a length-``(n_arms,)`` tensor, ``timing["cum_original_cost"]``
     records cumulative monetary cost after each batch in the same units as ``per_arm_original_cost``
-    (e.g. dollars per transition when cost-aware; GSM8K JSON: **USD per 1M input tokens**), summed as
+    (e.g. dollars per transition when cost-aware; bundled GSM8K configurations JSON: **USD per 1M
+    input tokens**), summed as
     ``c_k * n_cells_in_batch`` per step.
 
     If ``incumbent_fn`` is set, it maps ``observed_matrix`` → incumbent arm index for simple regret;
@@ -689,10 +704,12 @@ def save_trace_bundle(
 _GITTINS_COST_EPILOG = """
 Gittins cost modes (--gittins-cost-mode), matching gittins_policy.cost_per_transition:
   unaware — per-arm cost 1.0 (uniform); plot Gittins vs cumulative matrix evaluations.
-  aware — per-arm monetary costs from --gittins-cost-vector (GSM8K JSON: USD per 1M input tokens);
-    DP scales via cost_scaling_factor; plot vs cumulative cost (one panel for all policies when traces
-    include UCB/LRF cost series; legacy traces may still use two panels).
-  JSON shapes: flat array, cost_per_arm/costs/cost, or GSM8K configurations export.
+  aware — per-arm monetary costs from --gittins-cost-vector (bundled GSM8K configurations JSON: USD
+    per 1M input tokens; other files follow whatever unit they declare); DP scales via
+    cost_scaling_factor; plot vs cumulative cost (one panel for all policies when traces include
+    UCB/LRF cost series; legacy traces may still use two panels).
+  JSON shapes: flat array, cost_per_arm/costs/cost, or "configurations" export (keys "0".. with
+    estimated_cost_per_1m_input_tokens per arm; same shape as the bundled GSM8K file).
 """
 
 
@@ -764,7 +781,8 @@ def main() -> int:
         choices=["unaware", "aware"],
         default="unaware",
         help="unaware: uniform cost 1.0 per arm (see gittins_policy); plot vs evals. aware: monetary "
-        "per-arm costs from --gittins-cost-vector (GSM8K: USD per 1M input tokens); plot vs cumulative cost.",
+        "per-arm costs from --gittins-cost-vector (bundled GSM8K configurations JSON: USD per 1M input "
+        "tokens; other files follow their own unit); plot vs cumulative cost.",
     )
     parser.add_argument(
         "--gittins-cost",
@@ -778,8 +796,8 @@ def main() -> int:
         type=Path,
         default=None,
         metavar="FILE",
-        help="Required for --gittins-cost-mode aware: per-arm monetary costs (JSON or .npy); GSM8K export "
-        "uses USD per 1M input tokens. Ignored when unaware.",
+        help="Required for --gittins-cost-mode aware: per-arm monetary costs (JSON or .npy); the "
+        "bundled GSM8K configurations export uses USD per 1M input tokens. Ignored when unaware.",
     )
     parser.add_argument(
         "--gittins-per-cell-dp",

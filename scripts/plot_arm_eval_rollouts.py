@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Per-arm evaluation rollouts aligned with ``*_traces.npz`` from ``plot_simple_regret_gsm8k.py``.
+Per-arm evaluation rollouts aligned with ``*_traces.npz`` from ``plot_simple_regret.py``.
 
 The trace bundle only stores regret curves; this script reads the sibling ``.meta.json`` (same stem
 as ``--traces``), reloads the accuracy matrix, and **re-runs** the same three policies with the same
 parameters so per-arm cumulative sample counts match the original simulation (same seed).
 
-Imports :func:`load_gittins_cost_from_meta` from ``plot_simple_regret_gsm8k`` (same cost parsing as the main script). Does not use ``simulate`` from that file. When trace meta has ``budget_stops_by: cumulative_cost`` (cost-aware runs), the re-simulation stops at ``budget_max_cumulative_cost`` like ``plot_simple_regret_gsm8k.py``.
+Imports :func:`load_gittins_cost_from_meta` from ``plot_simple_regret`` (same cost parsing as the main script). Does not use ``simulate`` from that file. When trace meta has ``budget_stops_by: cumulative_cost`` (cost-aware runs), the re-simulation stops at ``budget_max_cumulative_cost`` like ``plot_simple_regret.py``.
 
 Plots one column of panels (UCB-E, UCB-E-LRF, Gittins): x = batch iteration index (step
 ``1 … T``), y = cumulative **batch pulls** per arm — a batch counts once for each distinct arm that
@@ -38,7 +38,7 @@ _scripts_dir = Path(__file__).resolve().parent
 if str(_scripts_dir) not in sys.path:
     sys.path.insert(0, str(_scripts_dir))
 
-from plot_simple_regret_gsm8k import (  # noqa: E402
+from plot_simple_regret import (  # noqa: E402
     incumbent_from_empirical_means,
     incumbent_from_gittins_posterior,
     load_gittins_cost_from_meta,
@@ -92,7 +92,7 @@ def simulate_with_batch_pull_snapshots(
     log_prefix: str = "",
     batch_pull_snapshots: list[np.ndarray] | None = None,
 ) -> tuple[list[float], list[int]]:
-    """Same loop as ``plot_simple_regret_gsm8k.simulate``, plus optional cumulative batch-pull snapshots."""
+    """Same loop as ``plot_simple_regret.simulate``, plus optional cumulative batch-pull snapshots."""
     if max_evaluations is None and max_cumulative_cost is None:
         raise ValueError("simulate_with_batch_pull_snapshots requires max_evaluations and/or max_cumulative_cost")
     if max_cumulative_cost is not None and per_arm_original_cost is None:
@@ -166,6 +166,8 @@ def _resolve_matrix(meta_path: Path, meta: dict, override: Path | None) -> Path:
     repo_root = meta_path.resolve().parents[2]
     candidates = [
         raw,
+        repo_root / "data" / "BanditEval_matrices" / raw.name,
+        repo_root / "data" / "MMLU_matrices" / raw.name,
         repo_root / "data" / "matrices" / raw.name,
         meta_path.parent.parent / "matrices" / raw.name,
         repo_root / "outputs" / "matrices" / raw.name,

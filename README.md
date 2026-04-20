@@ -13,14 +13,16 @@ pip install -e .
 
 Dependencies include `banditeval`, `torch`, `matplotlib`, and `jax` (see `pyproject.toml`).
 
-## Simple regret simulation and figure: `plot_simple_regret_gsm8k.py`
+## Simple regret simulation and figure: `plot_simple_regret.py`
 
-Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
+Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens for the bundled GSM8K configurations file) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
+
+The script is **benchmark-agnostic** — it consumes any `(n_models, n_examples)` accuracy matrix `.npy`. Pre-registered presets (`--experiment NAME`) cover bundled benchmarks (`gsm8k_various_model`, `piqa_various_models`); pass `--matrix` / `--out` to point at any other matrix without touching `experiment_specs()`.
 
 **Basic run** (default `--experiment gsm8k_various_model` sets matrix and figure paths; see `experiment_specs()` in the script):
 
 ```bash
-python scripts/plot_simple_regret_gsm8k.py
+python scripts/plot_simple_regret.py
 ```
 
 **Common overrides:**
@@ -39,9 +41,9 @@ python scripts/plot_simple_regret_gsm8k.py
 | `--ucb-a A` | UCB exploration parameter (default `1`) |
 | `--lrf-device DEVICE` | e.g. `cpu` or `cuda` for the low-rank factorization step |
 | `--gittins-grid-points N` | Tabular DP grid size for Gittins (default `1025`) |
-| `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. This repo’s GSM8K pricing JSON uses **USD per 1M input tokens**. When `aware`, the figure uses that unit on the x-axis. If UCB/LRF/RR run **alongside** cost-aware Gittins, the default is **one panel**: every curve is plotted vs cumulative cost (the trace bundle stores per-method cumulative cost; see **Trace files**). **Legacy** trace bundles without `ucb_x_original_cost` / `lrf_x_original_cost`, or `--merge-ucb-lrf-from` pointing at such a file, fall back to **two panels** (evals for UCB/LRF vs cost for Gittins). |
+| `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. The bundled GSM8K configurations pricing JSON uses **USD per 1M input tokens**; other pricing files follow whatever unit they declare. When `aware`, the figure uses that unit on the x-axis. If UCB/LRF/RR run **alongside** cost-aware Gittins, the default is **one panel**: every curve is plotted vs cumulative cost (the trace bundle stores per-method cumulative cost; see **Trace files**). **Legacy** trace bundles without `ucb_x_original_cost` / `lrf_x_original_cost`, or `--merge-ucb-lrf-from` pointing at such a file, fall back to **two panels** (evals for UCB/LRF vs cost for Gittins). |
 | `--gittins-cost C` | Ignored for cost-unaware Gittins (DP uses `1.0`); kept for compatibility |
-| `--gittins-cost-vector FILE` | Required for `aware`: per-arm costs (JSON or `.npy`; GSM8K: USD per 1M input tokens). Ignored when `unaware` |
+| `--gittins-cost-vector FILE` | Required for `aware`: per-arm costs (JSON or `.npy`; bundled GSM8K configurations file: USD per 1M input tokens). Ignored when `unaware` |
 | `--gittins-prior-mean`, `--gittins-prior-variance` | Prior \(\theta_k \sim \mathcal{N}(\mu_0, v_0)\) for Gittins (optional; see **Gittins prior** below) |
 | `--gittins-per-cell-dp` | Use one DP stage per matrix cell (slow); default is **batch-mean** DP aligned with `--gittins-batch-size` |
 | `--traces-out PATH` | Where to save `*_traces.npz` (default: same directory as `--out`, stem + `_traces.npz`) |
@@ -54,7 +56,7 @@ python scripts/plot_simple_regret_gsm8k.py
 The script resolves \((\mu_0, v_0)\) in this order:
 
 1. **CLI** — if you pass `--gittins-prior-mean` and/or `--gittins-prior-variance`, those values override everything else (omit a flag to leave that component to the next steps).
-2. **Experiment preset** — `experiment_specs()` in `plot_simple_regret_gsm8k.py` can set optional `gittins_prior_mean` / `gittins_prior_variance` per `--experiment` name.
+2. **Experiment preset** — `experiment_specs()` in `plot_simple_regret.py` can set optional `gittins_prior_mean` / `gittins_prior_variance` per `--experiment` name.
 3. **Global default** — **\(\mu_0 = 0.5\)**, **\(v_0 = 0.04\)** (i.e. **N(0.5, 0.04)**) when the preset does not fix them.
 
 The **`gsm8k_various_model`** preset uses **N(0.2, 0.01)** so GSM8K runs match the intended prior without extra flags. Add other experiments by extending `ExperimentSpec` the same way.
@@ -64,20 +66,20 @@ The resolved pair is stored in `*_traces.meta.json` as `gittins_prior_mean` and 
 **Example: small budget, Gittins only (cost-unaware, default):**
 
 ```bash
-python scripts/plot_simple_regret_gsm8k.py \
-  --matrix data/matrices/gsm8k_1_samples_various_models_seed1.npy \
+python scripts/plot_simple_regret.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
   --out outputs/figures/simple_regret_gittins_only.png \
   --algorithms gittins \
   --eval-budget-fraction 0.02 \
   --seed 0
 ```
 
-**Example: cost-aware Gittins** (per-arm costs for the DP in USD per 1M input tokens; x-axis = cumulative cost in that unit):
+**Example: cost-aware Gittins** (per-arm costs for the DP in USD per 1M input tokens; x-axis = cumulative cost in that unit). The pricing JSON below covers **all GSM8K matrices that share the same `various_models` arm configuration** — its name no longer mentions a specific samples count or seed because those don't change which arm is which:
 
 ```bash
-python scripts/plot_simple_regret_gsm8k.py \
+python scripts/plot_simple_regret.py \
   --gittins-cost-mode aware \
-  --gittins-cost-vector data_analysis/pricing/gsm8k_1_samples_various_models_seed1_configurations_with_price_ratio_1to2_rounded.json \
+  --gittins-cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
   --algorithms gittins \
   --eval-budget-fraction 0.02
 ```

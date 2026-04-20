@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret_gsm8k.py.
+"""Rebuild the simple-regret figure from a trace bundle written by plot_simple_regret.py.
 
 **Gittins x-axis:** ``evals`` (cost-unaware style: cumulative matrix entries revealed) vs
 ``original_cost`` (cost-aware: cumulative monetary cost stored in ``gittins_x_original_cost``, same
-units as the cost vector used at simulation time—e.g. **USD per 1M input tokens** for GSM8K pricing
-JSON). The default cost-axis label matches the main script’s GSM8K figures.
+units as the cost vector used at simulation time—e.g. **USD per 1M input tokens** for the bundled
+GSM8K configurations pricing JSON). The default cost-axis label matches that file's units; change
+the constant below if your traces used a cost vector with different units.
 """
 
 from __future__ import annotations
 
-# Same label as plot_simple_regret_gsm8k for GSM8K cost-aware runs; change if your traces use other units.
+# Same label as plot_simple_regret for the bundled GSM8K cost-aware runs; change if your traces use other units.
 _GITTINS_COST_AWARE_XLABEL = "Cumulative cost (USD per 1M input tokens)"
 
 import argparse
@@ -27,7 +28,7 @@ def main() -> int:
         "--traces",
         type=Path,
         required=True,
-        help="Path to *_traces.npz from plot_simple_regret_gsm8k.py",
+        help="Path to *_traces.npz from plot_simple_regret.py",
     )
     parser.add_argument(
         "--out",
@@ -40,7 +41,8 @@ def main() -> int:
         choices=["evals", "original_cost"],
         default="evals",
         help="Gittins only: evals = cumulative matrix entries (cost-unaware-style); original_cost = "
-        "cumulative monetary cost when traces contain gittins_x_original_cost (e.g. USD per 1M in-tokens for GSM8K pricing)",
+        "cumulative monetary cost when traces contain gittins_x_original_cost (e.g. USD per 1M "
+        "in-tokens for the bundled GSM8K configurations pricing JSON)",
     )
     args = parser.parse_args()
 

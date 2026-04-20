@@ -80,7 +80,7 @@ def main() -> int:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=root / "data" / "matrices",
+        default=root / "data" / "BanditEval_matrices",
         help="Where to write *.npy and manifest.json",
     )
     args = parser.parse_args()
