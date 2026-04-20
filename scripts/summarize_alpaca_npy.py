@@ -160,7 +160,7 @@ def build_summary_text(
         "Alpaca (GPT-4 Turbo weighted) — six 2D comparison matrices — .npy statistics summary\n"
     )
     parts.append(
-        "Data source: matching .npy files under data/matrices/ exported from PKL.\n"
+        "Data source: matching .npy files under data/BanditEval_matrices/ exported from PKL.\n"
     )
 
     title_map = {
@@ -225,7 +225,7 @@ def main() -> int:
     parser.add_argument(
         "--matrices-dir",
         type=Path,
-        default=root / "data" / "matrices",
+        default=root / "data" / "BanditEval_matrices",
         help="Directory containing Alpaca .npy files",
     )
     parser.add_argument(
