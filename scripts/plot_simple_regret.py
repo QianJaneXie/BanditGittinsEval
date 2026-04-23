@@ -1452,28 +1452,35 @@ def main() -> int:
             if gittins_stop_cum_eval is not None
             else ""
         )
+        tau_msg = f"tau_sq = 1/(4B) = {tau_sq_gittins}"
+
         if cost_aware_budget and "gittins" in algorithms:
             print(
                 f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} evals, "
                 f"cum cost {(_final_cum_cost(timing_gittins) or 0.0):.6g} / {budget_max_cumulative_cost:.6g} "
-                f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
+                f"(B = {args.gittins_batch_size}, {tau_msg}){stop_msg}"
             )
         else:
             print(
                 f"Gittins: {len(regrets_gittins)} batches, {xs_gittins[-1] if xs_gittins else 0} / {budget_evals} budget evals "
-                f"(B = {args.gittins_batch_size}, τ² = 1/(4B) = {tau_sq_gittins}){stop_msg}"
+                f"(B = {args.gittins_batch_size}, {tau_msg}){stop_msg}"
             )
+
         if "gittins" in algorithms:
             s_total = _timing_summary(timing_gittins["iter_total_s"])
             s_step = _timing_summary(timing_gittins["iter_step_s"])
             print(
                 "  timing (per-iteration): "
-                f"total mean={s_total.get('mean_s', float('nan')):.6f}s median={s_total.get('median_s', float('nan')):.6f}s p90={s_total.get('p90_s', float('nan')):.6f}s "
+                f"total mean={s_total.get('mean_s', float('nan')):.6f}s "
+                f"median={s_total.get('median_s', float('nan')):.6f}s "
+                f"p90={s_total.get('p90_s', float('nan')):.6f}s "
                 f"(n={s_total.get('n', 0)})"
             )
             print(
                 "  timing (policy step only): "
-                f"mean={s_step.get('mean_s', float('nan')):.6f}s median={s_step.get('median_s', float('nan')):.6f}s p90={s_step.get('p90_s', float('nan')):.6f}s "
+                f"mean={s_step.get('mean_s', float('nan')):.6f}s "
+                f"median={s_step.get('median_s', float('nan')):.6f}s "
+                f"p90={s_step.get('p90_s', float('nan')):.6f}s "
                 f"(n={s_step.get('n', 0)})"
             )
     return 0

@@ -179,6 +179,10 @@ performance_prediction_data/
 # Generated CSV exports (large text; not needed if we commit NPY)
 outputs/matrices_csv/
 
+# Experiment outputs / logs (keep local; do not commit)
+outputs/figures/
+wandb/
+
 # Cursor  
 #  Cursor is an AI-powered code editor.`.cursorignore` specifies files/directories to 
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
