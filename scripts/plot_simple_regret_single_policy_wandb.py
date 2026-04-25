@@ -597,6 +597,9 @@ def main() -> int:
             ),
             mode=args.wandb_mode,
         )
+        if run is not None:
+            run.name = run_name
+            run.save()
 
     if run is not None and not args.keep_out_exact:
         args.out = _append_suffixes(args.out, args.policy, run.id)

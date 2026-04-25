@@ -4,7 +4,7 @@ method: grid
 
 command:
   - ${env}
-  - python
+  - /scratch/yh6415/conda_envs/gittins/bin/python
   - ${program}
   - ${args}
 
@@ -59,6 +59,12 @@ parameters:
 
   original_cost_vector:
     value: data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+
+  wandb_entity:
+    value: EfficientLLMEval
+
+  wandb_project:
+    value: GittinsBanditEval
 
   wandb_group:
     value: gsm8k_single_policy_seed1matrix
