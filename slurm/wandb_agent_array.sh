@@ -1,57 +1,67 @@
 #!/bin/bash
-#SBATCH -J wandb_gittins_eval
-#SBATCH -o slurm_logs/wandb_agent_%A_%a.out
-#SBATCH -e slurm_logs/wandb_agent_%A_%a.err
+#SBATCH --account=torch_pr_790_general
 #SBATCH --mail-type=END,FAIL
-#SBATCH --mail-user=YOUR_EMAIL@nyu.edu
-#SBATCH -N 1
-#SBATCH -n 1
+#SBATCH --mail-user=yh6415@nyu.edu
+#SBATCH --job-name=wandb_gittins_eval
+#SBATCH --output=wandb_agent_%A_%a.out
+#SBATCH --error=wandb_agent_%A_%a.err
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH -t 24:00:00
-#SBATCH --array=0-3
-#SBATCH --partition=YOUR_PARTITION
-# 如果 NYU Torch 需要 account，再加：
-# #SBATCH --account=YOUR_ACCOUNT
+#SBATCH --array=0-14
 
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
-  echo "Usage: sbatch --array=0-3 slurm/wandb_agent_array.sh ENTITY/PROJECT/SWEEP_ID"
+  echo "Usage: sbatch --export=ALL slurm/wandb_agent_array.sh ENTITY/PROJECT/SWEEP_ID"
   exit 2
 fi
 
 SWEEP_PATH="$1"
 
+cd "${SLURM_SUBMIT_DIR}"
+
 mkdir -p slurm_logs
+mkdir -p outputs
+mkdir -p outputs/figures
+mkdir -p wandb
 
-# ===== 进入项目目录：这里改成你自己的仓库绝对路径 =====
-cd /ABSOLUTE/PATH/TO/BanditGittinsEval
+if [ -f ".venv/bin/activate" ]; then
+  source .venv/bin/activate
+else
+  module load anaconda3/2024.02
+  source /share/apps/anaconda3/2024.02/etc/profile.d/conda.sh
+  conda activate "${CONDA_ENV:-mygpu}"
+fi
 
-# ===== 激活环境：这里按你自己的环境改 =====
-# 方案 A: conda
-#source /share/apps/anaconda3/2021.05/etc/profile.d/conda.sh
-#conda activate automl_env
+export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK}"
+export PYTHONUNBUFFERED=1
+export WANDB_DIR="${SLURM_SUBMIT_DIR}/wandb"
+export WANDB_MODE="${WANDB_MODE:-online}"
 
-# 方案 B: venv（如果你用 .venv，就把上面的 conda 两行注释掉，改成下面这行）
-source .venv/bin/activate
+echo "SLURM_JOB_ID=${SLURM_JOB_ID}"
+echo "SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID}"
+echo "SLURM_SUBMIT_DIR=${SLURM_SUBMIT_DIR}"
+echo "SWEEP_PATH=${SWEEP_PATH}"
+echo "PYTHON=$(which python)"
+python --version
 
-# ===== 必须提前设置 W&B key；不要在集群里交互式 login =====
 if [ -z "${WANDB_API_KEY:-}" ]; then
   echo "ERROR: WANDB_API_KEY is not set."
-  echo "Please run: export WANDB_API_KEY=your_key_before_sbatch"
   exit 3
 fi
 
-# 可选：固定默认 project / entity
-export WANDB_ENTITY=EfficientLLMEval
-export WANDB_PROJECT=GittinsBanditEval
+test -f scripts/plot_simple_regret_single_policy_wandb.py
+test -f scripts/config/GSM8KSimpleRegretSinglePolicy.yml
+test -f data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+test -f data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
 
-# 确保依赖齐全
-python -m pip install -e .
-
-# 每个 array task 只领 1 个 run，最稳
 wandb agent --forward-signals --count 1 "${SWEEP_PATH}"
 
-# 退出环境
-conda deactivate
+echo "Finished task ${SLURM_ARRAY_TASK_ID}"
+
+if [ -n "${VIRTUAL_ENV:-}" ]; then
+  deactivate
+elif command -v conda >/dev/null 2>&1; then
+  conda deactivate
+fi

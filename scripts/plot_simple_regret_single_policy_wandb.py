@@ -327,15 +327,30 @@ def parse_args() -> argparse.Namespace:
         default="gsm8k_various_model",
     )
     parser.add_argument("--matrix", type=Path, default=None)
-    parser.add_argument("--dataset-tag", type=str, default=None, help="Short dataset tag used in auto run naming, e.g. gsm8k")
+    parser.add_argument(
+        "--dataset-tag",
+        "--dataset_tag",
+        dest="dataset_tag",
+        type=str,
+        default=None,
+        help="Short dataset tag used in auto run naming, e.g. gsm8k",
+    )
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument(
         "--out-cost",
+        "--out_cost",
+        dest="out_cost",
         type=Path,
         default=None,
         help="Optional separate PNG for the cost-axis figure; default is <out_stem>_cost.png",
     )
-    parser.add_argument("--traces-out", type=Path, default=None)
+    parser.add_argument(
+        "--traces-out",
+        "--traces_out",
+        dest="traces_out",
+        type=Path,
+        default=None,
+    )
 
     parser.add_argument(
         "--policy",
@@ -348,28 +363,87 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--eval-budget-fraction",
+        "--eval_budget_fraction",
+        dest="eval_budget_fraction",
         type=float,
         default=0.10,
         help="Always interpreted as fraction of total matrix cells for this single-policy runner.",
     )
-    parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--gittins-batch-size", type=int, default=20)
-    parser.add_argument("--ucb-a", type=int, default=1, dest="a")
-    parser.add_argument("--warmup-percentage", type=float, default=0.05)
-    parser.add_argument("--lrf-device", type=str, default="cpu")
-    parser.add_argument("--gittins-grid-points", type=int, default=2**10 + 1)
-    parser.add_argument("--gittins-prior-mean", type=float, default=None)
-    parser.add_argument("--gittins-prior-variance", type=float, default=None)
-    parser.add_argument("--gittins-per-cell-dp", action="store_true")
+    parser.add_argument(
+        "--batch-size",
+        "--batch_size",
+        dest="batch_size",
+        type=int,
+        default=32,
+    )
+    parser.add_argument(
+        "--gittins-batch-size",
+        "--gittins_batch_size",
+        dest="gittins_batch_size",
+        type=int,
+        default=20,
+    )
+    parser.add_argument(
+        "--ucb-a",
+        "--ucb_a",
+        dest="a",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--warmup-percentage",
+        "--warmup_percentage",
+        dest="warmup_percentage",
+        type=float,
+        default=0.05,
+    )
+    parser.add_argument(
+        "--lrf-device",
+        "--lrf_device",
+        dest="lrf_device",
+        type=str,
+        default="cpu",
+    )
+    parser.add_argument(
+        "--gittins-grid-points",
+        "--gittins_grid_points",
+        dest="gittins_grid_points",
+        type=int,
+        default=2**10 + 1,
+    )
+    parser.add_argument(
+        "--gittins-prior-mean",
+        "--gittins_prior_mean",
+        dest="gittins_prior_mean",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
+        "--gittins-prior-variance",
+        "--gittins_prior_variance",
+        dest="gittins_prior_variance",
+        type=float,
+        default=None,
+    )
+    parser.add_argument(
+        "--gittins-per-cell-dp",
+        "--gittins_per_cell_dp",
+        dest="gittins_per_cell_dp",
+        action="store_true",
+    )
 
     parser.add_argument(
         "--gittins-cost-vector",
+        "--gittins_cost_vector",
+        dest="gittins_cost_vector",
         type=Path,
         default=None,
         help="Required for --policy gittins_varying_cost; ignored otherwise.",
     )
     parser.add_argument(
         "--original-cost-vector",
+        "--original_cost_vector",
+        dest="original_cost_vector",
         type=Path,
         default=None,
         help="Optional true-cost vector to log cum_original_cost for dashboard x-axis switching.",
@@ -377,18 +451,47 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("--verbose", action="store_true")
 
-    parser.add_argument("--wandb-entity", type=str, default=None)
-    parser.add_argument("--wandb-project", type=str, default=None)
-    parser.add_argument("--wandb-group", type=str, default=None)
-    parser.add_argument("--wandb-name", type=str, default=None, help="Optional manual override; if omitted, auto name is used.")
+    parser.add_argument(
+        "--wandb-entity",
+        "--wandb_entity",
+        dest="wandb_entity",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-project",
+        "--wandb_project",
+        dest="wandb_project",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-group",
+        "--wandb_group",
+        dest="wandb_group",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--wandb-name",
+        "--wandb_name",
+        dest="wandb_name",
+        type=str,
+        default=None,
+        help="Optional manual override; if omitted, auto name is used.",
+    )
     parser.add_argument(
         "--wandb-mode",
+        "--wandb_mode",
+        dest="wandb_mode",
         type=str,
         choices=["online", "offline", "disabled"],
         default="online",
     )
     parser.add_argument(
         "--keep-out-exact",
+        "--keep_out_exact",
+        dest="keep_out_exact",
         action="store_true",
         help="Do not append policy/run id to output paths",
     )
