@@ -1,0 +1,58 @@
+program: scripts/plot_simple_regret_single_policy_wandb.py
+name: GSM8KGittinsCostScalingSweep
+method: grid
+
+command:
+  - ${env}
+  - /scratch/yh6415/conda_envs/gittins/bin/python
+  - ${program}
+  - ${args}
+
+metric:
+  name: final_simple_regret
+  goal: minimize
+
+parameters:
+  experiment:
+    value: gsm8k_various_model
+
+  dataset_tag:
+    value: gsm8k
+
+  matrix:
+    value: data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+
+  policy_variant:
+    values:
+      - gittins_varying_B20_scale1e-5
+      - gittins_varying_B20_scale3e-5
+      - gittins_varying_B20_scale1e-4
+      - gittins_varying_B20_scale3e-4
+      - gittins_varying_B20_scale1e-3
+
+  seed:
+    values: [0, 1, 2]
+
+  eval_budget_fraction:
+    value: 0.1
+
+  gittins_grid_points:
+    value: 1025
+
+  gittins_cost_vector:
+    value: data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+
+  original_cost_vector:
+    value: data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+
+  wandb_entity:
+    value: EfficientLLMEval
+
+  wandb_project:
+    value: GittinsBanditEval
+
+  wandb_group:
+    value: gsm8k_gittins_cost_scaling
+
+  wandb_mode:
+    value: online

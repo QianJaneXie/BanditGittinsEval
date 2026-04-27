@@ -66,6 +66,103 @@ POLICY_COST_MODE = {
     "gittins_varying_cost": "varying",
 }
 
+DEFAULT_GITTINS_PRIOR_MEAN = 0.5
+DEFAULT_GITTINS_PRIOR_VARIANCE = 0.04
+DEFAULT_GITTINS_COST_SCALING_FACTOR = 1e-4
+
+
+def _scale_token(x: float) -> str:
+    return f"{float(x):.0e}".replace("+", "")
+
+
+def _parse_policy_variant(variant: str) -> dict[str, Any]:
+    """Parse compact labels like ucb_B32 or gittins_varying_B20_scale1e-4."""
+    v = variant.strip()
+
+    m = re.fullmatch(r"(rr|ucb|lrf)_B(\d+)", v)
+    if m:
+        policy, b = m.group(1), int(m.group(2))
+        return {
+            "policy": policy,
+            "batch_size": b,
+            "policy_variant_resolved": v,
+        }
+
+    m = re.fullmatch(
+        r"gittins_(uniform|varying)_B(\d+)"
+        r"(?:_scale([0-9.eE+-]+))?"
+        r"(?:_(default|dataset)_prior)?",
+        v,
+    )
+    if m:
+        cost_mode = m.group(1)
+        b = int(m.group(2))
+        scale_raw = m.group(3)
+        prior_type = m.group(4)
+        return {
+            "policy": f"gittins_{cost_mode}_cost",
+            "gittins_batch_size": b,
+            "gittins_cost_scaling_factor": (
+                float(scale_raw) if scale_raw is not None else DEFAULT_GITTINS_COST_SCALING_FACTOR
+            ),
+            "prior_type": prior_type if prior_type is not None else "auto",
+            "policy_variant_resolved": v,
+        }
+
+    raise ValueError(
+        f"Unsupported --policy-variant={variant!r}. Expected examples like "
+        "ucb_B32, rr_B32, lrf_B32, "
+        "gittins_uniform_B20_scale1e-4, "
+        "gittins_varying_B20_scale1e-4_default_prior."
+    )
+
+
+def _apply_policy_variant(args: argparse.Namespace) -> None:
+    if not getattr(args, "policy_variant", None):
+        args.policy_variant_resolved = args.policy
+        return
+
+    parsed = _parse_policy_variant(args.policy_variant)
+    args.policy = parsed["policy"]
+
+    if "batch_size" in parsed:
+        args.batch_size = parsed["batch_size"]
+    if "gittins_batch_size" in parsed:
+        args.gittins_batch_size = parsed["gittins_batch_size"]
+    if "gittins_cost_scaling_factor" in parsed:
+        args.gittins_cost_scaling_factor = parsed["gittins_cost_scaling_factor"]
+    if "prior_type" in parsed:
+        args.prior_type = parsed["prior_type"]
+
+    args.policy_variant_resolved = parsed["policy_variant_resolved"]
+
+
+def _resolve_gittins_prior_for_runner(
+    spec: Any,
+    args: argparse.Namespace,
+) -> tuple[float, float]:
+    """Resolve default vs dataset-specific vs explicit CLI Gittins prior."""
+    if args.gittins_prior_mean is not None or args.gittins_prior_variance is not None:
+        return _resolve_gittins_prior(spec, args)
+
+    if args.prior_type == "default":
+        return DEFAULT_GITTINS_PRIOR_MEAN, DEFAULT_GITTINS_PRIOR_VARIANCE
+
+    if args.prior_type == "dataset":
+        mean = (
+            float(spec.gittins_prior_mean)
+            if spec.gittins_prior_mean is not None
+            else DEFAULT_GITTINS_PRIOR_MEAN
+        )
+        var = (
+            float(spec.gittins_prior_variance)
+            if spec.gittins_prior_variance is not None
+            else DEFAULT_GITTINS_PRIOR_VARIANCE
+        )
+        return mean, var
+
+    return _resolve_gittins_prior(spec, args)
+
 
 def _json_safe_config(d: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
@@ -122,7 +219,8 @@ def _infer_dataset_tag(args: argparse.Namespace) -> str:
 
 def _build_run_name(args: argparse.Namespace) -> str:
     dataset_tag = _infer_dataset_tag(args)
-    return f"{args.policy}_seed{args.seed}_{dataset_tag}"
+    label = getattr(args, "policy_variant_resolved", None) or args.policy
+    return f"{label}_seed{args.seed}_{dataset_tag}"
 
 
 def _define_wandb_metrics(
@@ -327,123 +425,61 @@ def parse_args() -> argparse.Namespace:
         default="gsm8k_various_model",
     )
     parser.add_argument("--matrix", type=Path, default=None)
-    parser.add_argument(
-        "--dataset-tag",
-        "--dataset_tag",
-        dest="dataset_tag",
-        type=str,
-        default=None,
-        help="Short dataset tag used in auto run naming, e.g. gsm8k",
-    )
+    parser.add_argument("--dataset-tag", type=str, default=None, help="Short dataset tag used in auto run naming, e.g. gsm8k")
     parser.add_argument("--out", type=Path, default=None)
     parser.add_argument(
         "--out-cost",
-        "--out_cost",
-        dest="out_cost",
         type=Path,
         default=None,
         help="Optional separate PNG for the cost-axis figure; default is <out_stem>_cost.png",
     )
-    parser.add_argument(
-        "--traces-out",
-        "--traces_out",
-        dest="traces_out",
-        type=Path,
-        default=None,
-    )
+    parser.add_argument("--traces-out", type=Path, default=None)
 
     parser.add_argument(
         "--policy",
         type=str,
         choices=POLICIES,
-        required=True,
-        help="Exactly one policy per run.",
+        default=None,
+        help="Exactly one policy per run. Optional if --policy-variant is provided.",
+    )
+    parser.add_argument(
+        "--policy-variant",
+        "--policy_variant",
+        dest="policy_variant",
+        type=str,
+        default=None,
+        help=(
+            "Compact policy label, e.g. ucb_B32, rr_B32, lrf_B32, "
+            "gittins_varying_B20_scale1e-4, "
+            "gittins_varying_B20_scale1e-4_default_prior."
+        ),
     )
 
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
         "--eval-budget-fraction",
-        "--eval_budget_fraction",
-        dest="eval_budget_fraction",
         type=float,
         default=0.10,
         help="Always interpreted as fraction of total matrix cells for this single-policy runner.",
     )
-    parser.add_argument(
-        "--batch-size",
-        "--batch_size",
-        dest="batch_size",
-        type=int,
-        default=32,
-    )
-    parser.add_argument(
-        "--gittins-batch-size",
-        "--gittins_batch_size",
-        dest="gittins_batch_size",
-        type=int,
-        default=20,
-    )
-    parser.add_argument(
-        "--ucb-a",
-        "--ucb_a",
-        dest="a",
-        type=int,
-        default=1,
-    )
-    parser.add_argument(
-        "--warmup-percentage",
-        "--warmup_percentage",
-        dest="warmup_percentage",
-        type=float,
-        default=0.05,
-    )
-    parser.add_argument(
-        "--lrf-device",
-        "--lrf_device",
-        dest="lrf_device",
-        type=str,
-        default="cpu",
-    )
-    parser.add_argument(
-        "--gittins-grid-points",
-        "--gittins_grid_points",
-        dest="gittins_grid_points",
-        type=int,
-        default=2**10 + 1,
-    )
-    parser.add_argument(
-        "--gittins-prior-mean",
-        "--gittins_prior_mean",
-        dest="gittins_prior_mean",
-        type=float,
-        default=None,
-    )
-    parser.add_argument(
-        "--gittins-prior-variance",
-        "--gittins_prior_variance",
-        dest="gittins_prior_variance",
-        type=float,
-        default=None,
-    )
-    parser.add_argument(
-        "--gittins-per-cell-dp",
-        "--gittins_per_cell_dp",
-        dest="gittins_per_cell_dp",
-        action="store_true",
-    )
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--gittins-batch-size", type=int, default=20)
+    parser.add_argument("--ucb-a", type=int, default=1, dest="a")
+    parser.add_argument("--warmup-percentage", type=float, default=0.05)
+    parser.add_argument("--lrf-device", type=str, default="cpu")
+    parser.add_argument("--gittins-grid-points", type=int, default=2**10 + 1)
+    parser.add_argument("--gittins-prior-mean", type=float, default=None)
+    parser.add_argument("--gittins-prior-variance", type=float, default=None)
+    parser.add_argument("--gittins-per-cell-dp", action="store_true")
 
     parser.add_argument(
         "--gittins-cost-vector",
-        "--gittins_cost_vector",
-        dest="gittins_cost_vector",
         type=Path,
         default=None,
         help="Required for --policy gittins_varying_cost; ignored otherwise.",
     )
     parser.add_argument(
         "--original-cost-vector",
-        "--original_cost_vector",
-        dest="original_cost_vector",
         type=Path,
         default=None,
         help="Optional true-cost vector to log cum_original_cost for dashboard x-axis switching.",
@@ -451,47 +487,18 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("--verbose", action="store_true")
 
-    parser.add_argument(
-        "--wandb-entity",
-        "--wandb_entity",
-        dest="wandb_entity",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--wandb-project",
-        "--wandb_project",
-        dest="wandb_project",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--wandb-group",
-        "--wandb_group",
-        dest="wandb_group",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--wandb-name",
-        "--wandb_name",
-        dest="wandb_name",
-        type=str,
-        default=None,
-        help="Optional manual override; if omitted, auto name is used.",
-    )
+    parser.add_argument("--wandb-entity", type=str, default=None)
+    parser.add_argument("--wandb-project", type=str, default=None)
+    parser.add_argument("--wandb-group", type=str, default=None)
+    parser.add_argument("--wandb-name", type=str, default=None, help="Optional manual override; if omitted, auto name is used.")
     parser.add_argument(
         "--wandb-mode",
-        "--wandb_mode",
-        dest="wandb_mode",
         type=str,
         choices=["online", "offline", "disabled"],
         default="online",
     )
     parser.add_argument(
         "--keep-out-exact",
-        "--keep_out_exact",
-        dest="keep_out_exact",
         action="store_true",
         help="Do not append policy/run id to output paths",
     )
@@ -501,6 +508,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    _apply_policy_variant(args)
+
+    if args.policy is None:
+        print("Either --policy or --policy-variant must be provided.", file=sys.stderr)
+        return 1
+
     specs = experiment_specs(REPO_ROOT)
     spec = specs[args.experiment]
 
@@ -541,7 +554,7 @@ def main() -> int:
         )
         return 1
 
-    gittins_prior_mean, gittins_prior_variance = _resolve_gittins_prior(spec, args)
+    gittins_prior_mean, gittins_prior_variance = _resolve_gittins_prior_for_runner(spec, args)
     tau_sq_gittins = 1.0 / (4.0 * float(args.gittins_batch_size))
 
     # Cost used by the Gittins policy decision
@@ -575,6 +588,8 @@ def main() -> int:
     auto_run_name = _build_run_name(args)
     run_name = args.wandb_name if args.wandb_name else auto_run_name
 
+    policy_variant = getattr(args, "policy_variant_resolved", None) or args.policy
+
     run: wandb.sdk.wandb_run.Run | None = None
     if args.wandb_mode != "disabled":
         run = wandb.init(
@@ -588,6 +603,10 @@ def main() -> int:
                     **vars(args),
                     "policy_family": POLICY_FAMILY[args.policy],
                     "policy_cost_mode": POLICY_COST_MODE[args.policy],
+                    "policy_variant": policy_variant,
+                    "policy_variant_raw": args.policy_variant,
+                    "gittins_cost_scaling_factor": args.gittins_cost_scaling_factor,
+                    "prior_type": args.prior_type,
                     "budget_mode": "evaluation_budget_only",
                     "budget_max_evals": budget_max_evals,
                     "dataset_tag_resolved": _infer_dataset_tag(args),
@@ -597,17 +616,16 @@ def main() -> int:
             ),
             mode=args.wandb_mode,
         )
-        if run is not None:
-            run.name = run_name
 
+    output_label = policy_variant
     if run is not None and not args.keep_out_exact:
-        args.out = _append_suffixes(args.out, args.policy, run.id)
+        args.out = _append_suffixes(args.out, output_label, run.id)
         if args.out_cost is not None:
-            args.out_cost = _append_suffixes(args.out_cost, args.policy, run.id)
+            args.out_cost = _append_suffixes(args.out_cost, output_label, run.id)
         if args.traces_out is not None:
-            args.traces_out = _append_suffixes(args.traces_out, args.policy, run.id)
+            args.traces_out = _append_suffixes(args.traces_out, output_label, run.id)
     elif not args.keep_out_exact:
-        args.out = _append_suffixes(args.out, args.policy)
+        args.out = _append_suffixes(args.out, output_label)
 
     if args.out_cost is None and has_cost_axis:
         args.out_cost = args.out.with_name(f"{args.out.stem}_cost{args.out.suffix}")
@@ -621,6 +639,10 @@ def main() -> int:
                 "resolved_out": str(args.out.resolve()),
                 "resolved_out_cost": str(args.out_cost.resolve()) if args.out_cost else None,
                 "resolved_traces_out": str(args.traces_out.resolve()),
+                "policy_variant": policy_variant,
+                "policy_variant_raw": args.policy_variant,
+                "gittins_cost_scaling_factor": args.gittins_cost_scaling_factor,
+                "prior_type": args.prior_type,
                 "gittins_prior_mean_resolved": gittins_prior_mean,
                 "gittins_prior_variance_resolved": gittins_prior_variance,
             },
@@ -629,7 +651,7 @@ def main() -> int:
         _define_wandb_metrics(run, has_cost_axis=has_cost_axis)
 
     policy = args.policy
-    label = POLICY_LABELS[policy]
+    label = policy_variant if args.policy_variant else POLICY_LABELS[policy]
 
     step: Callable[..., torch.Tensor | None]
     step_kwargs: dict[str, Any]
@@ -659,6 +681,7 @@ def main() -> int:
             return_mus=False,
             obs_noise_variance=tau_sq_gittins,
             cost_per_transition=policy_cost_tensor,
+            cost_scaling_factor=args.gittins_cost_scaling_factor,
             n_gittins_grid_points=args.gittins_grid_points,
             prior_mean=gittins_prior_mean,
             prior_variance=gittins_prior_variance,
@@ -706,7 +729,7 @@ def main() -> int:
         plot_x_cost = _trim_cost_from_eval_threshold(xs_eval, xs_cost, warmup_evals)
 
     budget_str = f"eval budget={args.eval_budget_fraction:.0%} of {n_cells} cells (cap={budget_max_evals})"
-    subtitle = f"policy={policy}, seed={args.seed}, {budget_str}"
+    subtitle = f"policy_variant={policy_variant}, policy={policy}, seed={args.seed}, {budget_str}"
 
     _save_single_policy_figure(
         args.out,
@@ -765,10 +788,14 @@ def main() -> int:
         "traces": str(args.traces_out.resolve()),
         "seed": args.seed,
         "policy": args.policy,
+        "policy_variant": policy_variant,
+        "policy_variant_raw": args.policy_variant,
         "policy_family": POLICY_FAMILY[args.policy],
         "policy_cost_mode": POLICY_COST_MODE[args.policy],
         "batch_size": args.batch_size,
         "gittins_batch_size": args.gittins_batch_size,
+        "gittins_cost_scaling_factor": args.gittins_cost_scaling_factor,
+        "prior_type": args.prior_type,
         "eval_budget_fraction": args.eval_budget_fraction,
         "budget_mode": "evaluation_budget_only",
         "budget_max_evals": budget_max_evals,
@@ -835,6 +862,8 @@ def main() -> int:
         run.summary["final_simple_regret"] = float(plot_regret[-1]) if plot_regret else None
         run.summary["final_cum_eval"] = int(xs_eval[-1]) if xs_eval else None
         run.summary["final_cum_original_cost"] = float(xs_cost[-1]) if xs_cost else None
+        run.summary["policy_variant"] = policy_variant
+        run.summary["policy"] = policy
 
         run.log({"eval_figure": wandb.Image(str(args.out))})
         if has_cost_axis and args.out_cost is not None and args.out_cost.is_file():
