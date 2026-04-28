@@ -119,21 +119,21 @@ The Gaussian structure enables an efficient implementation by separating offline
 
 Since the observation noise τ² is fixed, the posterior variance evolves deterministically:
 
-v_{t+1} = (1 / v_t + 1 / τ²)^(-1)
+v<sub>t+1</sub> = (1 / v<sub>t</sub> + 1 / τ²)<sup>−1</sup>
 
 Thus, we can precompute:
 
-v_0, v_1, v_2, ...
+v<sub>0</sub>, v<sub>1</sub>, v<sub>2</sub>, ...
 
 This induces transition variances:
 
-σ_t² = v_t² / (v_t + τ²)
+σ<sub>t</sub><sup>2</sup> = v<sub>t</sub><sup>2</sup> / (v<sub>t</sub> + τ²)
 
 Using these, we solve the dynamic program once to compute roots:
 
-Q_t(r_t) = 0
+Q<sub>t</sub>(r<sub>t</sub>) = 0
 
-The roots {r_t} are stored in a lookup table.
+The roots {r<sub>t</sub>} are stored in a lookup table.
 
 ---
 
@@ -141,36 +141,36 @@ The roots {r_t} are stored in a lookup table.
 
 At the beginning:
 
-s_{k,0} = μ_0  
-Γ_{k,0} = s_{k,0} − r_0
+s<sub>k,0</sub> = μ<sub>0</sub>  
+Γ<sub>k,0</sub> = s<sub>k,0</sub> − r<sub>0</sub>
 
 Arms are selected via:
 
-A_t = argmax_k Γ_{k,n_k(t)}
+A<sub>t</sub> = argmax<sub>k</sub> Γ<sub>k,n<sub>k</sub>(t)</sub>
 
 ---
 
 ### Online Updates
 
-After selecting an arm and observing Y_{t+1}:
+After selecting an arm and observing Y<sub>t+1</sub>:
 
-s_{t+1} = s_t + η_{t+1}
+s<sub>t+1</sub> = s<sub>t</sub> + η<sub>t+1</sub>
 
-η_{t+1} = (v_t / (v_t + τ²)) * (Y_{t+1} − μ_t)
+η<sub>t+1</sub> = (v<sub>t</sub> / (v<sub>t</sub> + τ²)) (Y<sub>t+1</sub> − μ<sub>t</sub>)
 
 Then update the index:
 
-Γ_{k,t} = s_{k,t} − r_{k,t}
+Γ<sub>k,t</sub> = s<sub>k,t</sub> − r<sub>k,t</sub>
 
 ---
 
 ### Summary
 
 - Posterior variance updates are deterministic and precomputed.
-- Gittins roots {r_t} are computed offline once.
+- Gittins roots {r<sub>t</sub>} are computed offline once.
 - Online computation requires:
   - updating the posterior mean,
-  - looking up r_t,
+  - looking up r<sub>t</sub>,
   - one subtraction.
 
 This yields an efficient implementation of Gittins index policies.
