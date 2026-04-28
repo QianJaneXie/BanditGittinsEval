@@ -169,6 +169,27 @@ Update index:
 
 ---
 
+### Closed-form posterior (and an equivalent per-cell view)
+
+Under the Gaussian conjugate model with prior θ ∼ **N**(μ<sub>0</sub>, v<sub>0</sub>) and observations
+Y | θ ∼ **N**(θ, τ²) (with the same τ² for every observation), the posterior after *t* observations has
+the closed form:
+
+- v<sub>t</sub> = (1 / v<sub>0</sub> + t / τ²)<sup>−1</sup>
+- μ<sub>t</sub> = v<sub>t</sub> (μ<sub>0</sub> / v<sub>0</sub> + (∑<sub>i=1</sub><sup>t</sup> Y<sub>i</sub>) / τ²)
+
+This is equivalent to applying the one-step recursion above repeatedly: the Kalman gain
+v<sub>t</sub>/(v<sub>t</sub> + τ²) changes with *t*, but the final posterior depends on the data only through
+the sufficient statistics (*t*, ∑Y<sub>i</sub>) when τ² is constant.
+
+**Batch-mean observation model vs per-cell observations.** If each step observes a batch mean
+Ȳ of *B* fresh i.i.d. per-cell draws with variance τ²<sub>cell</sub>, then
+Var(Ȳ | θ) = τ²<sub>cell</sub> / B. Thus a batch-mean noise level τ² can be viewed equivalently as a per-cell
+noise level τ²<sub>cell</sub> = B τ² (so that τ²<sub>cell</sub> / B = τ²). In particular, the common bound
+τ² = 1/(4B) corresponds to τ²<sub>cell</sub> = 1/4.
+
+---
+
 ## Summary
 
 - Batch observations → empirical mean → Gaussian approximation  
