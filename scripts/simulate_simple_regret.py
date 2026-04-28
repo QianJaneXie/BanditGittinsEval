@@ -192,7 +192,8 @@ def main() -> int:
         "--gittins-obs-noise-variance",
         type=float,
         default=None,
-        help="If omitted, uses 1/(4*B) with B=--gittins-batch-size.",
+        help="Observation noise variance τ² in Y|θ ~ N(θ, τ²). If omitted, uses 1/(4B) with "
+        "B=--gittins-batch-size.",
     )
     p.add_argument(
         "--algorithms",
