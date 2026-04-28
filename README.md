@@ -36,7 +36,9 @@ python scripts/simulate_simple_regret.py \
   --seed 0 \
   --eval-budget-fraction 0.10 \
   --batch-size 32 \
-  --gittins-batch-size 32
+  --gittins-batch-size 32 \
+  --gittins-prior-mean 0.2 \
+  --gittins-prior-variance 0.01
 ```
 
 Notes:
@@ -46,6 +48,7 @@ Notes:
   - omit `--cost-vector` to use a homogeneous cost vector of all ones (so cumulative cost equals cumulative evaluations), or
   - pass `--cost-vector <.json/.npy>` for heterogeneous costs (e.g. pricing).
 - By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
+- Set `--gittins-prior-mean` / `--gittins-prior-variance` to match your dataset/prior assumptions (e.g. GSM8K often uses \(\mathcal{N}(0.2, 0.01)\)).
 - To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
 
 Plot from the saved traces:
