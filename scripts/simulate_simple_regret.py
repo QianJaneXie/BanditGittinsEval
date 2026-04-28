@@ -258,8 +258,14 @@ def main() -> int:
             if args.gittins_obs_noise_variance is not None
             else 1.0 / (4.0 * float(B))
         )
+        # Batch observation model: user supplies τ² for the batch mean (default 1/(4B)).
+        # Convert to an equivalent per-cell variance τ²_cell = τ² * B so the per-cell DP/lookup
+        # matches the posterior updates in `gittins_index_exploration(batch_observation_model=True)`.
+        tau_sq_cell = float(tau_sq) * float(B)
         transition_stds = transition_stds_shrinking_gaussian_posterior(
-            np.float32(float(args.gittins_prior_variance)), np.float32(tau_sq), int(n_examples)
+            np.float32(float(args.gittins_prior_variance)),
+            np.float32(tau_sq_cell),
+            int(n_examples),
         )
         dp_costs_per_arm = (
             torch.tensor(per_arm_original_cost.numpy(), dtype=torch.float32)
@@ -286,6 +292,7 @@ def main() -> int:
                 "batch_size": int(B),
                 "return_mus": True,
                 "use_batch_mean_gittins_dp": False,
+                "batch_observation_model": True,
                 "roots_lookup_table": roots_torch,
             },
             seed=int(args.seed),

@@ -78,6 +78,7 @@ def gittins_index_exploration(
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     roots_lookup_table: torch.Tensor | None = None,
     force_per_observation_dp: bool = False,
+    batch_observation_model: bool = False,
 ):
     """
     One step of Gittins-index exploration on a masked observation matrix.
@@ -175,9 +176,14 @@ def gittins_index_exploration(
     t = counts.to(torch.float64)
     v0 = float(prior_variance)
     tau_sq = float(obs_noise_variance)
-    prec = (1.0 / v0) + (t / tau_sq)
+    # If observations are treated as *batch means* with variance `tau_sq = 1/(4B)`, then an
+    # equivalent per-cell model uses variance `tau_sq_cell = tau_sq * B` for each revealed entry.
+    # This keeps the posterior and the per-cell random-walk DP consistent while still letting the
+    # caller specify the batch-mean noise level.
+    tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
+    prec = (1.0 / v0) + (t / tau_sq_cell)
     v_t = 1.0 / prec
-    mus_posterior = (v_t * (float(prior_mean) / v0 + obs_sum_per_arm / tau_sq)).to(
+    mus_posterior = (v_t * (float(prior_mean) / v0 + obs_sum_per_arm / tau_sq_cell)).to(
         torch.float32
     )
     # Handle t=0 explicitly to avoid any 0/0 corner cases if user passes weird params.
@@ -193,7 +199,7 @@ def gittins_index_exploration(
     if (not use_batch_mean_gittins_dp) and (not force_per_observation_dp):
         if roots_lookup_table is None:
             transition_stds = transition_stds_shrinking_gaussian_posterior(
-                jnp.float32(prior_variance), jnp.float32(obs_noise_variance), n_examples
+                jnp.float32(prior_variance), jnp.float32(tau_sq_cell), n_examples
             )
             if arm_costs.numel() == 1 or torch.allclose(
                 arm_costs, arm_costs[0].expand_as(arm_costs)
@@ -244,7 +250,7 @@ def gittins_index_exploration(
         valid = ~torch.isnan(row)
         obs_sum = float(row[valid].sum().item())
         mu_kt, v_kt = _normal_normal_posterior(
-            prior_mean, prior_variance, obs_noise_variance, obs_sum, t
+            prior_mean, prior_variance, tau_sq_cell, obs_sum, t
         )
         c_k = float(arm_costs[k].item())
         if use_batch_mean_gittins_dp:
@@ -268,7 +274,7 @@ def gittins_index_exploration(
                     jnp.uint32(t),
                     jnp.float32(mu_kt),
                     jnp.float32(prior_variance),
-                    jnp.float32(obs_noise_variance),
+                    jnp.float32(tau_sq_cell),
                     transition_costs_per_cell,
                     jnp.uint32(n_pts),
                 )
