@@ -41,6 +41,10 @@ python scripts/simulate_simple_regret.py \
 
 Notes:
 
+- The UCB-E and Gittins batch sizes are separate flags; for a fair comparison, set them equal (as above).
+- The simulation always tracks a cumulative-cost x-axis using a **per-arm cost vector**:
+  - omit `--cost-vector` to use a homogeneous cost vector of all ones (so cumulative cost equals cumulative evaluations), or
+  - pass `--cost-vector <.json/.npy>` for heterogeneous costs (e.g. pricing).
 - By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
 - To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
 
@@ -49,7 +53,17 @@ Plot from the saved traces:
 ```bash
 python scripts/plot_simple_regret_results.py \
   --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
-  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png
+  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png \
+  --x-axis evals
+```
+
+Plot versus cumulative monetary cost (when you used a pricing cost vector):
+
+```bash
+python scripts/plot_simple_regret_results.py \
+  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins_cost.png \
+  --x-axis original_cost
 ```
 
 ## Simple regret simulation and figure: `plot_simple_regret.py`
