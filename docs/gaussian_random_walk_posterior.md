@@ -119,29 +119,21 @@ The Gaussian structure enables an efficient implementation by separating offline
 
 Since the observation noise τ² is fixed, the posterior variance evolves deterministically:
 
-\[
-v_{k,t+1} = \left(\frac{1}{v_{k,t}} + \frac{1}{\tau^2}\right)^{-1}.
-\]
+v_{t+1} = (1 / v_t + 1 / τ²)^(-1)
 
 Thus, we can precompute:
 
-\[
-v_0, v_1, v_2, \dots
-\]
+v_0, v_1, v_2, ...
 
 This induces transition variances:
 
-\[
-\sigma_t^2 = \frac{v_t^2}{v_t + \tau^2}.
-\]
+σ_t² = v_t² / (v_t + τ²)
 
 Using these, we solve the dynamic program once to compute roots:
 
-\[
-Q_t(r_t) = 0.
-\]
+Q_t(r_t) = 0
 
-The roots \(\{r_t\}\) are stored in a lookup table.
+The roots {r_t} are stored in a lookup table.
 
 ---
 
@@ -149,53 +141,36 @@ The roots \(\{r_t\}\) are stored in a lookup table.
 
 At the beginning:
 
-\[
-s_{k,0} = \mu_0, \quad \Gamma_{k,0} = s_{k,0} - r_0.
-\]
+s_{k,0} = μ_0  
+Γ_{k,0} = s_{k,0} − r_0
 
-Arms are selected via the Gittins index rule.
+Arms are selected via:
+
+A_t = argmax_k Γ_{k,n_k(t)}
 
 ---
 
 ### Online Updates
 
-After selecting an arm and observing \(Y_{t+1}\):
+After selecting an arm and observing Y_{t+1}:
 
-\[
-s_{t+1} = s_t + \eta_{t+1},
-\qquad
-\eta_{t+1} := \frac{v_t}{v_t+\tau^2}(Y_{t+1}-\mu_t).
-\]
+s_{t+1} = s_t + η_{t+1}
+
+η_{t+1} = (v_t / (v_t + τ²)) * (Y_{t+1} − μ_t)
 
 Then update the index:
 
-\[
-\Gamma_{k,t} = s_{k,t} - r_{k,t}.
-\]
+Γ_{k,t} = s_{k,t} − r_{k,t}
 
 ---
 
 ### Summary
 
-- Posterior variance updates are **deterministic and precomputed**.
-- Gittins roots \(\{r_t\}\) are computed **offline once**.
+- Posterior variance updates are deterministic and precomputed.
+- Gittins roots {r_t} are computed offline once.
 - Online computation requires:
   - updating the posterior mean,
-  - looking up \(r_t\),
-  - computing one subtraction.
+  - looking up r_t,
+  - one subtraction.
 
 This yields an efficient implementation of Gittins index policies.
-
----
-
-## Overall Interpretation
-
-- Learning is a **shrinking Gaussian random walk**.
-- The Gittins index measures **value of information**.
-- Selection is driven by **index maximization**.
-- Stopping occurs when the **highest-index arm is already completed**.
-
-This unifies:
-- Bayesian learning (posterior updates)
-- optimal stopping (Gittins index)
-- practical decision-making (selection vs recommendation)
