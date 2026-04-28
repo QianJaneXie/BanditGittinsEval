@@ -48,7 +48,7 @@ if [ -z "${WANDB_API_KEY:-}" ]; then
 fi
 
 test -x "${PYTHON}"
-test -f scripts/plot_simple_regret_single_policy_wandb.py
+test -f scripts/run_simple_regret_single_policy_wandb.py
 test -f scripts/config/GSM8KSimpleRegretSinglePolicy.yml
 test -f data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
 test -f data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json

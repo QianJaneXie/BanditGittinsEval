@@ -1,4 +1,4 @@
-program: scripts/plot_simple_regret_single_policy_wandb.py
+program: scripts/run_simple_regret_single_policy_wandb.py
 name: PIQASimpleRegretSinglePolicy
 method: grid
 
