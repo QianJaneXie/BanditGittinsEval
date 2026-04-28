@@ -1,80 +1,39 @@
 #!/usr/bin/env python3
-"""
-Per-arm evaluation rollouts aligned with ``*_traces.npz`` from ``plot_simple_regret.py``.
+"""Per-arm evaluation rollouts for traces from `simulate_simple_regret.py`.
 
-The trace bundle only stores regret curves; this script reads the sibling ``.meta.json`` (same stem
-as ``--traces``), reloads the accuracy matrix, and **re-runs** the same three policies with the same
-parameters so per-arm cumulative sample counts match the original simulation (same seed).
+This script replays the same policies on the same accuracy matrix (same seed and hyperparameters)
+and plots per-arm cumulative **batch pulls**:
 
-Imports :func:`load_gittins_cost_from_meta` from ``plot_simple_regret`` (same cost parsing as the main script). Does not use ``simulate`` from that file. When trace meta has ``budget_stops_by: cumulative_cost`` (cost-aware runs), the re-simulation stops at ``budget_max_cumulative_cost`` like ``plot_simple_regret.py``.
+- x-axis: batch iteration index (1..T)
+- y-axis: cumulative number of batches in which each arm was selected
 
-Plots one column of panels (UCB-E, UCB-E-LRF, Gittins): x = batch iteration index (step
-``1 … T``), y = cumulative **batch pulls** per arm — a batch counts once for each distinct arm that
-received at least one matrix cell in that batch (one batch can add several cells to the same arm but
-still counts as one pull for that arm).
+Only UCB-E and Gittins are supported (no LRF).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import os
 import sys
 from pathlib import Path
 from typing import Callable
+
+# Use a repo-local, writable matplotlib cache/config directory when possible.
+_repo_root = Path(__file__).resolve().parents[1]
+os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from banditeval.bandits import (
-    upper_confidence_bound_exploration,
-    upper_confidence_bound_exploration_low_rank_factorization,
-)
+from banditeval.bandits import upper_confidence_bound_exploration
 
-_repo_root = Path(__file__).resolve().parents[1]
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
-_scripts_dir = Path(__file__).resolve().parent
-if str(_scripts_dir) not in sys.path:
-    sys.path.insert(0, str(_scripts_dir))
 
-from plot_simple_regret import (  # noqa: E402
-    incumbent_from_empirical_means,
-    incumbent_from_gittins_posterior,
-    load_gittins_cost_from_meta,
-)
 from gittins_policy import gittins_index_exploration  # noqa: E402
-
-
-def make_gittins_step_with_score_cache(**gittins_kwargs):
-    """Return ``step(obs, **_)`` that reuses per-arm Gittins scores and only recomputes the last pulled arm."""
-
-    cache: dict[str, torch.Tensor | int | None] = {"scores": None, "prev_arm": None}
-
-    def step(obs: torch.Tensor, **kwargs) -> torch.Tensor | None:
-        sim_cum_eval = kwargs.pop("sim_cum_eval", None)
-        m = int(obs.shape[0])
-        scores = cache["scores"]
-        if scores is None:
-            scores = torch.full((m,), float("inf"), dtype=torch.float32)
-            cache["scores"] = scores
-            recompute_arms = None
-        else:
-            prev = cache["prev_arm"]
-            recompute_arms = None if prev is None else [int(prev)]
-
-        batch = gittins_index_exploration(
-            obs,
-            cached_scores=scores,
-            recompute_arms=recompute_arms,
-            sim_cum_eval=sim_cum_eval,
-            **gittins_kwargs,
-        )
-        if batch is not None:
-            cache["prev_arm"] = int(batch[0, 0].item())
-        return batch
-
-    return step
+from gittins_lookup import compute_roots_lookup_table  # noqa: E402
+from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 
 
 def simulate_with_batch_pull_snapshots(
@@ -84,42 +43,23 @@ def simulate_with_batch_pull_snapshots(
     step_kwargs: dict,
     seed: int,
     max_evaluations: int | None = None,
-    max_cumulative_cost: float | None = None,
-    per_arm_original_cost: torch.Tensor | None = None,
-    pass_sim_cum_eval: bool = False,
-    incumbent_fn: Callable[[torch.Tensor], int] | None = None,
-    verbose: bool = False,
-    log_prefix: str = "",
     batch_pull_snapshots: list[np.ndarray] | None = None,
-) -> tuple[list[float], list[int]]:
-    """Same loop as ``plot_simple_regret.simulate``, plus optional cumulative batch-pull snapshots."""
-    if max_evaluations is None and max_cumulative_cost is None:
-        raise ValueError("simulate_with_batch_pull_snapshots requires max_evaluations and/or max_cumulative_cost")
-    if max_cumulative_cost is not None and per_arm_original_cost is None:
-        raise ValueError("max_cumulative_cost requires per_arm_original_cost")
+) -> None:
+    """Replay policy, recording cumulative per-arm batch pulls each iteration."""
+    if max_evaluations is None:
+        raise ValueError("max_evaluations is required")
 
     torch.manual_seed(seed)
 
     obs = torch.full_like(ground_truth, float("nan"))
-    true_means = ground_truth.mean(dim=1)
-    mu_star = float(true_means.max().item())
-
-    regrets: list[float] = []
-    cum_evaluated: list[int] = []
     evaluated = 0
-    total_original_cost = 0.0
-    tag = log_prefix or "sim"
     n_arms = int(ground_truth.shape[0])
     cumulative_batch_pulls = np.zeros(n_arms, dtype=np.int64)
 
     while True:
         if max_evaluations is not None and evaluated >= max_evaluations:
             break
-        if max_cumulative_cost is not None and total_original_cost >= max_cumulative_cost:
-            break
         call_kw = dict(step_kwargs)
-        if pass_sim_cum_eval:
-            call_kw["sim_cum_eval"] = evaluated
         batch = step(obs, **call_kw)
         if batch is None:
             break
@@ -128,55 +68,11 @@ def simulate_with_batch_pull_snapshots(
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
 
-        if per_arm_original_cost is not None:
-            pulled_arm = int(row_idx[0].item())
-            unit = float(per_arm_original_cost[pulled_arm].item())
-            total_original_cost += unit * n_batch
-
-        if incumbent_fn is not None:
-            arm = incumbent_fn(obs)
-        else:
-            arm = incumbent_from_empirical_means(obs)
-        mu_sel = float(true_means[arm].item())
-        simple_regret = mu_star - mu_sel
-        regrets.append(simple_regret)
-        cum_evaluated.append(evaluated)
         if batch_pull_snapshots is not None:
             distinct_arms = {int(x) for x in row_idx.reshape(-1).tolist()}
             for k in distinct_arms:
                 cumulative_batch_pulls[k] += 1
             batch_pull_snapshots.append(cumulative_batch_pulls.copy())
-
-        if verbose:
-            distinct_arms = sorted({int(x) for x in row_idx.reshape(-1).tolist()})
-            print(
-                f"[{tag}] step {len(regrets)}: cum_eval={evaluated} "
-                f"batch_arms(distinct)={distinct_arms} incumbent_arm={arm} "
-                f"simple_regret={simple_regret:.6f}",
-                flush=True,
-            )
-
-    return regrets, cum_evaluated
-
-
-def _resolve_matrix(meta_path: Path, meta: dict, override: Path | None) -> Path:
-    if override is not None:
-        return override
-    raw = Path(meta["matrix"])
-    repo_root = meta_path.resolve().parents[2]
-    candidates = [
-        raw,
-        repo_root / "data" / "BanditEval_matrices" / raw.name,
-        repo_root / "data" / "MMLU_matrices" / raw.name,
-        repo_root / "data" / "matrices" / raw.name,
-        meta_path.parent.parent / "matrices" / raw.name,
-        repo_root / "outputs" / "matrices" / raw.name,
-    ]
-    for p in candidates:
-        if p.is_file():
-            return p
-    tried = ", ".join(str(p) for p in candidates)
-    raise FileNotFoundError(f"Accuracy matrix not found. Tried: {tried}")
 
 
 def _plot_arm_panel(
@@ -204,7 +100,7 @@ def main() -> int:
         "--traces",
         type=Path,
         required=True,
-        help="Path to *_traces.npz (uses *_traces.meta.json beside it)",
+        help="Path to .npz written by simulate_simple_regret.py",
     )
     parser.add_argument(
         "--matrix",
@@ -223,20 +119,11 @@ def main() -> int:
     if not args.traces.is_file():
         print(f"Traces not found: {args.traces}", file=sys.stderr)
         return 1
-
-    meta_path = args.traces.with_suffix(".meta.json")
-    if not meta_path.is_file():
-        print(f"Meta not found: {meta_path}", file=sys.stderr)
+    z = np.load(args.traces)
+    matrix_path = args.matrix or Path(str(np.asarray(z["matrix"]).reshape(())))
+    if not matrix_path.is_file():
+        print(f"Matrix not found: {matrix_path} (pass --matrix to override)", file=sys.stderr)
         return 1
-
-    meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    try:
-        matrix_path = _resolve_matrix(meta_path, meta, args.matrix)
-    except FileNotFoundError as e:
-        print(str(e), file=sys.stderr)
-        return 1
-
-    algorithms: list[str] = list(meta.get("algorithms", ["ucb", "lrf", "gittins"]))
     gt_np = np.load(matrix_path)
     if gt_np.ndim != 2:
         print(f"Expected 2D matrix, got {gt_np.shape}", file=sys.stderr)
@@ -244,110 +131,99 @@ def main() -> int:
 
     ground_truth = torch.tensor(gt_np, dtype=torch.float32)
     n_arms = int(ground_truth.shape[0])
-    n_cells = int(ground_truth.numel())
-    budget_evals = int(meta.get("budget_evals", max(1, int(round(float(meta["eval_budget_fraction"]) * n_cells)))))
-    seed = int(meta["seed"])
-    batch_size = int(meta["batch_size"])
-    gittins_batch_size = int(meta.get("gittins_batch_size", 20))
-    tau_sq = float(meta.get("tau_sq_gittins", 1.0 / (4.0 * gittins_batch_size)))
-    ucb_a = int(meta.get("ucb_a", 1))
-    warmup_pct = float(meta["warmup_percentage"])
-    lrf_device = str(meta.get("lrf_device", "cpu"))
-    gittins_grid = int(meta.get("gittins_grid_points", 1025))
-    try:
-        gittins_cost_tensor = load_gittins_cost_from_meta(meta, n_arms)
-    except (ValueError, OSError) as e:
-        print(f"Could not load Gittins costs from meta: {e}", file=sys.stderr)
+    budget_evals = int(np.asarray(z["budget_evals"]).reshape(()))
+    seed = int(np.asarray(z["seed"]).reshape(()))
+    ucb_batch_size = int(np.asarray(z.get("ucb_batch_size", 32)).reshape(()))
+    ucb_a = float(np.asarray(z.get("ucb_a", 1.0)).reshape(()))
+    gittins_batch_size = int(np.asarray(z.get("gittins_batch_size", 32)).reshape(()))
+    tau_sq_batch = float(
+        np.asarray(z.get("tau_sq_gittins", 1.0 / (4.0 * gittins_batch_size))).reshape(())
+    )
+    prior_mean = float(np.asarray(z.get("gittins_prior_mean", 0.5)).reshape(()))
+    prior_variance = float(np.asarray(z.get("gittins_prior_variance", 0.04)).reshape(()))
+    cost_scaling_factor = float(np.asarray(z.get("cost_scaling_factor", 1e-4)).reshape(()))
+    cost_per_arm_original = np.asarray(
+        z.get("cost_per_arm_original", np.ones(n_arms, dtype=np.float64))
+    ).reshape(-1)
+    if cost_per_arm_original.shape != (n_arms,):
+        print(
+            f"cost_per_arm_original must have shape ({n_arms},), got {cost_per_arm_original.shape}",
+            file=sys.stderr,
+        )
         return 1
-    gittins_cost_scale = float(meta.get("gittins_cost_scale", 1.0))
-    gittins_prior_mean = float(meta.get("gittins_prior_mean", 0.2))
-    gittins_prior_variance = float(meta.get("gittins_prior_variance", 0.01))
-    gittins_per_cell_dp = bool(meta.get("gittins_per_cell_dp", False))
-
-    budget_stops_by = str(meta.get("budget_stops_by", "evaluations"))
-    if budget_stops_by == "cumulative_cost" and meta.get("gittins_cost_mode") == "aware":
-        bmc = float(meta["budget_max_cumulative_cost"])
-        sim_kwargs = {
-            "seed": seed,
-            "max_evaluations": budget_evals,
-            "max_cumulative_cost": bmc,
-            "per_arm_original_cost": gittins_cost_tensor,
-            "verbose": False,
-        }
-    else:
-        sim_kwargs = {
-            "seed": seed,
-            "max_evaluations": budget_evals,
-            "verbose": False,
-        }
+    cost_tensor = torch.tensor(cost_per_arm_original, dtype=torch.float64)
 
     cmap = plt.colormaps["turbo"]
     colors = cmap(np.linspace(0.0, 1.0, n_arms, endpoint=False))
 
     panels: list[tuple[str, list[int], np.ndarray]] = []
 
-    if "ucb" in algorithms:
-        snaps: list[np.ndarray] = []
-        _, _ = simulate_with_batch_pull_snapshots(
-            ground_truth,
-            upper_confidence_bound_exploration,
-            step_kwargs={"a": ucb_a, "batch_size": batch_size, "return_mus": False},
-            log_prefix="ucb",
-            batch_pull_snapshots=snaps,
-            **sim_kwargs,
-        )
+    # UCB-E rollout.
+    snaps: list[np.ndarray] = []
+    simulate_with_batch_pull_snapshots(
+        ground_truth,
+        upper_confidence_bound_exploration,
+        step_kwargs={"a": ucb_a, "batch_size": ucb_batch_size, "return_mus": False},
+        seed=seed,
+        max_evaluations=budget_evals,
+        batch_pull_snapshots=snaps,
+    )
+    if snaps:
         it = list(range(1, len(snaps) + 1))
         panels.append(("UCB-E", it, np.stack(snaps, axis=0)))
 
-    if "lrf" in algorithms:
-        snaps = []
-        _, _ = simulate_with_batch_pull_snapshots(
-            ground_truth,
-            upper_confidence_bound_exploration_low_rank_factorization,
-            step_kwargs={
-                "a": ucb_a,
-                "batch_size": batch_size,
-                "return_mus": False,
-                "warmup_percentage": warmup_pct,
-                "device": lrf_device,
-            },
-            log_prefix="lrf",
-            batch_pull_snapshots=snaps,
-            **sim_kwargs,
-        )
-        it = list(range(1, len(snaps) + 1))
-        panels.append(("UCB-E-LRF (incl. warm-up)", it, np.stack(snaps, axis=0)))
+    # Gittins rollout (per-cell DP with batch-observation model).
+    snaps = []
+    B = int(gittins_batch_size)
+    tau_sq_cell = float(tau_sq_batch) * float(B)
+    transition_stds = transition_stds_shrinking_gaussian_posterior(
+        np.float32(prior_variance), np.float32(tau_sq_cell), int(ground_truth.shape[1])
+    )
+    dp_costs_per_arm = np.asarray(cost_per_arm_original * cost_scaling_factor, dtype=np.float32)
+    roots = compute_roots_lookup_table(
+        transition_stds=transition_stds,
+        costs_per_arm=dp_costs_per_arm,
+        n_points=int(2**10 + 1),
+    )
+    roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
+    cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
+    prev_arm: int | None = None
 
-    if "gittins" in algorithms:
-        snaps = []
-        _, _ = simulate_with_batch_pull_snapshots(
-            ground_truth,
-            make_gittins_step_with_score_cache(
-                batch_size=gittins_batch_size,
-                return_mus=False,
-                obs_noise_variance=tau_sq,
-                cost_per_transition=gittins_cost_tensor,
-                cost_scaling_factor=gittins_cost_scale,
-                n_gittins_grid_points=gittins_grid,
-                prior_mean=gittins_prior_mean,
-                prior_variance=gittins_prior_variance,
-                use_batch_mean_gittins_dp=not gittins_per_cell_dp,
-            ),
-            step_kwargs={},
-            log_prefix="gittins",
-            batch_pull_snapshots=snaps,
-            pass_sim_cum_eval=True,
-            incumbent_fn=lambda obs: incumbent_from_gittins_posterior(
-                obs,
-                prior_mean=gittins_prior_mean,
-                prior_variance=gittins_prior_variance,
-                tau_sq=tau_sq,
-            ),
-            **sim_kwargs,
+    def gittins_step(obs: torch.Tensor, **_) -> torch.Tensor | None:
+        nonlocal prev_arm
+        recompute = None if prev_arm is None else [prev_arm]
+        batch = gittins_index_exploration(
+            obs,
+            prior_mean=prior_mean,
+            prior_variance=prior_variance,
+            obs_noise_variance=tau_sq_batch,
+            cost_per_transition=cost_tensor,
+            cost_scaling_factor=cost_scaling_factor,
+            n_gittins_grid_points=int(2**10 + 1),
+            batch_size=B,
+            return_mus=False,
+            use_batch_mean_gittins_dp=False,
+            batch_observation_model=True,
+            allow_early_stop=False,
+            roots_lookup_table=roots_torch,
+            cached_scores=cached_scores,
+            recompute_arms=recompute,
         )
+        if batch is not None:
+            prev_arm = int(batch[0, 0].item())
+        return batch
+
+    simulate_with_batch_pull_snapshots(
+        ground_truth,
+        gittins_step,
+        step_kwargs={},
+        seed=seed,
+        max_evaluations=budget_evals,
+        batch_pull_snapshots=snaps,
+    )
+    if snaps:
         it = list(range(1, len(snaps) + 1))
-        mode = "per-cell DP" if gittins_per_cell_dp else "batch-mean DP"
-        panels.append((f"Gittins ({mode})", it, np.stack(snaps, axis=0)))
+        panels.append(("Gittins", it, np.stack(snaps, axis=0)))
 
     if not panels:
         print("No algorithms in meta to plot.", file=sys.stderr)
@@ -360,14 +236,7 @@ def main() -> int:
     for ax, (title, xs, counts) in zip(axes, panels):
         _plot_arm_panel(ax, xs, counts, title, colors)
 
-    if budget_stops_by == "cumulative_cost" and meta.get("gittins_cost_mode") == "aware":
-        bmc = float(meta.get("budget_max_cumulative_cost", 0.0))
-        budget_line = (
-            f"seed={seed}, budget=stop at cum. cost {bmc:.4g} (cap from meta), ≤{budget_evals} evals, "
-            f"{n_arms} arms (re-run from trace meta)"
-        )
-    else:
-        budget_line = f"seed={seed}, budget={budget_evals} evals, {n_arms} arms (re-run from trace meta)"
+    budget_line = f"seed={seed}, budget={budget_evals} evals, {n_arms} arms (re-run from traces)"
     fig.suptitle(
         f"Per-arm cumulative batch pulls vs iteration — {matrix_path.name}\n{budget_line}",
         fontsize=11,
