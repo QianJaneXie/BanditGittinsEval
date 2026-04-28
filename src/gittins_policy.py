@@ -19,7 +19,7 @@ from gittins_shrinking_posterior import (
     compute_gittins_shrinking_posterior_walk_per_observation,
     transition_stds_shrinking_gaussian_posterior,
 )
-from gittins_lookup import compute_roots_lookup_table, _compute_roots_for_random_walk
+from gittins_lookup import compute_roots_lookup_table
 
 
 def _cost_vector_per_arm(
@@ -167,15 +167,27 @@ def gittins_index_exploration(
         observed_matrix = observed_matrix.cpu()
 
     m_methods, n_examples = observed_matrix.shape
-    mus = observed_matrix.nanmean(dim=1)
     counts = (~observed_matrix.isnan()).sum(1)
     completely_sensed_mask = counts == n_examples
+    # Posterior mean for recommendation: E[θ_k | D_t] under the normal-normal model.
+    # This differs from the empirical nanmean early on because it shrinks toward the prior.
+    obs_sum_per_arm = torch.nan_to_num(observed_matrix, nan=0.0).sum(dim=1).to(torch.float64)
+    t = counts.to(torch.float64)
+    v0 = float(prior_variance)
+    tau_sq = float(obs_noise_variance)
+    prec = (1.0 / v0) + (t / tau_sq)
+    v_t = 1.0 / prec
+    mus_posterior = (v_t * (float(prior_mean) / v0 + obs_sum_per_arm / tau_sq)).to(
+        torch.float32
+    )
+    # Handle t=0 explicitly to avoid any 0/0 corner cases if user passes weird params.
+    mus_posterior[counts == 0] = float(prior_mean)
 
     if completely_sensed_mask.sum() == m_methods:
-        return (None, mus) if return_mus else None
+        return (None, mus_posterior) if return_mus else None
 
     arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
-    n_pts = jnp.uint32(int(n_gittins_grid_points))
+    n_pts = int(n_gittins_grid_points)
 
     # Per-observation mode: always use a lookup table unless explicitly forced to run the DP.
     if (not use_batch_mean_gittins_dp) and (not force_per_observation_dp):
@@ -247,7 +259,7 @@ def gittins_index_exploration(
                 int(batch_size),
                 remaining,
                 transition_costs_bm,
-                n_pts,
+                jnp.uint32(n_pts),
             )
         else:
             if force_per_observation_dp:
@@ -258,7 +270,7 @@ def gittins_index_exploration(
                     jnp.float32(prior_variance),
                     jnp.float32(obs_noise_variance),
                     transition_costs_per_cell,
-                    n_pts,
+                    jnp.uint32(n_pts),
                 )
             else:
                 # Always-lookup path: index = mu_t - root[t].
@@ -269,7 +281,7 @@ def gittins_index_exploration(
 
     for k in range(m_methods):
         if completely_sensed_mask[k]:
-            scores[k] = float(mus[k].item())
+            scores[k] = float(mus_posterior[k].item())
 
     best_method_index = int(torch.argmax(scores).item())
     winner_complete = bool(completely_sensed_mask[best_method_index])
@@ -284,11 +296,11 @@ def gittins_index_exploration(
 
     if winner_complete:
         if allow_early_stop:
-            return (None, mus) if return_mus else None
+            return (None, mus_posterior) if return_mus else None
         scores_eff = scores.clone()
         scores_eff[completely_sensed_mask] = float("-inf")
         if not torch.isfinite(scores_eff).any():
-            return (None, mus) if return_mus else None
+            return (None, mus_posterior) if return_mus else None
         best_method_index = int(torch.argmax(scores_eff).item())
 
     unobserved_column_indices = (
@@ -305,5 +317,5 @@ def gittins_index_exploration(
     )
 
     if return_mus:
-        return batch, mus
+        return batch, mus_posterior
     return batch
