@@ -13,6 +13,45 @@ pip install -e .
 
 Dependencies include `banditeval`, `torch`, `matplotlib`, and `jax` (see `pyproject.toml`).
 
+## Simple regret (recommended workflow): simulate + plot
+
+For most experiments, it’s easier to **separate simulation from plotting**:
+
+- `scripts/simulate_simple_regret.py`: runs exploration and writes a `.npz` bundle (no plotting).
+- `scripts/plot_simple_regret_results.py`: loads that `.npz` and generates the figure.
+
+Only **two algorithms** are supported here for now:
+
+- **UCB-E**: arm **selection** uses the UCB bound; arm **recommendation** uses the row **empirical mean**.
+- **Gittins**: arm **selection** uses the Gittins **index**; arm **recommendation** uses the **posterior mean** \(E[\theta_k \mid D_t]\) under the normal–normal model.
+
+### Example: GSM8K matrix (`gsm8k_1_samples_various_models_seed1.npy`)
+
+Simulate and save traces:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --out outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 32 \
+  --gittins-batch-size 32
+```
+
+Notes:
+
+- By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
+- To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
+
+Plot from the saved traces:
+
+```bash
+python scripts/plot_simple_regret_results.py \
+  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png
+```
+
 ## Simple regret simulation and figure: `plot_simple_regret.py`
 
 Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens for the bundled GSM8K configurations file) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
