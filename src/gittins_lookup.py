@@ -15,12 +15,11 @@ from jaxtyping import Array, Float, Scalar, UInt
 from q_estimation import tabular_q_estimate
 
 
-@jax.jit
 def _compute_roots_for_random_walk(
     *,
     transition_stds: Float[Array, " n_transitions"],
     transition_costs: Float[Array, " n_transitions"],
-    n_points: UInt[Scalar, ""],
+    n_points: int,
 ) -> tuple[Float[Array, " n_points"], Float[Array, " n_transitions+1"]]:
     """Return `(s_grid, roots)` for all stages 0..T.
 
@@ -54,7 +53,7 @@ def compute_roots_lookup_table(
     *,
     transition_stds: Float[Array, " n_transitions"],
     costs_per_arm: Float[Array, " n_arms"] | Float[Scalar, ""],
-    n_points: UInt[Scalar, ""],
+    n_points: int,
 ) -> Float[Array, " n_arms n_transitions+1"]:
     """Compute per-arm root lookup tables for stages 0..T.
 
@@ -64,11 +63,17 @@ def compute_roots_lookup_table(
     """
     n_transitions = int(transition_stds.shape[0])
 
+    n_points = int(n_points)
     costs_per_arm_arr = jnp.asarray(costs_per_arm, dtype=jnp.float32).reshape(-1)
+
+    # `n_points` must be static for `jnp.linspace` inside the DP grid construction.
+    _roots_for_random_walk_jit = jax.jit(
+        _compute_roots_for_random_walk, static_argnames=("n_points",)
+    )
 
     def roots_for_one(cost: Float[Scalar, ""]) -> Float[Array, " n_transitions+1"]:
         transition_costs = jnp.full((n_transitions,), cost, dtype=jnp.float32)
-        _, roots = _compute_roots_for_random_walk(
+        _, roots = _roots_for_random_walk_jit(
             transition_stds=transition_stds,
             transition_costs=transition_costs,
             n_points=n_points,
