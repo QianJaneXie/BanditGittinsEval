@@ -36,6 +36,8 @@ class Trace:
     regret: list[float]
     recommended_arm: list[int]
     recommended_mean: list[float]
+    stop_cum_eval: int | None = None
+    stop_cum_original_cost: float | None = None
 
 
 def _recommend_from_means(mus: torch.Tensor) -> int:
@@ -57,6 +59,8 @@ def simulate_simple_regret(
     seed: int,
     max_evaluations: int,
     per_arm_original_cost: torch.Tensor,
+    pass_sim_cum_eval: bool = False,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
 ) -> Trace:
     torch.manual_seed(int(seed))
     obs = torch.full_like(ground_truth, float("nan"))
@@ -70,9 +74,24 @@ def simulate_simple_regret(
     rec_mean: list[float] = []
     evaluated = 0
     total_original_cost = 0.0
+    stop_cum_eval: int | None = None
+    stop_cum_original_cost: float | None = None
 
     while evaluated < max_evaluations:
-        out = step(obs, **step_kwargs)
+        call_kw = dict(step_kwargs)
+        if pass_sim_cum_eval:
+            call_kw["sim_cum_eval"] = int(evaluated)
+        if natural_stop_cum_eval_holder is not None:
+            call_kw["natural_stop_cum_eval_holder"] = natural_stop_cum_eval_holder
+        out = step(obs, **call_kw)
+        if (
+            stop_cum_eval is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+        ):
+            stop_cum_eval = int(natural_stop_cum_eval_holder[0])
+            stop_cum_original_cost = float(total_original_cost)
         if out is None:
             break
         if isinstance(out, tuple):
@@ -108,6 +127,8 @@ def simulate_simple_regret(
         regret=regrets,
         recommended_arm=rec_arm,
         recommended_mean=rec_mean,
+        stop_cum_eval=stop_cum_eval,
+        stop_cum_original_cost=stop_cum_original_cost,
     )
 
 
@@ -220,6 +241,11 @@ def main() -> int:
         "n_examples": int(n_examples),
         "budget_evals": int(max_evaluations),
         "cost_scaling_factor": float(args.cost_scaling_factor),
+        "cost_per_arm_original": np.asarray(per_arm_original_cost.numpy(), dtype=np.float64),
+        "ucb_a": float(args.ucb_a),
+        "ucb_batch_size": int(args.batch_size),
+        "gittins_prior_mean": float(args.gittins_prior_mean),
+        "gittins_prior_variance": float(args.gittins_prior_variance),
     }
 
     if "ucb" in args.algorithms:
@@ -277,6 +303,7 @@ def main() -> int:
             n_points=int(2**10 + 1),
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
+        stop_holder: list[int | None] = [None]
 
         tr = simulate_simple_regret(
             ground_truth=ground_truth,
@@ -294,10 +321,13 @@ def main() -> int:
                 "use_batch_mean_gittins_dp": False,
                 "batch_observation_model": True,
                 "roots_lookup_table": roots_torch,
+                "allow_early_stop": False,
             },
             seed=int(args.seed),
             max_evaluations=max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
+            pass_sim_cum_eval=True,
+            natural_stop_cum_eval_holder=stop_holder,
         )
         out.update(
             gittins_x=np.asarray(tr.x, dtype=np.int32),
@@ -307,6 +337,11 @@ def main() -> int:
             gittins_recommended_mean=np.asarray(tr.recommended_mean, dtype=np.float32),
             tau_sq_gittins=np.asarray(tau_sq, dtype=np.float32),
             gittins_batch_size=np.asarray(B, dtype=np.int32),
+            gittins_stop_cum_eval=np.asarray(-1 if tr.stop_cum_eval is None else tr.stop_cum_eval, dtype=np.int32),
+            gittins_stop_cum_original_cost=np.asarray(
+                -1.0 if tr.stop_cum_original_cost is None else tr.stop_cum_original_cost,
+                dtype=np.float64,
+            ),
         )
     else:
         out.update(
@@ -315,6 +350,8 @@ def main() -> int:
             gittins_regret=np.asarray([], dtype=np.float32),
             gittins_recommended_arm=np.asarray([], dtype=np.int32),
             gittins_recommended_mean=np.asarray([], dtype=np.float32),
+            gittins_stop_cum_eval=np.asarray(-1, dtype=np.int32),
+            gittins_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

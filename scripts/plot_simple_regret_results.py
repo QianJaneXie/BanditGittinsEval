@@ -58,6 +58,23 @@ def main() -> int:
 
     plt.grid(True, alpha=0.3)
     plt.legend()
+    # Nominal stopping time (Gittins): first step where the argmax-index arm was already complete.
+    if "gittins_stop_cum_eval" in z.files:
+        stop_eval = int(np.asarray(z["gittins_stop_cum_eval"]).reshape(()))
+        if stop_eval >= 0:
+            if args.x_axis == "original_cost" and "gittins_stop_cum_original_cost" in z.files:
+                stop_x = float(np.asarray(z["gittins_stop_cum_original_cost"]).reshape(()))
+            else:
+                stop_x = float(stop_eval)
+            plt.axvline(
+                stop_x,
+                color="C1",
+                linestyle="--",
+                alpha=0.85,
+                linewidth=1.2,
+                label="Gittins nominal stop",
+            )
+            plt.legend()
     plt.tight_layout()
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
