@@ -17,7 +17,9 @@ import torch
 from gittins_shrinking_posterior import (
     compute_gittins_shrinking_posterior_walk_batch_mean,
     compute_gittins_shrinking_posterior_walk_per_observation,
+    transition_stds_shrinking_gaussian_posterior,
 )
+from gittins_lookup import compute_roots_lookup_table
 
 
 def _cost_vector_per_arm(
@@ -74,6 +76,9 @@ def gittins_index_exploration(
     allow_early_stop: bool = True,
     sim_cum_eval: int | None = None,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
+    roots_lookup_table: torch.Tensor | None = None,
+    force_per_observation_dp: bool = False,
+    batch_observation_model: bool = False,
 ):
     """
     One step of Gittins-index exploration on a masked observation matrix.
@@ -163,15 +168,64 @@ def gittins_index_exploration(
         observed_matrix = observed_matrix.cpu()
 
     m_methods, n_examples = observed_matrix.shape
-    mus = observed_matrix.nanmean(dim=1)
     counts = (~observed_matrix.isnan()).sum(1)
     completely_sensed_mask = counts == n_examples
+    # Posterior mean for recommendation: μ_{k,t} = E[θ_k | D_t] under the normal–normal model
+    # (Gaussian prior on θ_k, Gaussian observation noise).
+    obs_sum_per_arm = torch.nan_to_num(observed_matrix, nan=0.0).sum(dim=1).to(torch.float64)
+    t = counts.to(torch.float64)
+    v0 = float(prior_variance)
+    tau_sq = float(obs_noise_variance)
+    # If observations are treated as *batch means* with variance `tau_sq = 1/(4B)`, then an
+    # equivalent per-cell model uses variance `tau_sq_cell = tau_sq * B` for each revealed entry.
+    # This keeps the posterior and the per-cell random-walk DP consistent while still letting the
+    # caller specify the batch-mean noise level.
+    tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
+    prec = (1.0 / v0) + (t / tau_sq_cell)
+    v_t = 1.0 / prec
+    mus_posterior = (v_t * (float(prior_mean) / v0 + obs_sum_per_arm / tau_sq_cell)).to(
+        torch.float32
+    )
+    # Handle t=0 explicitly to avoid any 0/0 corner cases if user passes weird params.
+    mus_posterior[counts == 0] = float(prior_mean)
 
     if completely_sensed_mask.sum() == m_methods:
-        return (None, mus) if return_mus else None
+        return (None, mus_posterior) if return_mus else None
 
     arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
-    n_pts = jnp.uint32(int(n_gittins_grid_points))
+    n_pts = int(n_gittins_grid_points)
+
+    # Per-observation mode: always use a lookup table unless explicitly forced to run the DP.
+    if (not use_batch_mean_gittins_dp) and (not force_per_observation_dp):
+        if roots_lookup_table is None:
+            transition_stds = transition_stds_shrinking_gaussian_posterior(
+                jnp.float32(prior_variance), jnp.float32(tau_sq_cell), n_examples
+            )
+            if arm_costs.numel() == 1 or torch.allclose(
+                arm_costs, arm_costs[0].expand_as(arm_costs)
+            ):
+                costs_per_arm = jnp.float32(float(arm_costs[0].item()))
+                roots_all = compute_roots_lookup_table(
+                    transition_stds=transition_stds,
+                    costs_per_arm=costs_per_arm,
+                    n_points=n_pts,
+                )
+            else:
+                arm_costs_jnp = jnp.asarray(arm_costs.numpy(), dtype=jnp.float32)
+                roots_all = compute_roots_lookup_table(
+                    transition_stds=transition_stds,
+                    costs_per_arm=arm_costs_jnp,
+                    n_points=n_pts,
+                )
+            roots_lookup_table = torch.from_numpy(jax.device_get(roots_all)).to(torch.float32)
+        # Normalize expected shapes: keep a 2D table (n_roots_arms, T+1).
+        if roots_lookup_table.ndim == 1:
+            roots_lookup_table = roots_lookup_table.unsqueeze(0)
+        if roots_lookup_table.shape[-1] != (n_examples + 1):
+            raise ValueError(
+                "roots_lookup_table must have last dimension n_examples+1; "
+                f"got {tuple(roots_lookup_table.shape)}, n_examples={n_examples}"
+            )
 
     if cached_scores is None:
         scores = torch.full((m_methods,), float("inf"), dtype=torch.float32)
@@ -196,7 +250,7 @@ def gittins_index_exploration(
         valid = ~torch.isnan(row)
         obs_sum = float(row[valid].sum().item())
         mu_kt, v_kt = _normal_normal_posterior(
-            prior_mean, prior_variance, obs_noise_variance, obs_sum, t
+            prior_mean, prior_variance, tau_sq_cell, obs_sum, t
         )
         c_k = float(arm_costs[k].item())
         if use_batch_mean_gittins_dp:
@@ -211,23 +265,29 @@ def gittins_index_exploration(
                 int(batch_size),
                 remaining,
                 transition_costs_bm,
-                n_pts,
+                jnp.uint32(n_pts),
             )
         else:
-            transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
-            g = compute_gittins_shrinking_posterior_walk_per_observation(
-                jnp.uint32(t),
-                jnp.float32(mu_kt),
-                jnp.float32(prior_variance),
-                jnp.float32(obs_noise_variance),
-                transition_costs_per_cell,
-                n_pts,
-            )
+            if force_per_observation_dp:
+                transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
+                g = compute_gittins_shrinking_posterior_walk_per_observation(
+                    jnp.uint32(t),
+                    jnp.float32(mu_kt),
+                    jnp.float32(prior_variance),
+                    jnp.float32(tau_sq_cell),
+                    transition_costs_per_cell,
+                    jnp.uint32(n_pts),
+                )
+            else:
+                # Always-lookup path: index = mu_t - root[t].
+                k_roots = min(k, roots_lookup_table.shape[0] - 1)
+                root_t = float(roots_lookup_table[k_roots, t].item())
+                g = jnp.float32(mu_kt) - jnp.float32(root_t)
         scores[k] = float(jax.device_get(g))
 
     for k in range(m_methods):
         if completely_sensed_mask[k]:
-            scores[k] = float(mus[k].item())
+            scores[k] = float(mus_posterior[k].item())
 
     best_method_index = int(torch.argmax(scores).item())
     winner_complete = bool(completely_sensed_mask[best_method_index])
@@ -242,11 +302,11 @@ def gittins_index_exploration(
 
     if winner_complete:
         if allow_early_stop:
-            return (None, mus) if return_mus else None
+            return (None, mus_posterior) if return_mus else None
         scores_eff = scores.clone()
         scores_eff[completely_sensed_mask] = float("-inf")
         if not torch.isfinite(scores_eff).any():
-            return (None, mus) if return_mus else None
+            return (None, mus_posterior) if return_mus else None
         best_method_index = int(torch.argmax(scores_eff).item())
 
     unobserved_column_indices = (
@@ -263,5 +323,5 @@ def gittins_index_exploration(
     )
 
     if return_mus:
-        return batch, mus
+        return batch, mus_posterior
     return batch

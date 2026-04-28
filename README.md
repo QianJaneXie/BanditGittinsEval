@@ -13,6 +13,62 @@ pip install -e .
 
 Dependencies include `banditeval`, `torch`, `matplotlib`, and `jax` (see `pyproject.toml`).
 
+## Simple regret (recommended workflow): simulate + plot
+
+For most experiments, it’s easier to **separate simulation from plotting**:
+
+- `scripts/simulate_simple_regret.py`: runs exploration and writes a `.npz` bundle (no plotting).
+- `scripts/plot_simple_regret_results.py`: loads that `.npz` and generates the figure.
+
+Only **two algorithms** are supported here for now:
+
+- **UCB-E**: arm **selection** uses the UCB bound; arm **recommendation** uses the row **empirical mean**.
+- **Gittins**: arm **selection** uses the Gittins **index**; arm **recommendation** uses the **posterior mean** \(E[\theta_k \mid D_t]\) under the normal–normal model.
+
+### Example: GSM8K matrix (`gsm8k_1_samples_various_models_seed1.npy`)
+
+Simulate and save traces:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --out outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 32 \
+  --gittins-batch-size 32 \
+  --gittins-prior-mean 0.2 \
+  --gittins-prior-variance 0.01
+```
+
+Notes:
+
+- The UCB-E and Gittins batch sizes are separate flags; for a fair comparison, set them equal (as above).
+- The simulation always tracks a cumulative-cost x-axis using a **per-arm cost vector**:
+  - omit `--cost-vector` to use a homogeneous cost vector of all ones (so cumulative cost equals cumulative evaluations), or
+  - pass `--cost-vector <.json/.npy>` for heterogeneous costs (e.g. pricing).
+- By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
+- Set `--gittins-prior-mean` / `--gittins-prior-variance` to match your dataset/prior assumptions (e.g. GSM8K often uses \(\mathcal{N}(0.2, 0.01)\)).
+- To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
+
+Plot from the saved traces:
+
+```bash
+python scripts/plot_simple_regret_results.py \
+  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png \
+  --x-axis evals
+```
+
+Plot versus cumulative monetary cost (when you used a pricing cost vector):
+
+```bash
+python scripts/plot_simple_regret_results.py \
+  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins_cost.png \
+  --x-axis original_cost
+```
+
 ## Simple regret simulation and figure: `plot_simple_regret.py`
 
 Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens for the bundled GSM8K configurations file) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
