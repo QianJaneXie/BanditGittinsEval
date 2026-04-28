@@ -17,7 +17,9 @@ import torch
 from gittins_shrinking_posterior import (
     compute_gittins_shrinking_posterior_walk_batch_mean,
     compute_gittins_shrinking_posterior_walk_per_observation,
+    transition_stds_shrinking_gaussian_posterior,
 )
+from gittins_lookup import compute_roots_lookup_table, _compute_roots_for_random_walk
 
 
 def _cost_vector_per_arm(
@@ -74,6 +76,8 @@ def gittins_index_exploration(
     allow_early_stop: bool = True,
     sim_cum_eval: int | None = None,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
+    roots_lookup_table: torch.Tensor | None = None,
+    force_per_observation_dp: bool = False,
 ):
     """
     One step of Gittins-index exploration on a masked observation matrix.
@@ -173,6 +177,38 @@ def gittins_index_exploration(
     arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
     n_pts = jnp.uint32(int(n_gittins_grid_points))
 
+    # Per-observation mode: always use a lookup table unless explicitly forced to run the DP.
+    if (not use_batch_mean_gittins_dp) and (not force_per_observation_dp):
+        if roots_lookup_table is None:
+            transition_stds = transition_stds_shrinking_gaussian_posterior(
+                jnp.float32(prior_variance), jnp.float32(obs_noise_variance), n_examples
+            )
+            if arm_costs.numel() == 1 or torch.allclose(
+                arm_costs, arm_costs[0].expand_as(arm_costs)
+            ):
+                costs_per_arm = jnp.float32(float(arm_costs[0].item()))
+                roots_all = compute_roots_lookup_table(
+                    transition_stds=transition_stds,
+                    costs_per_arm=costs_per_arm,
+                    n_points=n_pts,
+                )
+            else:
+                arm_costs_jnp = jnp.asarray(arm_costs.numpy(), dtype=jnp.float32)
+                roots_all = compute_roots_lookup_table(
+                    transition_stds=transition_stds,
+                    costs_per_arm=arm_costs_jnp,
+                    n_points=n_pts,
+                )
+            roots_lookup_table = torch.from_numpy(jax.device_get(roots_all)).to(torch.float32)
+        # Normalize expected shapes: keep a 2D table (n_roots_arms, T+1).
+        if roots_lookup_table.ndim == 1:
+            roots_lookup_table = roots_lookup_table.unsqueeze(0)
+        if roots_lookup_table.shape[-1] != (n_examples + 1):
+            raise ValueError(
+                "roots_lookup_table must have last dimension n_examples+1; "
+                f"got {tuple(roots_lookup_table.shape)}, n_examples={n_examples}"
+            )
+
     if cached_scores is None:
         scores = torch.full((m_methods,), float("inf"), dtype=torch.float32)
         arm_indices = range(m_methods)
@@ -214,15 +250,21 @@ def gittins_index_exploration(
                 n_pts,
             )
         else:
-            transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
-            g = compute_gittins_shrinking_posterior_walk_per_observation(
-                jnp.uint32(t),
-                jnp.float32(mu_kt),
-                jnp.float32(prior_variance),
-                jnp.float32(obs_noise_variance),
-                transition_costs_per_cell,
-                n_pts,
-            )
+            if force_per_observation_dp:
+                transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
+                g = compute_gittins_shrinking_posterior_walk_per_observation(
+                    jnp.uint32(t),
+                    jnp.float32(mu_kt),
+                    jnp.float32(prior_variance),
+                    jnp.float32(obs_noise_variance),
+                    transition_costs_per_cell,
+                    n_pts,
+                )
+            else:
+                # Always-lookup path: index = mu_t - root[t].
+                k_roots = min(k, roots_lookup_table.shape[0] - 1)
+                root_t = float(roots_lookup_table[k_roots, t].item())
+                g = jnp.float32(mu_kt) - jnp.float32(root_t)
         scores[k] = float(jax.device_get(g))
 
     for k in range(m_methods):
