@@ -169,8 +169,8 @@ def gittins_index_exploration(
     m_methods, n_examples = observed_matrix.shape
     counts = (~observed_matrix.isnan()).sum(1)
     completely_sensed_mask = counts == n_examples
-    # Posterior mean for recommendation: E[θ_k | D_t] under the normal-normal model.
-    # This differs from the empirical nanmean early on because it shrinks toward the prior.
+    # Posterior mean for recommendation: μ_{k,t} = E[θ_k | D_t] under the normal–normal model
+    # (Gaussian prior on θ_k, Gaussian observation noise).
     obs_sum_per_arm = torch.nan_to_num(observed_matrix, nan=0.0).sum(dim=1).to(torch.float64)
     t = counts.to(torch.float64)
     v0 = float(prior_variance)
