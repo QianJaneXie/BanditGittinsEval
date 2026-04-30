@@ -5,9 +5,9 @@
 #SBATCH --job-name=wandb_gittins_eval
 #SBATCH --output=slurm_logs/wandb_agent_%A_%a.out
 #SBATCH --error=slurm_logs/wandb_agent_%A_%a.err
-#SBATCH --time=48:00:00
+#SBATCH --time=1:00:00
 #SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
+#SBATCH --mem=4G
 #SBATCH --array=0-999%1000
 
 set -euo pipefail
