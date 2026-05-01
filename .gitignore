@@ -189,3 +189,5 @@ outputs/matrices_csv/
 outputs/
 slurm_logs/
 wandb/
+
+.mplconfig/
