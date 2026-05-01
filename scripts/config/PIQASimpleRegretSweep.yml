@@ -1,0 +1,98 @@
+program: scripts/run_simple_regret_wandb.py
+name: PIQASimpleRegretSweep
+method: grid
+
+command:
+  - ${env}
+  - /scratch/yh6415/conda_envs/gittins/bin/python
+  - ${program}
+  - --log-step-metrics
+  - ${args}
+
+metric:
+  name: final_simple_regret
+  goal: minimize
+
+parameters:
+  dataset_tag:
+    value: piqa
+
+  matrix:
+    values:
+      - data/BanditEval_matrices/piqa_1_samples_various_models_seed1.npy
+      - data/BanditEval_matrices/piqa_1_samples_various_models_seed2.npy
+      - data/BanditEval_matrices/piqa_1_samples_various_models_seed3.npy
+      - data/BanditEval_matrices/piqa_1_samples_various_models_seed4.npy
+      - data/BanditEval_matrices/piqa_1_samples_various_models_seed5.npy
+
+  run_seed:
+    values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+
+  experiment_variant:
+    values:
+      # Baselines: batch-size sweep only
+      - ucb_B16
+      - ucb_B20
+      - ucb_B32
+      - lrf_B16
+      - lrf_B20
+      - lrf_B32
+
+      # Gittins unit-cost: all combinations of B, cost scaling, and prior
+      - gittins_unit_B16_scale1e-5_default
+      - gittins_unit_B16_scale1e-5_dataset
+      - gittins_unit_B16_scale1e-4_default
+      - gittins_unit_B16_scale1e-4_dataset
+      - gittins_unit_B16_scale1e-3_default
+      - gittins_unit_B16_scale1e-3_dataset
+
+      - gittins_unit_B20_scale1e-5_default
+      - gittins_unit_B20_scale1e-5_dataset
+      - gittins_unit_B20_scale1e-4_default
+      - gittins_unit_B20_scale1e-4_dataset
+      - gittins_unit_B20_scale1e-3_default
+      - gittins_unit_B20_scale1e-3_dataset
+
+      - gittins_unit_B32_scale1e-5_default
+      - gittins_unit_B32_scale1e-5_dataset
+      - gittins_unit_B32_scale1e-4_default
+      - gittins_unit_B32_scale1e-4_dataset
+      - gittins_unit_B32_scale1e-3_default
+      - gittins_unit_B32_scale1e-3_dataset
+
+      # Gittins cost-aware: all combinations of B, cost scaling, and prior
+      - gittins_aware_B16_scale1e-5_default
+      - gittins_aware_B16_scale1e-5_dataset
+      - gittins_aware_B16_scale1e-4_default
+      - gittins_aware_B16_scale1e-4_dataset
+      - gittins_aware_B16_scale1e-3_default
+      - gittins_aware_B16_scale1e-3_dataset
+
+      - gittins_aware_B20_scale1e-5_default
+      - gittins_aware_B20_scale1e-5_dataset
+      - gittins_aware_B20_scale1e-4_default
+      - gittins_aware_B20_scale1e-4_dataset
+      - gittins_aware_B20_scale1e-3_default
+      - gittins_aware_B20_scale1e-3_dataset
+
+      - gittins_aware_B32_scale1e-5_default
+      - gittins_aware_B32_scale1e-5_dataset
+      - gittins_aware_B32_scale1e-4_default
+      - gittins_aware_B32_scale1e-4_dataset
+      - gittins_aware_B32_scale1e-3_default
+      - gittins_aware_B32_scale1e-3_dataset
+
+  eval_budget_fraction:
+    value: 0.1
+
+  cost_vector:
+    value: data_analysis/pricing/piqa_various_models_configurations_input_price.json
+
+  wandb_project:
+    value: GittinsBanditEval
+
+  wandb_group:
+    value: piqa_simple_regret_sweep
+
+  wandb_mode:
+    value: online

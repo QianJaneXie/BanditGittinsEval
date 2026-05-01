@@ -1,0 +1,167 @@
+_wandb:
+    value:
+        cli_version: 0.26.0
+        e:
+            cofxez8p7dmdoyqvlgkf6h5k87ns2dvx:
+                args:
+                    - --dataset-tag
+                    - gsm8k
+                    - --matrix
+                    - data\BanditEval_matrices\gsm8k_1_samples_various_models_seed1.npy
+                    - --policy-variant
+                    - ucb
+                    - --run-seed
+                    - "0"
+                    - --eval-budget-fraction
+                    - "0.001"
+                    - --batch-size
+                    - "20"
+                    - --cost-vector
+                    - data_analysis\pricing\gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+                    - --wandb-mode
+                    - online
+                    - --wandb-project
+                    - GittinsBanditEval
+                    - --wandb-group
+                    - local_smoke_test
+                    - --wandb-name
+                    - local_test_ucb
+                codePath: scripts\run_simple_regret_wandb.py
+                codePathLocal: scripts\run_simple_regret_wandb.py
+                cpu_count: 16
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "484949618688"
+                        used: "201460764672"
+                email: yh6415@nyu.edu
+                executable: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\.venv\Scripts\python.exe
+                git:
+                    commit: 45d9b8744aace7e6660e89047c3ff91acd730563
+                    remote: https://github.com/QianJaneXie/GittinsBanditEval.git
+                host: LAPTOP-LV50J643
+                memory:
+                    total: "33820106752"
+                os: Windows-11-10.0.26200-SP0
+                program: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\scripts\run_simple_regret_wandb.py
+                python: CPython 3.14.0
+                root: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval
+                startedAt: "2026-04-29T21:27:51.709098Z"
+                writerId: cofxez8p7dmdoyqvlgkf6h5k87ns2dvx
+        m:
+            - "1": cum_eval
+              "6":
+                - 3
+              "7": []
+            - "1": simple_regret
+              "5": 1
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": cum_original_cost
+              "6":
+                - 3
+              "7": []
+        python_version: 3.14.0
+        t:
+            "1":
+                - 1
+                - 12
+            "2":
+                - 1
+                - 12
+            "3":
+                - 2
+                - 7
+                - 13
+                - 16
+                - 62
+            "4": 3.14.0
+            "5": 0.26.0
+            "8":
+                - 3
+            "12": 0.26.0
+            "13": windows-amd64
+batch_size:
+    value: 20
+best_seen_regret:
+    value: 0.39199998788535595
+budget_evals:
+    value: 122
+cost_scaling_factor:
+    value: 0.0001
+cost_vector:
+    value: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\data_analysis\pricing\gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+dataset_tag:
+    value: gsm8k
+eval_budget_fraction:
+    value: 0.001
+fig_cost_path:
+    value: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\outputs\wandb_simple_regret\gsm8k\ucb\local_test_ucb_regret_vs_cost.png
+fig_eval_path:
+    value: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\outputs\wandb_simple_regret\gsm8k\ucb\local_test_ucb_regret_vs_evals.png
+final_cum_eval:
+    value: 140
+final_cum_original_cost:
+    value: 42
+final_simple_regret:
+    value: 0.39199998788535595
+gittins_batch_size:
+    value: 20
+gittins_grid_points:
+    value: 1025
+gittins_obs_noise_variance:
+    value: null
+gittins_prior_mean:
+    value: 0.2
+gittins_prior_variance:
+    value: 0.01
+log_step_metrics:
+    value: false
+lrf_device:
+    value: cpu
+matrix:
+    value: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\data\BanditEval_matrices\gsm8k_1_samples_various_models_seed1.npy
+matrix_seed:
+    value: 1
+n_arms:
+    value: 122
+n_cells:
+    value: 122000
+n_examples:
+    value: 1000
+num_batches:
+    value: 7
+out_dir:
+    value: outputs\wandb_simple_regret
+policy_variant:
+    value: ucb
+prior_type:
+    value: auto
+prior_type_requested:
+    value: auto
+prior_type_resolved:
+    value: dataset
+run_seed:
+    value: 0
+tau_sq_gittins:
+    value: null
+trace_path:
+    value: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\outputs\wandb_simple_regret\gsm8k\ucb\local_test_ucb_traces.npz
+ucb_a:
+    value: 1
+wandb_entity:
+    value: null
+wandb_group:
+    value: local_smoke_test
+wandb_mode:
+    value: online
+wandb_name:
+    value: local_test_ucb
+wandb_project:
+    value: GittinsBanditEval
+warmup_evals:
+    value: 6100
+warmup_percentage:
+    value: 0.05

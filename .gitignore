@@ -185,3 +185,9 @@ outputs/matrices_csv/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+# Local experiment outputs
+outputs/
+slurm_logs/
+wandb/
+
+.mplconfig/

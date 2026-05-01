@@ -1,0 +1,166 @@
+_wandb:
+    value:
+        cli_version: 0.26.0
+        e:
+            q28tl49d8wkqdueb0rxxhf5k85xlet76:
+                args:
+                    - --dataset-tag
+                    - gsm8k
+                    - --matrix
+                    - data\BanditEval_matrices\gsm8k_1_samples_various_models_seed1.npy
+                    - --experiment-variant
+                    - ucb_B20
+                    - --run-seed
+                    - "0"
+                    - --eval-budget-fraction
+                    - "0.001"
+                    - --cost-vector
+                    - data_analysis\pricing\gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+                    - --log-step-metrics
+                    - --wandb-mode
+                    - online
+                    - --wandb-project
+                    - GittinsBanditEval
+                    - --wandb-group
+                    - local_smoke_test
+                codePath: scripts\run_simple_regret_wandb.py
+                codePathLocal: scripts\run_simple_regret_wandb.py
+                cpu_count: 16
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "484949618688"
+                        used: "201461129216"
+                email: yh6415@nyu.edu
+                executable: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\.venv\Scripts\python.exe
+                git:
+                    commit: 45d9b8744aace7e6660e89047c3ff91acd730563
+                    remote: https://github.com/QianJaneXie/GittinsBanditEval.git
+                host: LAPTOP-LV50J643
+                memory:
+                    total: "33820106752"
+                os: Windows-11-10.0.26200-SP0
+                program: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval\scripts\run_simple_regret_wandb.py
+                python: CPython 3.14.0
+                root: D:\Study\nyu2026spring\project\Efficient LLM Evaluation\GittinsBanditEval
+                startedAt: "2026-04-29T22:14:28.815178Z"
+                writerId: q28tl49d8wkqdueb0rxxhf5k85xlet76
+        m:
+            - "1": simple_regret
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": cum_eval
+              "6":
+                - 3
+              "7": []
+            - "1": cum_original_cost
+              "6":
+                - 3
+              "7": []
+            - "1": iter_step_s
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+            - "1": iter_total_s
+              "5": 2
+              "6":
+                - 1
+                - 3
+              "7": []
+        python_version: 3.14.0
+        t:
+            "1":
+                - 1
+                - 12
+            "2":
+                - 1
+                - 12
+            "3":
+                - 2
+                - 7
+                - 13
+                - 16
+                - 62
+            "4": 3.14.0
+            "5": 0.26.0
+            "8":
+                - 3
+            "12": 0.26.0
+            "13": windows-amd64
+batch_size:
+    value: 20
+budget_max_evals:
+    value: 122
+cost_mode:
+    value: baseline
+cost_scaling_factor:
+    value: 0.0001
+cost_vector:
+    value: data_analysis\pricing\gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+dataset_tag:
+    value: gsm8k
+dataset_tag_resolved:
+    value: gsm8k
+eval_budget_fraction:
+    value: 0.001
+experiment_variant:
+    value: ucb_B20
+gittins_batch_size:
+    value: 20
+gittins_grid_points:
+    value: 1025
+gittins_obs_noise_variance:
+    value: null
+gittins_prior_mean:
+    value: null
+gittins_prior_variance:
+    value: null
+log_step_metrics:
+    value: true
+lrf_device:
+    value: cpu
+matrix:
+    value: data\BanditEval_matrices\gsm8k_1_samples_various_models_seed1.npy
+matrix_seed:
+    value: "1"
+n_arms:
+    value: 122
+n_cells:
+    value: 122000
+n_examples:
+    value: 1000
+out_dir:
+    value: outputs\wandb_simple_regret
+policy_family:
+    value: ucb
+policy_variant:
+    value: ucb
+prior_mean_resolved:
+    value: 0.5
+prior_type:
+    value: default
+prior_variance_resolved:
+    value: 0.04
+raw:
+    value: ucb_B20
+run_seed:
+    value: 0
+ucb_a:
+    value: 1
+wandb_entity:
+    value: null
+wandb_group:
+    value: local_smoke_test
+wandb_mode:
+    value: online
+wandb_name:
+    value: null
+wandb_project:
+    value: GittinsBanditEval
+warmup_percentage:
+    value: 0.05
