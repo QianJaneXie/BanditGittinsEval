@@ -88,9 +88,25 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--title-size", type=float, default=18)
     p.add_argument("--label-size", type=float, default=15)
     p.add_argument("--tick-size", type=float, default=15)
-    p.add_argument("--legend-size", type=float, default=15)
-    p.add_argument("--line-width", type=float, default=2.4)
+    p.add_argument("--legend-size", type=float, default=16)
+    p.add_argument("--line-width", type=float, default=2.6)
     p.add_argument("--stop-line-width", type=float, default=1.8)
+    p.add_argument(
+        "--paper-colors",
+        dest="paper_colors",
+        action="store_true",
+        default=True,
+        help="Use paper-style colors: UCB blue, LRF purple, Gittins(default) green/teal, Gittins(dataset) orange.",
+    )
+    p.add_argument("--no-paper-colors", dest="paper_colors", action="store_false")
+    p.add_argument(
+        "--emphasize-variant",
+        default=None,
+        help="Exact experiment_variant string(s) to highlight: thicker line, higher z-order, bold legend label. Comma-separated.",
+    )
+    p.add_argument("--emphasize-line-width", type=float, default=3.4)
+    p.add_argument("--emphasize-zorder", type=float, default=5.0)
+    p.add_argument("--base-zorder", type=float, default=2.0)
     p.add_argument("--legend-loc", default="best")
     p.add_argument("--legend-ncol", type=int, default=1)
     p.add_argument("--no-short-labels", dest="short_labels", action="store_false", default=True)
@@ -458,6 +474,51 @@ def range_label(mode: str) -> str:
     return "mean"
 
 
+# Print-friendly hues aligned with common paper palettes (tab / colorblind-ish).
+_COLOR_UCB = "#1E88E5"
+_COLOR_LRF = "#7B1FA2"
+_COLOR_GITTINS_DEFAULT_PRIOR = "#43A047"
+_COLOR_GITTINS_DATASET_PRIOR = "#FB8C00"
+
+
+def _emphasized_variants(args: argparse.Namespace) -> set[str]:
+    raw = getattr(args, "emphasize_variant", None)
+    if not raw:
+        return set()
+    return {v.strip() for v in str(raw).split(",") if v.strip()}
+
+
+def variant_plot_style(variant: str, args: argparse.Namespace) -> dict[str, float | str | None]:
+    """Line color / width / z-order for a variant."""
+    lw = float(args.line_width)
+    z = float(args.base_zorder)
+    color: str | None = None
+
+    if args.paper_colors:
+        v = str(variant)
+        vl = v.lower()
+        if vl.startswith("ucb"):
+            color = _COLOR_UCB
+        elif vl.startswith("lrf"):
+            color = _COLOR_LRF
+        else:
+            info = _parse_variant_label(v)
+            if info.get("family") == "Gittins":
+                ps = info.get("prior_short", "")
+                if ps == "data":
+                    color = _COLOR_GITTINS_DATASET_PRIOR
+                elif ps == "default":
+                    color = _COLOR_GITTINS_DEFAULT_PRIOR
+        if color is None:
+            color = "#6D6D6D"
+
+    if str(variant) in _emphasized_variants(args):
+        lw = float(args.emphasize_line_width)
+        z = float(args.emphasize_zorder)
+
+    return {"color": color, "linewidth": lw, "zorder": z}
+
+
 def default_title(args: argparse.Namespace) -> str:
     dataset = (args.dataset or "All").upper()
     setting = "Cost-aware" if args.x_axis == "cum_original_cost" else "Unit-cost"
@@ -555,6 +616,8 @@ def main() -> int:
     aggregate_rows = []
     run_count_rows = []
     color_by_variant: dict[str, str] = {}
+    emphasis_legend_labels: set[str] = set()
+    emph_vars = _emphasized_variants(args)
 
     for variant in variants:
         vg = df[df[args.group_by].astype(str) == variant]
@@ -565,12 +628,32 @@ def main() -> int:
             print(f"WARNING: no plottable points for {variant}")
             continue
 
-        line = ax.plot(x_grid, mean, label=display_variant_label(variant, n_runs, args), linewidth=float(args.line_width))[0]
+        legend_label = display_variant_label(variant, n_runs, args)
+        if str(variant) in emph_vars:
+            emphasis_legend_labels.add(legend_label)
+
+        st = variant_plot_style(str(variant), args)
+        plot_kw: dict[str, float | str] = {
+            "linewidth": float(st["linewidth"]),
+            "zorder": float(st["zorder"]),
+        }
+        if st["color"] is not None:
+            plot_kw["color"] = str(st["color"])
+
+        line = ax.plot(x_grid, mean, label=legend_label, **plot_kw)[0]
         color_by_variant[variant] = line.get_color()
 
         if args.range != "none":
             band = std if args.range == "std" else stderr
-            ax.fill_between(x_grid, mean - band, mean + band, alpha=0.15, color=line.get_color())
+            ax.fill_between(
+                x_grid,
+                mean - band,
+                mean + band,
+                alpha=0.15,
+                color=line.get_color(),
+                zorder=float(st["zorder"]) - 0.5,
+                linewidth=0,
+            )
 
         for x, m, s, se, n in zip(x_grid, mean, std, stderr, n_grid):
             aggregate_rows.append(
@@ -600,14 +683,18 @@ def main() -> int:
         ax.set_ylim(args.y_limit_min if args.y_limit_min is not None else lo, args.y_limit_max if args.y_limit_max is not None else hi)
 
     ax.grid(True, alpha=0.25)
-    ax.legend(
+    leg = ax.legend(
         loc=args.legend_loc,
         ncol=max(1, int(args.legend_ncol)),
         frameon=True,
         framealpha=0.90,
         borderpad=0.6,
-        handlelength=2.0,
+        handlelength=2.4,
     )
+    if emphasis_legend_labels:
+        for text in leg.get_texts():
+            if text.get_text() in emphasis_legend_labels:
+                text.set_fontweight("bold")
     fig.tight_layout()
 
     name_parts = [args.dataset or "all", f"seed{args.matrix_seed or 'all'}", args.y_axis, "vs", args.x_axis]
