@@ -96,7 +96,7 @@ def parse_args() -> argparse.Namespace:
         dest="paper_colors",
         action="store_true",
         default=True,
-        help="Use paper-style colors: UCB blue, LRF purple, Gittins(default) green/teal, Gittins(dataset) orange.",
+        help="Use paper-style colors via tab:* names: tab:blue (UCB), tab:purple (LRF), tab:green (Gittins default prior), tab:orange (Gittins dataset prior).",
     )
     p.add_argument("--no-paper-colors", dest="paper_colors", action="store_false")
     p.add_argument(
@@ -474,11 +474,12 @@ def range_label(mode: str) -> str:
     return "mean"
 
 
-# Print-friendly hues aligned with common paper palettes (tab / colorblind-ish).
-_COLOR_UCB = "#1E88E5"
-_COLOR_LRF = "#7B1FA2"
-_COLOR_GITTINS_DEFAULT_PRIOR = "#43A047"
-_COLOR_GITTINS_DATASET_PRIOR = "#FB8C00"
+# Matplotlib tab10 named colors (stable across backends; avoids custom hex clashes).
+_COLOR_UCB = "tab:blue"
+_COLOR_LRF = "tab:purple"
+_COLOR_GITTINS_DEFAULT_PRIOR = "tab:green"
+_COLOR_GITTINS_DATASET_PRIOR = "tab:orange"
+_COLOR_FALLBACK = "tab:gray"
 
 
 def _emphasized_variants(args: argparse.Namespace) -> set[str]:
@@ -510,7 +511,7 @@ def variant_plot_style(variant: str, args: argparse.Namespace) -> dict[str, floa
                 elif ps == "default":
                     color = _COLOR_GITTINS_DEFAULT_PRIOR
         if color is None:
-            color = "#6D6D6D"
+            color = _COLOR_FALLBACK
 
     if str(variant) in _emphasized_variants(args):
         lw = float(args.emphasize_line_width)
