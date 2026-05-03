@@ -87,14 +87,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fig-height", type=float, default=6.8)
     p.add_argument("--title-size", type=float, default=18)
     p.add_argument("--label-size", type=float, default=15)
-    p.add_argument("--tick-size", type=float, default=13)
-    p.add_argument("--legend-size", type=float, default=11)
+    p.add_argument("--tick-size", type=float, default=15)
+    p.add_argument("--legend-size", type=float, default=15)
     p.add_argument("--line-width", type=float, default=2.4)
     p.add_argument("--stop-line-width", type=float, default=1.8)
     p.add_argument("--legend-loc", default="best")
     p.add_argument("--legend-ncol", type=int, default=1)
     p.add_argument("--no-short-labels", dest="short_labels", action="store_false", default=True)
-    p.add_argument("--no-show-n", dest="show_n", action="store_false", default=True)
+    p.add_argument("--show-n", dest="show_n", action="store_true", default=False)
+    p.add_argument("--no-show-n", dest="show_n", action="store_false")
     p.add_argument("--y-limit-min", type=float, default=None)
     p.add_argument("--y-limit-max", type=float, default=None)
 
@@ -382,16 +383,31 @@ def _parse_variant_label(variant: str) -> dict[str, str]:
     m = re.fullmatch(r"(ucb|lrf)_B(\d+)", v)
     if m:
         fam, b = m.group(1), m.group(2)
-        return {"family": "UCB-E" if fam == "ucb" else "LRF", "batch": b, "prior": "", "cost": ""}
+        return {
+            "family": "UCB-E" if fam == "ucb" else "LRF",
+            "batch": b,
+            "prior": "",
+            "prior_short": "",
+            "cost": "",
+        }
 
     m = re.fullmatch(r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
         cost_mode, b, scale, prior = m.groups()
-        family = "Gittins-cost" if cost_mode == "aware" else "Gittins-unit"
-        prior_label = "dataset prior" if prior == "dataset" else "default prior"
-        return {"family": family, "batch": b, "prior": prior_label, "cost": cost_mode, "scale": scale}
+        # The unit/cost-aware setting is already clear from the figure title and x-axis,
+        # so legend labels only need to distinguish the prior.
+        prior_label = "data prior" if prior == "dataset" else "default prior"
+        prior_short = "data" if prior == "dataset" else "default"
+        return {
+            "family": "Gittins",
+            "batch": b,
+            "prior": prior_label,
+            "prior_short": prior_short,
+            "cost": cost_mode,
+            "scale": scale,
+        }
 
-    return {"family": v, "batch": "", "prior": "", "cost": ""}
+    return {"family": v, "batch": "", "prior": "", "prior_short": "", "cost": ""}
 
 
 def display_variant_label(variant: str, n_runs: int | None, args: argparse.Namespace) -> str:
@@ -415,16 +431,14 @@ def display_stop_label(variant: str, kind: str, n_stopped: int, args: argparse.N
         return f"{variant} {kind}{suffix}"
 
     info = _parse_variant_label(variant)
-    pieces = []
-    if info.get("cost") == "aware":
-        pieces.append("cost")
-    elif info.get("cost") == "unit":
-        pieces.append("unit")
-    if info.get("prior"):
-        pieces.append("dataset" if info["prior"].startswith("dataset") else "default")
-    base = " ".join(pieces) if pieces else info["family"]
-    suffix = f" (n={n_stopped})" if args.show_n else ""
-    return f"{base} stop {kind}{suffix}"
+    prior = info.get("prior_short") or info.get("family", "")
+    if kind == "mean":
+        label = f"Mean stop ({prior})" if prior else "Mean stop"
+    else:
+        label = f"Stop {kind} ({prior})" if prior else f"Stop {kind}"
+    if args.show_n:
+        label += f" (n={n_stopped})"
+    return label
 
 
 def axis_label(col: str) -> str:
@@ -453,7 +467,7 @@ def default_title(args: argparse.Namespace) -> str:
 def default_subtitle(args: argparse.Namespace) -> str:
     if args.subtitle is not None:
         return args.subtitle
-    parts = [range_label(args.range), "100-run aggregate" if args.matrix_seed is None and args.run_seed is None else "run aggregate"]
+    parts = [range_label(args.range)]
     if args.crop_lrf_warmup:
         parts.append("LRF after warmup")
     if args.show_stopping and args.stop_band == "iqr":
