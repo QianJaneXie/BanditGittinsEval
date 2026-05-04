@@ -12,6 +12,7 @@ Designed for the current GSM8K / PIQA simple-regret workflow:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import re
 from pathlib import Path
@@ -100,6 +101,15 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--no-paper-colors", dest="paper_colors", action="store_false")
     p.add_argument(
+        "--variant-colors",
+        default=None,
+        help=(
+            "Optional JSON mapping from exact variant names to matplotlib colors, e.g. "
+            "'{\"gittins_unit_B4_scale1e-4_dataset\":\"#1f77b4\"}'. "
+            "These colors override --paper-colors for matching variants."
+        ),
+    )
+    p.add_argument(
         "--emphasize-variant",
         default=None,
         help="Exact experiment_variant string(s) to highlight: thicker line, higher z-order, bold legend label. Comma-separated.",
@@ -116,6 +126,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--y-limit-max", type=float, default=None)
 
     return p.parse_args()
+
 
 
 def _as_str_series(df: pd.DataFrame, col: str) -> pd.Series:
@@ -489,6 +500,65 @@ def _emphasized_variants(args: argparse.Namespace) -> set[str]:
     return {v.strip() for v in str(raw).split(",") if v.strip()}
 
 
+def _parse_variant_colors(raw: str | None) -> dict[str, str]:
+    """Parse optional exact variant -> color mapping.
+
+    This accepts both strict JSON, e.g.
+        {"gittins_unit_B4_scale1e-4_dataset":"#1f77b4"}
+
+    and a PowerShell-stripped form that sometimes appears after command-line
+    quoting, e.g.
+        {gittins_unit_B4_scale1e-4_dataset:#1f77b4}
+
+    If the argument is not provided, the original paper-color behavior is
+    unchanged.
+    """
+    if raw is None or str(raw).strip() == "":
+        return {}
+
+    text = str(raw).strip()
+
+    # Preferred path: valid JSON.
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+
+    if parsed is not None:
+        if not isinstance(parsed, dict):
+            raise SystemExit("--variant-colors must be a JSON object mapping variant names to colors")
+        return {str(k): str(v) for k, v in parsed.items()}
+
+    # Fallback for PowerShell-stripped mappings like:
+    #   {variant:#1f77b4,variant2:#ff7f0e}
+    # This is intentionally conservative and only supports comma-separated
+    # key:value pairs, which is enough for color maps.
+    stripped = text
+    if stripped.startswith("{") and stripped.endswith("}"):
+        stripped = stripped[1:-1]
+
+    out: dict[str, str] = {}
+    if stripped.strip() == "":
+        return out
+
+    for item in stripped.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if ":" not in item:
+            raise SystemExit(f"Could not parse --variant-colors item: {item!r}")
+        key, value = item.split(":", 1)
+        key = key.strip().strip("'\"")
+        value = value.strip().strip("'\"")
+        if not key:
+            raise SystemExit(f"Could not parse empty --variant-colors key in item: {item!r}")
+        if not value:
+            raise SystemExit(f"Could not parse empty --variant-colors value in item: {item!r}")
+        out[key] = value
+
+    return out
+
+
 def variant_plot_style(variant: str, args: argparse.Namespace) -> dict[str, float | str | None]:
     """Line color / width / z-order for a variant."""
     lw = float(args.line_width)
@@ -512,6 +582,10 @@ def variant_plot_style(variant: str, args: argparse.Namespace) -> dict[str, floa
                     color = _COLOR_GITTINS_DEFAULT_PRIOR
         if color is None:
             color = _COLOR_FALLBACK
+
+    variant_colors = getattr(args, "variant_colors_map", {}) or {}
+    if str(variant) in variant_colors:
+        color = str(variant_colors[str(variant)])
 
     if str(variant) in _emphasized_variants(args):
         lw = float(args.emphasize_line_width)
@@ -580,6 +654,7 @@ def _plot_stopping(ax: plt.Axes, stopping_df: pd.DataFrame, color_by_variant: di
 
 def main() -> int:
     args = parse_args()
+    args.variant_colors_map = _parse_variant_colors(args.variant_colors)
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     plt.rcParams.update(
