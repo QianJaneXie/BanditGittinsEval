@@ -325,8 +325,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--page-size", type=int, default=10000)
     p.add_argument(
         "--download-artifacts",
+        dest="download_artifacts",
         action="store_true",
-        help="Download W&B artifacts and extract gittins_stop_cum_eval from *_traces.npz.",
+        default=True,
+        help="Download W&B artifacts and extract gittins_stop_cum_eval from *_traces.npz. (default: enabled)",
+    )
+    p.add_argument(
+        "--no-download-artifacts",
+        dest="download_artifacts",
+        action="store_false",
+        help="Disable artifact download; stopping columns will likely be -1 for Gittins runs.",
     )
     p.add_argument(
         "--artifact-policy",

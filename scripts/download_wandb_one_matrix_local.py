@@ -310,7 +310,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--states", default="finished", help="Comma-separated W&B run states to keep, e.g. finished or all")
     p.add_argument("--no-history", action="store_true", help="Only write summary/stopping CSVs, not step-level history")
     p.add_argument("--page-size", type=int, default=10000)
-    p.add_argument("--download-artifacts", action="store_true", help="Download trace artifacts and extract Gittins stopping info")
+    p.add_argument(
+        "--download-artifacts",
+        dest="download_artifacts",
+        action="store_true",
+        default=True,
+        help="Download trace artifacts and extract Gittins stopping info. (default: enabled)",
+    )
+    p.add_argument(
+        "--no-download-artifacts",
+        dest="download_artifacts",
+        action="store_false",
+        help="Disable artifact download; stopping columns will likely be -1 for Gittins runs.",
+    )
     p.add_argument("--artifact-policy", choices=["gittins", "all"], default="gittins")
     p.add_argument("--timeout", type=int, default=120)
     return p.parse_args()

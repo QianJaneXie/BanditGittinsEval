@@ -60,7 +60,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--states", default="finished", help="Comma-separated states to keep, or 'all'.")
     p.add_argument("--no-history", action="store_true")
     p.add_argument("--page-size", type=int, default=10000)
-    p.add_argument("--download-artifacts", action="store_true")
+    p.add_argument("--download-artifacts", dest="download_artifacts", action="store_true", default=True)
+    p.add_argument("--no-download-artifacts", dest="download_artifacts", action="store_false")
     p.add_argument("--artifact-policy", choices=["gittins", "all"], default="gittins")
     return p.parse_args()
 

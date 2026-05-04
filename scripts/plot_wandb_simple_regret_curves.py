@@ -559,6 +559,88 @@ def _parse_variant_colors(raw: str | None) -> dict[str, str]:
     return out
 
 
+def _gittins_variant_numeric_parts(variant: str) -> dict[str, float | str] | None:
+    """Return parsed fields for compact Gittins variants.
+
+    Used only for automatic colors in pure Gittins batch/scale ablations.
+    It does not change UCB/LRF/Gittins comparison colors.
+    """
+    m = re.fullmatch(
+        r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)",
+        str(variant),
+    )
+    if not m:
+        return None
+    cost_mode, batch, scale, prior = m.groups()
+    try:
+        scale_value = float(scale)
+    except ValueError:
+        return None
+    return {
+        "cost_mode": cost_mode,
+        "batch": float(batch),
+        "scale": scale_value,
+        "prior": prior,
+    }
+
+
+def _auto_ordered_gittins_colors(variants: list[str]) -> dict[str, str]:
+    """Assign standard colors by numeric value for pure Gittins ablations.
+
+    Rule requested for batch/scale plots:
+      smallest value -> tab:blue, middle -> tab:orange, largest -> tab:green.
+
+    This function only activates when all plotted variants are Gittins variants
+    from the same cost mode and prior. Mixed UCB/LRF/Gittins paper-style plots
+    keep their original colors.
+    """
+    if len(variants) < 2:
+        return {}
+
+    parsed = {v: _gittins_variant_numeric_parts(v) for v in variants}
+    if any(p is None for p in parsed.values()):
+        return {}
+
+    cost_modes = {str(p["cost_mode"]) for p in parsed.values() if p is not None}
+    priors = {str(p["prior"]) for p in parsed.values() if p is not None}
+    batches = {float(p["batch"]) for p in parsed.values() if p is not None}
+    scales = {float(p["scale"]) for p in parsed.values() if p is not None}
+
+    if len(cost_modes) != 1 or len(priors) != 1:
+        return {}
+
+    if len(batches) > 1 and len(scales) == 1:
+        key = "batch"
+    elif len(scales) > 1 and len(batches) == 1:
+        key = "scale"
+    else:
+        return {}
+
+    standard_colors = ["tab:blue", "tab:orange", "tab:green", "tab:red", "tab:purple", "tab:brown"]
+    ordered = sorted(variants, key=lambda v: float(parsed[v][key]))  # type: ignore[index]
+    return {v: standard_colors[i % len(standard_colors)] for i, v in enumerate(ordered)}
+
+
+def _maybe_order_gittins_ablation_variants(variants: list[str]) -> list[str]:
+    """Order pure Gittins batch/scale ablations by the numeric value in the legend."""
+    parsed = {v: _gittins_variant_numeric_parts(v) for v in variants}
+    if not variants or any(p is None for p in parsed.values()):
+        return variants
+
+    cost_modes = {str(p["cost_mode"]) for p in parsed.values() if p is not None}
+    priors = {str(p["prior"]) for p in parsed.values() if p is not None}
+    batches = {float(p["batch"]) for p in parsed.values() if p is not None}
+    scales = {float(p["scale"]) for p in parsed.values() if p is not None}
+
+    if len(cost_modes) != 1 or len(priors) != 1:
+        return variants
+    if len(batches) > 1 and len(scales) == 1:
+        return sorted(variants, key=lambda v: float(parsed[v]["batch"]))  # type: ignore[index]
+    if len(scales) > 1 and len(batches) == 1:
+        return sorted(variants, key=lambda v: float(parsed[v]["scale"]))  # type: ignore[index]
+    return variants
+
+
 def variant_plot_style(variant: str, args: argparse.Namespace) -> dict[str, float | str | None]:
     """Line color / width / z-order for a variant."""
     lw = float(args.line_width)
@@ -683,8 +765,15 @@ def main() -> int:
     df = crop_lrf_warmup(df, args)
 
     variants = choose_variants(df, args, exact_order)
+    variants = _maybe_order_gittins_ablation_variants(variants)
     if not variants:
         raise SystemExit("No variants left after filtering.")
+
+    # For pure Gittins batch-size or scale ablations, bind colors to numeric values:
+    # smallest -> tab:blue, middle -> tab:orange, largest -> tab:green.
+    # Explicit --variant-colors still has the highest priority if provided.
+    for variant, color in _auto_ordered_gittins_colors(variants).items():
+        args.variant_colors_map.setdefault(variant, color)
 
     stopping_df = load_stopping_summary(args, variants)
 
