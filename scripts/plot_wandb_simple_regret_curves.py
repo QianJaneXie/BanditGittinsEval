@@ -86,10 +86,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--fig-width", type=float, default=12.0)
     p.add_argument("--fig-height", type=float, default=6.8)
-    p.add_argument("--title-size", type=float, default=18)
-    p.add_argument("--label-size", type=float, default=15)
-    p.add_argument("--tick-size", type=float, default=15)
-    p.add_argument("--legend-size", type=float, default=16)
+    # Paper-sized defaults: bump all text a notch larger.
+    p.add_argument("--title-size", type=float, default=27)
+    p.add_argument("--label-size", type=float, default=23)
+    p.add_argument("--tick-size", type=float, default=22)
+    p.add_argument("--legend-size", type=float, default=22)
     p.add_argument("--line-width", type=float, default=2.6)
     p.add_argument("--stop-line-width", type=float, default=1.8)
     p.add_argument(
@@ -685,12 +686,7 @@ def default_title(args: argparse.Namespace) -> str:
 def default_subtitle(args: argparse.Namespace) -> str:
     if args.subtitle is not None:
         return args.subtitle
-    parts = [range_label(args.range)]
-    if args.crop_lrf_warmup:
-        parts.append("LRF after warmup")
-    if args.show_stopping and args.stop_band == "iqr":
-        parts.append("stop band = IQR")
-    return "; ".join(parts)
+    return ""
 
 
 def _plot_stopping(ax: plt.Axes, stopping_df: pd.DataFrame, color_by_variant: dict[str, str], args: argparse.Namespace) -> None:
@@ -741,6 +737,10 @@ def main() -> int:
 
     plt.rcParams.update(
         {
+            "font.family": "Times New Roman",
+            "font.serif": ["Times New Roman"],
+            "mathtext.fontset": "stix",
+            "axes.unicode_minus": False,
             "font.size": args.tick_size,
             "axes.titlesize": args.title_size,
             "axes.labelsize": args.label_size,
