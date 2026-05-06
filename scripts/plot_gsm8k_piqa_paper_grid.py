@@ -10,8 +10,7 @@ Default setting:
   Gittins cost scaling = 1e-4
   curves = mean ± SE over run seeds
   LRF is cropped after warmup
-  Gittins stopping is shown as mean vertical line + IQR band,
-  but stopping items are NOT added to the shared legend.
+  Gittins stopping: mean dashed line per variant + uncertainty band ± SE across seeds (not IQR).
 """
 
 from __future__ import annotations
@@ -24,6 +23,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.legend_handler import HandlerTuple
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -36,13 +36,13 @@ COLOR_GITTINS_DATA = "tab:orange"
 STYLE_BY_KIND = {
     "gittins_data": {
         "color": COLOR_GITTINS_DATA,
-        "label": "Gittins (data prior)",
+        "label": "Gittins-G",
         "linewidth": 3.2,
         "zorder": 5,
     },
     "gittins_default": {
         "color": COLOR_GITTINS_DEFAULT,
-        "label": "Gittins (default prior)",
+        "label": "Gittins-S",
         "linewidth": 3.2,
         "zorder": 4,
     },
@@ -59,11 +59,6 @@ STYLE_BY_KIND = {
         "zorder": 3,
     },
 }
-
-# Shared legend proxies for stopping visualization.
-STOP_BAND_PROXY = Patch(facecolor="0.7", edgecolor="none", alpha=0.18, label="Stop IQR")
-STOP_LINE_PROXY = Line2D([0], [0], color="0.35", linestyle="--", linewidth=2.2, label="Mean stop")
-
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -93,7 +88,12 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--show-stopping", action="store_true", default=True)
     p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
-    p.add_argument("--stop-band", choices=["iqr", "none"], default="iqr")
+    p.add_argument(
+        "--stop-band",
+        choices=["stderr", "iqr", "none"],
+        default="stderr",
+        help="Uncertainty band for stopping x-location across seeds (default: stderr).",
+    )
     p.add_argument("--stop-alpha", type=float, default=0.10)
     p.add_argument("--stop-line-alpha", type=float, default=0.65)
 
@@ -101,11 +101,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fig-height", type=float, default=10.0)
 
     # Use a single consistent font size across the figure (no bold).
-    p.add_argument("--title-size", type=float, default=27)
-    p.add_argument("--label-size", type=float, default=27)
-    p.add_argument("--tick-size", type=float, default=27)
-    p.add_argument("--legend-size", type=float, default=27)
-    p.add_argument("--row-label-size", type=float, default=27)
+    p.add_argument("--title-size", type=float, default=35)
+    p.add_argument("--label-size", type=float, default=35)
+    p.add_argument("--tick-size", type=float, default=35)
+    p.add_argument("--legend-size", type=float, default=35)
+    p.add_argument("--row-label-size", type=float, default=35)
 
     p.add_argument("--y-limit-min", type=float, default=None)
     p.add_argument("--y-limit-max", type=float, default=None)
@@ -279,7 +279,8 @@ def draw_stopping(
     if stop_col is None or stop_col not in stop_df.columns:
         return
 
-    for kind in ["gittins_data", "gittins_default"]:
+    # Match paper style: show only Gittins-G stop with a neutral grey band + dashed line.
+    for kind in ["gittins_data"]:
         variant = variants[kind]
         sdf = stop_df[stop_df["experiment_variant"].astype(str) == variant].copy()
         if sdf.empty:
@@ -292,19 +293,30 @@ def draw_stopping(
             continue
 
         arr = vals.to_numpy(dtype=float)
-        color = STYLE_BY_KIND[kind]["color"]
+        band_color = "0.70"
+        line_color = "0.35"
 
-        if stop_band == "iqr":
+        if stop_band == "stderr":
+            mean_stop_band = float(np.mean(arr))
+            if len(arr) > 1:
+                se_band = float(np.std(arr, ddof=1) / np.sqrt(len(arr)))
+            else:
+                se_band = 0.0
+            lo_b = mean_stop_band - se_band
+            hi_b = mean_stop_band + se_band
+            if np.isfinite(lo_b) and np.isfinite(hi_b) and hi_b > lo_b:
+                ax.axvspan(lo_b, hi_b, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
+        elif stop_band == "iqr":
             lo = float(np.quantile(arr, 0.25))
             hi = float(np.quantile(arr, 0.75))
             if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
-                ax.axvspan(lo, hi, color=color, alpha=stop_alpha, linewidth=0, zorder=1)
+                ax.axvspan(lo, hi, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
 
         mean_stop = float(np.mean(arr))
         if np.isfinite(mean_stop):
             ax.axvline(
                 mean_stop,
-                color=color,
+                color=line_color,
                 linestyle="--",
                 linewidth=2.2,
                 alpha=stop_line_alpha,
@@ -524,18 +536,19 @@ def main() -> int:
         fontweight="normal",
     )
 
-    # Shared legend at bottom. Required order:
-    # Gittins data, Gittins default, UCB, LRF, plus stopping proxies.
+    # Shared legend at bottom: methods, plus a single "Gittins-G mean stop" entry.
     legend_order = ["gittins_data", "gittins_default", "ucb", "lrf"]
     final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
     final_labels = [STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
 
-    if args.show_stopping and args.stop_band == "iqr":
-        final_handles.append(STOP_BAND_PROXY)
-        final_labels.append("Stop IQR")
+    handler_map = None
     if args.show_stopping:
-        final_handles.append(STOP_LINE_PROXY)
-        final_labels.append("Mean stop")
+        # Legend icon: grey band + dashed line (single entry).
+        stop_band_proxy = Patch(facecolor="0.70", edgecolor="none", alpha=max(args.stop_alpha, 0.12))
+        stop_line_proxy = Line2D([0], [0], color="0.35", linestyle="--", linewidth=2.2, alpha=args.stop_line_alpha)
+        final_handles.append((stop_band_proxy, stop_line_proxy))
+        final_labels.append("Gittins-G mean stop")
+        handler_map = {tuple: HandlerTuple(ndivide=None)}
 
     fig.legend(
         final_handles,
@@ -548,6 +561,7 @@ def main() -> int:
         handlelength=3.0,
         columnspacing=1.8,
         borderpad=0.7,
+        handler_map=handler_map,
     )
 
     fig.subplots_adjust(
