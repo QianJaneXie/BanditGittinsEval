@@ -5,44 +5,48 @@ Figure layout:
   columns: GSM8K, PIQA
   rows:    unit-cost, cost-aware
 
-Default setting:
-  batch size = 16
-  Gittins cost scaling = 1e-4
-  curves = mean ± SE over run seeds
-  LRF is cropped after warmup
-  Gittins stopping: mean dashed line per variant + uncertainty band ± SE across seeds (not IQR).
+This version keeps two Gittins curves:
+- orange  = Gittins-S
+- green   = Gittins-G
+
+Bands:
+- curve band = mean ± standard error
+- stopping band = standard error (grey band)
+
+Stopping legend:
+- grey band: Stop SE
+- orange dashed line: Gittins-S mean stop
+- green dashed line: Gittins-G mean stop
 """
 
 from __future__ import annotations
 
 import argparse
 import math
-import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.legend_handler import HandlerTuple
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 
 COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
-COLOR_GITTINS_DEFAULT = "tab:green"
-COLOR_GITTINS_DATA = "tab:orange"
+COLOR_GITTINS_S = "tab:orange"   # data prior
+COLOR_GITTINS_G = "tab:green"    # default/general prior
 
 STYLE_BY_KIND = {
     "gittins_data": {
-        "color": COLOR_GITTINS_DATA,
-        "label": "Gittins-G",
+        "color": COLOR_GITTINS_S,
+        "label": "Gittins-S",
         "linewidth": 3.2,
         "zorder": 5,
     },
     "gittins_default": {
-        "color": COLOR_GITTINS_DEFAULT,
-        "label": "Gittins-S",
+        "color": COLOR_GITTINS_G,
+        "label": "Gittins-G",
         "linewidth": 3.2,
         "zorder": 4,
     },
@@ -59,6 +63,7 @@ STYLE_BY_KIND = {
         "zorder": 3,
     },
 }
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -84,23 +89,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=350)
+
+    # Curve band: standard error by default
     p.add_argument("--range", choices=["stderr", "std", "none"], default="stderr")
 
     p.add_argument("--show-stopping", action="store_true", default=True)
     p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
+
+    # Stopping band: standard error by default
     p.add_argument(
         "--stop-band",
-        choices=["stderr", "iqr", "none"],
+        choices=["stderr", "std", "iqr", "none"],
         default="stderr",
         help="Uncertainty band for stopping x-location across seeds (default: stderr).",
     )
-    p.add_argument("--stop-alpha", type=float, default=0.10)
-    p.add_argument("--stop-line-alpha", type=float, default=0.65)
+    p.add_argument("--stop-alpha", type=float, default=0.12)
+    p.add_argument("--stop-line-alpha", type=float, default=0.70)
 
     p.add_argument("--fig-width", type=float, default=15.5)
     p.add_argument("--fig-height", type=float, default=10.0)
 
-    # Use a single consistent font size across the figure (no bold).
     p.add_argument("--title-size", type=float, default=35)
     p.add_argument("--label-size", type=float, default=35)
     p.add_argument("--tick-size", type=float, default=35)
@@ -174,7 +182,11 @@ def is_lrf_variant(variant: str) -> bool:
     return v.startswith("lrf") or "lrf" in v
 
 
-def lrf_warmup_evals(g: pd.DataFrame, default_warmup: float = 0.05, default_budget_fraction: float = 0.10) -> float:
+def lrf_warmup_evals(
+    g: pd.DataFrame,
+    default_warmup: float = 0.05,
+    default_budget_fraction: float = 0.10,
+) -> float:
     warmup = first_numeric(g, "warmup_percentage", default_warmup)
     n_cells = first_numeric(g, "n_cells", float("nan"))
 
@@ -198,6 +210,7 @@ def crop_lrf_after_warmup(df: pd.DataFrame) -> pd.DataFrame:
             if math.isfinite(warmup) and "cum_eval" in g.columns:
                 g = g[pd.to_numeric(g["cum_eval"], errors="coerce") >= warmup]
         pieces.append(g)
+
     if not pieces:
         return df.iloc[0:0].copy()
     return pd.concat(pieces, ignore_index=False)
@@ -267,6 +280,7 @@ def draw_stopping(
     variants: dict[str, str],
     x_axis: str,
     *,
+    kinds_to_draw: list[str],
     show_stopping: bool,
     stop_band: str,
     stop_alpha: float,
@@ -279,8 +293,9 @@ def draw_stopping(
     if stop_col is None or stop_col not in stop_df.columns:
         return
 
-    # Match paper style: show only Gittins-G stop with a neutral grey band + dashed line.
-    for kind in ["gittins_data"]:
+    band_color = "0.75"
+
+    for kind in kinds_to_draw:
         variant = variants[kind]
         sdf = stop_df[stop_df["experiment_variant"].astype(str) == variant].copy()
         if sdf.empty:
@@ -288,24 +303,30 @@ def draw_stopping(
 
         vals = pd.to_numeric(sdf[stop_col], errors="coerce")
         vals = vals[np.isfinite(vals) & (vals >= 0)]
-
         if vals.empty:
             continue
 
         arr = vals.to_numpy(dtype=float)
-        band_color = "0.70"
-        line_color = "0.35"
 
         if stop_band == "stderr":
             mean_stop_band = float(np.mean(arr))
             if len(arr) > 1:
-                se_band = float(np.std(arr, ddof=1) / np.sqrt(len(arr)))
+                band = float(np.std(arr, ddof=1) / np.sqrt(len(arr)))
             else:
-                se_band = 0.0
-            lo_b = mean_stop_band - se_band
-            hi_b = mean_stop_band + se_band
-            if np.isfinite(lo_b) and np.isfinite(hi_b) and hi_b > lo_b:
-                ax.axvspan(lo_b, hi_b, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
+                band = 0.0
+            lo = mean_stop_band - band
+            hi = mean_stop_band + band
+            if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+                ax.axvspan(lo, hi, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
+
+        elif stop_band == "std":
+            mean_stop_band = float(np.mean(arr))
+            band = float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0
+            lo = mean_stop_band - band
+            hi = mean_stop_band + band
+            if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+                ax.axvspan(lo, hi, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
+
         elif stop_band == "iqr":
             lo = float(np.quantile(arr, 0.25))
             hi = float(np.quantile(arr, 0.75))
@@ -316,9 +337,9 @@ def draw_stopping(
         if np.isfinite(mean_stop):
             ax.axvline(
                 mean_stop,
-                color=line_color,
+                color=STYLE_BY_KIND[kind]["color"],
                 linestyle="--",
-                linewidth=2.2,
+                linewidth=2.4,
                 alpha=stop_line_alpha,
                 zorder=2,
             )
@@ -354,8 +375,6 @@ def plot_panel(
 
     handles: dict[str, plt.Line2D] = {}
 
-    # Plot in visual/legend order requested by advisor:
-    # data prior, default prior, UCB, LRF.
     order = ["gittins_data", "gittins_default", "ucb", "lrf"]
 
     for kind in order:
@@ -399,6 +418,7 @@ def plot_panel(
         stopping,
         variants,
         x_axis,
+        kinds_to_draw=["gittins_data", "gittins_default"],
         show_stopping=args.show_stopping,
         stop_band=args.stop_band,
         stop_alpha=args.stop_alpha,
@@ -407,8 +427,10 @@ def plot_panel(
 
     if args.y_limit_min is not None or args.y_limit_max is not None:
         lo, hi = ax.get_ylim()
-        ax.set_ylim(args.y_limit_min if args.y_limit_min is not None else lo,
-                    args.y_limit_max if args.y_limit_max is not None else hi)
+        ax.set_ylim(
+            args.y_limit_min if args.y_limit_min is not None else lo,
+            args.y_limit_max if args.y_limit_max is not None else hi,
+        )
 
     ax.grid(True, alpha=0.23, linewidth=0.9)
     ax.tick_params(axis="both", labelsize=args.tick_size, width=1.2, length=6)
@@ -440,6 +462,16 @@ def setup_matplotlib(args: argparse.Namespace) -> None:
     )
 
 
+def stop_band_label(stop_band: str) -> str:
+    if stop_band == "stderr":
+        return "Stop SE"
+    if stop_band == "std":
+        return "Stop SD"
+    if stop_band == "iqr":
+        return "Stop IQR"
+    return "Stop band"
+
+
 def main() -> int:
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
@@ -447,16 +479,8 @@ def main() -> int:
     setup_matplotlib(args)
 
     datasets = [
-        {
-            "key": "gsm8k",
-            "title": "GSM8K",
-            "dir": args.gsm8k_dir,
-        },
-        {
-            "key": "piqa",
-            "title": "PIQA",
-            "dir": args.piqa_dir,
-        },
+        {"key": "gsm8k", "title": "GSM8K", "dir": args.gsm8k_dir},
+        {"key": "piqa", "title": "PIQA", "dir": args.piqa_dir},
     ]
 
     histories = {}
@@ -476,7 +500,6 @@ def main() -> int:
     legend_handles: dict[str, plt.Line2D] = {}
 
     for col, d in enumerate(datasets):
-        # Top row: unit-cost.
         handles = plot_panel(
             axes[0, col],
             histories[d["key"]],
@@ -489,7 +512,6 @@ def main() -> int:
         )
         legend_handles.update(handles)
 
-        # Bottom row: cost-aware.
         handles = plot_panel(
             axes[1, col],
             histories[d["key"]],
@@ -504,7 +526,6 @@ def main() -> int:
 
         axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=14)
 
-    # Axis labels.
     axes[0, 0].set_ylabel("Simple regret", fontsize=args.label_size)
     axes[1, 0].set_ylabel("Simple regret", fontsize=args.label_size)
 
@@ -512,7 +533,6 @@ def main() -> int:
         axes[0, col].set_xlabel("Cumulative evaluations", fontsize=args.label_size)
         axes[1, col].set_xlabel("Cumulative cost", fontsize=args.label_size)
 
-    # Row labels on the right, like advisor's example.
     axes[0, 1].text(
         1.05,
         0.5,
@@ -536,32 +556,35 @@ def main() -> int:
         fontweight="normal",
     )
 
-    # Shared legend at bottom: methods, plus a single "Gittins-G mean stop" entry.
     legend_order = ["gittins_data", "gittins_default", "ucb", "lrf"]
     final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
     final_labels = [STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
 
-    handler_map = None
     if args.show_stopping:
-        # Legend icon: grey band + dashed line (single entry).
-        stop_band_proxy = Patch(facecolor="0.70", edgecolor="none", alpha=max(args.stop_alpha, 0.12))
-        stop_line_proxy = Line2D([0], [0], color="0.35", linestyle="--", linewidth=2.2, alpha=args.stop_line_alpha)
-        final_handles.append((stop_band_proxy, stop_line_proxy))
+        final_handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=max(args.stop_alpha, 0.12)))
+        final_labels.append(stop_band_label(args.stop_band))
+
+        final_handles.append(
+            Line2D([0], [0], color=COLOR_GITTINS_S, linestyle="--", linewidth=2.4, alpha=args.stop_line_alpha)
+        )
+        final_labels.append("Gittins-S mean stop")
+
+        final_handles.append(
+            Line2D([0], [0], color=COLOR_GITTINS_G, linestyle="--", linewidth=2.4, alpha=args.stop_line_alpha)
+        )
         final_labels.append("Gittins-G mean stop")
-        handler_map = {tuple: HandlerTuple(ndivide=None)}
 
     fig.legend(
         final_handles,
         final_labels,
         loc="lower center",
-        ncol=3,
+        ncol=4,
         frameon=False,
-        bbox_to_anchor=(0.5, -0.030),
+        bbox_to_anchor=(0.5, -0.040),
         fontsize=args.legend_size,
         handlelength=3.0,
         columnspacing=1.8,
         borderpad=0.7,
-        handler_map=handler_map,
     )
 
     fig.subplots_adjust(
