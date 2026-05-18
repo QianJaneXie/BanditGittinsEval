@@ -63,6 +63,10 @@ STYLE_BY_KIND = {
     },
 }
 
+# Thicken curve/stop lines for readability.
+LINEWIDTH_MULT = 3.6
+GITTINS_LINE_EXTRA_MULT = 1.0
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -111,27 +115,31 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stop-alpha", type=float, default=0.12)
     p.add_argument("--stop-line-alpha", type=float, default=0.72)
 
-    p.add_argument("--fig-width", type=float, default=15.8)
-    p.add_argument("--fig-height", type=float, default=10.8)
+    # Make panels larger on canvas (scale up proportionally).
+    p.add_argument("--fig-width", type=float, default=23.8)
+    p.add_argument("--fig-height", type=float, default=23.9)
 
     # Larger paper-style fonts.
-    p.add_argument("--title-size", type=float, default=43)
-    p.add_argument("--label-size", type=float, default=43)
-    p.add_argument("--tick-size", type=float, default=41)
-    p.add_argument("--legend-size", type=float, default=41)
-    p.add_argument("--row-label-size", type=float, default=43)
+    # Increase paper fonts for readability (except tick labels).
+    p.add_argument("--title-size", type=float, default=81)
+    p.add_argument("--label-size", type=float, default=81)
+    # Axis tick labels (numbers) should NOT be enlarged further.
+    p.add_argument("--tick-size", type=float, default=57)
+    p.add_argument("--legend-size", type=float, default=63)
+    # Keep row labels (Unit-cost / Cost-aware) same size as panel titles.
+    p.add_argument("--row-label-size", type=float, default=81)
 
     p.add_argument("--y-limit-min", type=float, default=None)
     p.add_argument("--y-limit-max", type=float, default=None)
 
     # Layout controls for quick tuning without editing code.
-    p.add_argument("--left", type=float, default=0.085)
-    p.add_argument("--right", type=float, default=0.92)
-    p.add_argument("--top", type=float, default=0.90)
-    p.add_argument("--bottom", type=float, default=0.305)
-    p.add_argument("--wspace", type=float, default=0.22)
-    p.add_argument("--hspace", type=float, default=0.68)
-    p.add_argument("--legend-y", type=float, default=-0.075)
+    p.add_argument("--left", type=float, default=0.070)
+    p.add_argument("--right", type=float, default=0.965)
+    p.add_argument("--top", type=float, default=0.765)
+    p.add_argument("--bottom", type=float, default=0.245)
+    p.add_argument("--wspace", type=float, default=0.24)
+    p.add_argument("--hspace", type=float, default=0.46)
+    p.add_argument("--legend-y", type=float, default=-0.005)
 
     return p.parse_args()
 
@@ -346,11 +354,12 @@ def draw_stopping(
                 ax.axvspan(lo, hi, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
 
         if np.isfinite(mean_stop):
+            extra = float(GITTINS_LINE_EXTRA_MULT) if kind == "gittins_data" else 1.0
             ax.axvline(
                 mean_stop,
                 color=STYLE_BY_KIND[kind]["color"],
                 linestyle="--",
-                linewidth=2.6,
+                linewidth=2.6 * float(LINEWIDTH_MULT) * extra,
                 alpha=stop_line_alpha,
                 zorder=2,
             )
@@ -401,11 +410,12 @@ def plot_panel(
             continue
 
         style = STYLE_BY_KIND[kind]
+        extra = float(GITTINS_LINE_EXTRA_MULT) if kind == "gittins_data" else 1.0
         line = ax.plot(
             x_grid,
             mean,
             color=style["color"],
-            linewidth=style["linewidth"],
+            linewidth=float(style["linewidth"]) * float(LINEWIDTH_MULT) * extra,
             label=style["label"],
             zorder=style["zorder"],
         )[0]
@@ -527,7 +537,8 @@ def main() -> int:
         )
         legend_handles.update(handles)
 
-        axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=14)
+        # Keep some separation from axes while preventing title cropping.
+        axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=4)
 
     axes[0, 0].set_ylabel("Simple regret", fontsize=args.label_size)
     axes[1, 0].set_ylabel("Simple regret", fontsize=args.label_size)
@@ -565,7 +576,14 @@ def main() -> int:
 
     if args.show_stopping:
         final_handles.append(
-            Line2D([0], [0], color=COLOR_GITTINS_S, linestyle="--", linewidth=2.6, alpha=args.stop_line_alpha)
+            Line2D(
+                [0],
+                [0],
+                color=COLOR_GITTINS_S,
+                linestyle="--",
+                linewidth=2.6 * float(LINEWIDTH_MULT) * float(GITTINS_LINE_EXTRA_MULT),
+                alpha=args.stop_line_alpha,
+            )
         )
         final_labels.append("Gittins-S mean stop")
 
@@ -597,7 +615,7 @@ def main() -> int:
         left=args.left,
         right=args.right,
         top=args.top,
-        bottom=0.265 if args.bottom == 0.305 else args.bottom,
+        bottom=0.245 if args.bottom == 0.305 else args.bottom,
         wspace=args.wspace,
         hspace=args.hspace,
     )
@@ -606,8 +624,8 @@ def main() -> int:
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
 
-    fig.savefig(out_png, dpi=260, bbox_inches="tight")
-    fig.savefig(out_pdf, bbox_inches="tight")
+    fig.savefig(out_png, dpi=260, bbox_inches="tight", pad_inches=0.22)
+    fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.22)
     plt.close(fig)
 
     print(f"Wrote {out_png}")

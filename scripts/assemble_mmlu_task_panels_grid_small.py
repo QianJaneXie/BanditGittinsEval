@@ -61,17 +61,6 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--cost-mode", choices=["both", "unit", "aware"], default="both")
     p.add_argument("--batch-size", type=int, default=4)
-    p.add_argument(
-        "--batch-sizes",
-        type=int,
-        nargs="+",
-        default=None,
-        help=(
-            "Optional multi-valued batch sizes. When set, the assembler scans for panels "
-            "with any of these batch sizes (e.g. 4 8 16 to mix small/medium/large). "
-            "Each task is matched against whichever batch is found in the panel folder."
-        ),
-    )
     p.add_argument("--scale", default="1e-4")
 
     p.add_argument("--grid-cols", type=int, default=4, help="Maximum number of task panels per row.")
@@ -87,39 +76,24 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--legend-ncol", type=int, default=5)
     # Legend is placed close to the panels to avoid large blank space.
     # Smaller y => lower on the figure.
-    p.add_argument("--legend-y", type=float, default=None,
-                   help="Override legend y in figure fraction. Default None => auto via --legend-pad-in.")
+    p.add_argument("--legend-y", type=float, default=0.030)
     # Tighten legend spacing so it fits on one row.
     p.add_argument("--legend-columnspacing", type=float, default=1.15)
     p.add_argument("--legend-handlelength", type=float, default=2.1)
     p.add_argument("--legend-handletextpad", type=float, default=0.6)
-    p.add_argument("--no-lrf-legend", action="store_true", help="Omit LRF from the shared legend, useful when LRF curves are absent.")
 
     # Default layout: panels are tightly packed with effectively no gaps.
     # Users can still override these from the CLI if needed.
     p.add_argument("--left", type=float, default=0.058)
     p.add_argument("--right", type=float, default=0.985)
     p.add_argument("--top", type=float, default=0.965)
-    # When --bottom is None (default), the bottom margin is auto-derived
-    # from --shared-x-label-pad-in, --legend-pad-in, --bottom-floor-in so
-    # that the shared x-label sits at a fixed inch-distance below the grid
-    # and the legend sits at a fixed inch-distance below the x-label
-    # regardless of nrows / fig-width / panel aspect.
-    p.add_argument("--bottom", type=float, default=None,
-                   help="Panel-area bottom (figure fraction). Default None => auto from inch pads.")
+    # Smaller bottom margin so shared labels sit snugly under the grid.
+    p.add_argument("--bottom", type=float, default=0.145)
     p.add_argument("--wspace", type=float, default=0.0)
     p.add_argument("--hspace", type=float, default=0.0)
     # Smaller x => further left on the figure.
     p.add_argument("--shared-y-label-x", type=float, default=0.042)
-    p.add_argument("--shared-x-label-y", type=float, default=None,
-                   help="Override x-label y in figure fraction. Default None => auto via --shared-x-label-pad-in.")
-    # Inch-based spacing controls the x-label / legend placement under the grid.
-    p.add_argument("--shared-x-label-pad-in", type=float, default=0.30,
-                   help="Inches between the bottom of the assembled grid and the shared x-label center.")
-    p.add_argument("--legend-pad-in", type=float, default=0.80,
-                   help="Inches between the shared x-label center and the legend center.")
-    p.add_argument("--bottom-floor-in", type=float, default=0.25,
-                   help="Extra inches reserved below the legend so it never gets clipped.")
+    p.add_argument("--shared-x-label-y", type=float, default=0.118)
     # Offsets to nudge shared labels relative to the panel-area center.
     # (The "panel area" is the subplots-adjust rectangle: [left,right]×[bottom,top].)
     p.add_argument("--shared-x-label-x-offset", type=float, default=0.01, help="Move shared x-label right (+) / left (-).")
@@ -147,126 +121,72 @@ def image_path(panel_root: Path, task: str, mode: str, batch_size: int, scale: s
     return panel_root / "individual" / mode / f"{safe_token(task)}_{mode}_B{batch_size}_scale{safe_token(scale)}.png"
 
 
-def candidate_batches(args: argparse.Namespace) -> list[int]:
-    if args.batch_sizes:
-        seen: list[int] = []
-        for b in args.batch_sizes:
-            if int(b) not in seen:
-                seen.append(int(b))
-        return seen
-    return [int(args.batch_size)]
-
-
-def infer_tasks_from_folder(panel_root: Path, mode: str, batches: list[int], scale: str) -> list[tuple[str, int]]:
+def infer_tasks_from_folder(panel_root: Path, mode: str, batch_size: int, scale: str) -> list[str]:
     folder = panel_root / "individual" / mode
+    suffix = f"_{mode}_B{batch_size}_scale{safe_token(scale)}.png"
     if not folder.is_dir():
         raise SystemExit(f"Missing folder: {folder}")
-    found: dict[str, int] = {}
-    for batch in batches:
-        suffix = f"_{mode}_B{batch}_scale{safe_token(scale)}.png"
-        for p in folder.glob(f"*{suffix}"):
-            task = p.name[: -len(suffix)]
-            found.setdefault(task, batch)
-    if not found:
-        raise SystemExit(
-            f"No panels found in {folder} for batches {batches} and scale {scale}"
-        )
-    return sorted(found.items(), key=lambda kv: kv[0])
+    tasks = []
+    for p in sorted(folder.glob(f"*{suffix}")):
+        name = p.name
+        task = name[: -len(suffix)]
+        tasks.append(task)
+    if not tasks:
+        raise SystemExit(f"No panels found in {folder} with suffix {suffix}")
+    return tasks
 
 
-def collect_tasks(args: argparse.Namespace, mode: str) -> list[tuple[str, int]]:
-    batches = candidate_batches(args)
-    if args.tasks or args.tasks_file:
-        if args.tasks:
-            requested = [normalize_task_name(t) for t in args.tasks]
-        else:
-            requested = [
-                normalize_task_name(x)
-                for x in args.tasks_file.read_text(encoding="utf-8").splitlines()
-                if x.strip() and not x.strip().startswith("#")
-            ]
-        resolved: list[tuple[str, int]] = []
-        missing: list[str] = []
-        for task in requested:
-            chosen = None
-            for batch in batches:
-                if image_path(args.panel_root, task, mode, batch, args.scale).is_file():
-                    chosen = batch
-                    break
-            if chosen is None:
-                missing.append(task)
-            else:
-                resolved.append((task, chosen))
-        if missing:
-            raise SystemExit(
-                "Missing panel images for tasks: "
-                + ", ".join(missing)
-                + f" (searched batches {batches})."
-            )
-        return resolved
-    return infer_tasks_from_folder(args.panel_root, mode, batches, args.scale)
+def collect_tasks(args: argparse.Namespace, mode: str) -> list[str]:
+    if args.tasks:
+        return [normalize_task_name(t) for t in args.tasks]
+    if args.tasks_file:
+        return [
+            normalize_task_name(x)
+            for x in args.tasks_file.read_text(encoding="utf-8").splitlines()
+            if x.strip() and not x.strip().startswith("#")
+        ]
+    return infer_tasks_from_folder(args.panel_root, mode, args.batch_size, args.scale)
 
 
 def legend_handles_labels(args: argparse.Namespace) -> tuple[list[object], list[str]]:
-    """Shared MMLU legend: methods plus uncertainty band, with optional no-LRF mode."""
-    legend_kinds = ["gittins_data", "gittins_default", "ucb"]
-    if not bool(args.no_lrf_legend):
-        legend_kinds.append("lrf")
-
+    """Shared MMLU legend: methods plus uncertainty band, with no stopping entries."""
     handles: list[object] = [
-        Line2D(
-            [0],
-            [0],
-            color=STYLE_BY_KIND[kind]["color"],
-            linewidth=STYLE_BY_KIND[kind]["lw"],
-        )
-        for kind in legend_kinds
+        Line2D([0], [0], color=STYLE_BY_KIND["gittins_data"]["color"], linewidth=STYLE_BY_KIND["gittins_data"]["lw"]),
+        Line2D([0], [0], color=STYLE_BY_KIND["gittins_default"]["color"], linewidth=STYLE_BY_KIND["gittins_default"]["lw"]),
+        Line2D([0], [0], color=STYLE_BY_KIND["ucb"]["color"], linewidth=STYLE_BY_KIND["ucb"]["lw"]),
+        Line2D([0], [0], color=STYLE_BY_KIND["lrf"]["color"], linewidth=STYLE_BY_KIND["lrf"]["lw"]),
+        Patch(facecolor="0.75", edgecolor="none", alpha=0.18),
     ]
-    labels = [STYLE_BY_KIND[kind]["label"] for kind in legend_kinds]
-
-    handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
-    labels.append(f"±{args.se_mult:g} SE band")
+    labels = [
+        "Gittins-S",
+        "Gittins-G",
+        "UCB-E",
+        "LRF",
+        f"±{args.se_mult:g} SE band",
+    ]
     return handles, labels
 
-def assemble_one_mode(args: argparse.Namespace, mode: str, tasks: list[tuple[str, int]], out_path: Path) -> None:
+def assemble_one_mode(args: argparse.Namespace, mode: str, tasks: list[str], out_path: Path) -> None:
     n = len(tasks)
     ncols = max(1, int(args.grid_cols))
     nrows = int(math.ceil(n / ncols))
 
-    # Inch-based geometry: panel rows have fixed inch height regardless of bottom margin.
-    panel_area_width_in = (float(args.right) - float(args.left)) * float(args.fig_width)
-    row_height_in = (panel_area_width_in / float(ncols)) / float(args.panel_aspect)
-    panel_area_height_in = row_height_in * float(nrows)
-
     fig_height = float(args.fig_height)
-    auto_bottom = args.bottom is None
-    if auto_bottom:
-        # Auto: derive bottom margin and figure height from inch-based pads
-        # so the x-label is always --shared-x-label-pad-in below the panels
-        # and the legend is always --legend-pad-in below the x-label.
-        bottom_in = (
-            float(args.shared_x_label_pad_in)
-            + float(args.legend_pad_in)
-            + float(args.bottom_floor_in)
-        )
-        if fig_height <= 0:
-            fig_height = (panel_area_height_in + bottom_in) / float(args.top)
-        bottom_frac = bottom_in / fig_height
-    else:
-        bottom_frac = float(args.bottom)
-        if fig_height <= 0:
-            panel_area_fraction = max(0.2, float(args.top) - bottom_frac)
-            fig_height = row_height_in * float(nrows) / panel_area_fraction
+    if fig_height <= 0:
+        panel_area_width = (float(args.right) - float(args.left)) * float(args.fig_width)
+        row_height = (panel_area_width / float(ncols)) / float(args.panel_aspect)
+        panel_area_fraction = max(0.2, float(args.top) - float(args.bottom))
+        fig_height = row_height * float(nrows) / panel_area_fraction
 
     fig, axes = plt.subplots(nrows, ncols, figsize=(args.fig_width, fig_height), squeeze=False)
 
     first_shape = None
     missing = []
-    for idx, (task, batch) in enumerate(tasks):
+    for idx, task in enumerate(tasks):
         r = idx // ncols
         c = idx % ncols
         ax = axes[r][c]
-        path = image_path(args.panel_root, task, mode, batch, args.scale)
+        path = image_path(args.panel_root, task, mode, args.batch_size, args.scale)
         if not path.is_file():
             missing.append(str(path))
             ax.axis("off")
@@ -295,26 +215,14 @@ def assemble_one_mode(args: argparse.Namespace, mode: str, tasks: list[tuple[str
         left=float(args.left),
         right=float(args.right),
         top=float(args.top),
-        bottom=bottom_frac,
+        bottom=float(args.bottom),
         wspace=float(args.wspace),
         hspace=float(args.hspace),
     )
 
     # Center labels relative to the actual panel area, not the full figure.
     panel_center_x = 0.5 * (float(args.left) + float(args.right))
-    panel_center_y = 0.5 * (bottom_frac + float(args.top))
-
-    # Auto-place the shared x-label at a fixed inch distance below the grid,
-    # and the legend at a fixed inch distance below the x-label, so the
-    # vertical layout stays consistent across grids of different shapes.
-    if args.shared_x_label_y is None:
-        shared_x_label_y = bottom_frac - float(args.shared_x_label_pad_in) / fig_height
-    else:
-        shared_x_label_y = float(args.shared_x_label_y)
-    if args.legend_y is None:
-        legend_y = shared_x_label_y - float(args.legend_pad_in) / fig_height
-    else:
-        legend_y = float(args.legend_y)
+    panel_center_y = 0.5 * (float(args.bottom) + float(args.top))
 
     fig.text(
         float(args.shared_y_label_x),
@@ -327,7 +235,7 @@ def assemble_one_mode(args: argparse.Namespace, mode: str, tasks: list[tuple[str
     )
     fig.text(
         float(panel_center_x + float(args.shared_x_label_x_offset)),
-        float(shared_x_label_y),
+        float(args.shared_x_label_y),
         "Cumulative evaluations" if mode == "unit" else "Cumulative cost",
         ha="center",
         va="center",
@@ -338,10 +246,10 @@ def assemble_one_mode(args: argparse.Namespace, mode: str, tasks: list[tuple[str
     fig.legend(
         handles,
         labels,
-        loc="center",
-        ncol=min(int(args.legend_ncol), len(labels)),
+        loc="lower center",
+        ncol=int(args.legend_ncol),
         frameon=False,
-        bbox_to_anchor=(0.5, float(legend_y)),
+        bbox_to_anchor=(0.5, float(args.legend_y)),
         fontsize=float(args.legend_size),
         handlelength=float(args.legend_handlelength),
         handletextpad=float(args.legend_handletextpad),
@@ -368,9 +276,7 @@ def main() -> int:
 
     for mode in modes:
         tasks = collect_tasks(args, mode)
-        used_batches = sorted({b for _, b in tasks})
-        batch_token = "B" + "-".join(str(b) for b in used_batches)
-        out = out_root / f"mmlu_{len(tasks)}tasks_{mode}_{batch_token}_scale{safe_token(args.scale)}_assembled.png"
+        out = out_root / f"mmlu_{len(tasks)}tasks_{mode}_B{args.batch_size}_scale{safe_token(args.scale)}_assembled.png"
         assemble_one_mode(args, mode, tasks, out)
 
     return 0

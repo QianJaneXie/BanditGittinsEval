@@ -64,6 +64,9 @@ STYLE_BY_KIND = {
     },
 }
 
+# Thicken curve/stop lines for readability.
+LINEWIDTH_MULT = 3.6
+GITTINS_LINE_EXTRA_MULT = 1.0
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -112,15 +115,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stop-alpha", type=float, default=0.12)
     p.add_argument("--stop-line-alpha", type=float, default=0.72)
 
-    p.add_argument("--fig-width", type=float, default=18.0)
-    p.add_argument("--fig-height", type=float, default=12.3)
+    # Make panels larger on canvas (scale up proportionally).
+    p.add_argument("--fig-width", type=float, default=26.8)
+    p.add_argument("--fig-height", type=float, default=25.9)
 
     # Slightly larger than previous version.
-    p.add_argument("--title-size", type=float, default=43)
-    p.add_argument("--label-size", type=float, default=43)
-    p.add_argument("--tick-size", type=float, default=41)
-    p.add_argument("--legend-size", type=float, default=41)
-    p.add_argument("--row-label-size", type=float, default=43)
+    # Increase paper fonts for readability (except tick labels).
+    p.add_argument("--title-size", type=float, default=81)
+    p.add_argument("--label-size", type=float, default=81)
+    # Axis tick labels (numbers) should NOT be enlarged further.
+    p.add_argument("--tick-size", type=float, default=57)
+    p.add_argument("--legend-size", type=float, default=63)
+    # Keep row labels (Unit-cost / Cost-aware) same size as panel titles.
+    p.add_argument("--row-label-size", type=float, default=81)
 
     p.add_argument("--y-limit-min", type=float, default=None)
     p.add_argument("--y-limit-max", type=float, default=None)
@@ -338,11 +345,12 @@ def draw_stopping(
                 ax.axvspan(lo, hi, color=band_color, alpha=stop_alpha, linewidth=0, zorder=1)
 
         if np.isfinite(mean_stop):
+            extra = float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0
             ax.axvline(
                 mean_stop,
                 color=STYLE_BY_KIND[kind]["color"],
                 linestyle="--",
-                linewidth=2.6,
+                linewidth=2.6 * float(LINEWIDTH_MULT) * extra,
                 alpha=stop_line_alpha,
                 zorder=2,
             )
@@ -393,11 +401,12 @@ def plot_panel(
             continue
 
         style = STYLE_BY_KIND[kind]
+        extra = float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0
         line = ax.plot(
             x_grid,
             mean,
             color=style["color"],
-            linewidth=style["linewidth"],
+            linewidth=float(style["linewidth"]) * float(LINEWIDTH_MULT) * extra,
             label=style["label"],
             zorder=style["zorder"],
         )[0]
@@ -519,7 +528,8 @@ def main() -> int:
         )
         legend_handles.update(handles)
 
-        axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=26)
+        # Keep some separation from axes while preventing title cropping.
+        axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=8)
 
     axes[0, 0].set_ylabel("Simple regret", fontsize=args.label_size)
     axes[1, 0].set_ylabel("Simple regret", fontsize=args.label_size)
@@ -557,12 +567,26 @@ def main() -> int:
 
     if args.show_stopping:
         final_handles.append(
-            Line2D([0], [0], color=COLOR_GITTINS_S, linestyle="--", linewidth=2.6, alpha=args.stop_line_alpha)
+            Line2D(
+                [0],
+                [0],
+                color=COLOR_GITTINS_S,
+                linestyle="--",
+                linewidth=2.6 * float(LINEWIDTH_MULT) * float(GITTINS_LINE_EXTRA_MULT),
+                alpha=args.stop_line_alpha,
+            )
         )
         final_labels.append("Gittins-S mean stop")
 
         final_handles.append(
-            Line2D([0], [0], color=COLOR_GITTINS_G, linestyle="--", linewidth=2.6, alpha=args.stop_line_alpha)
+            Line2D(
+                [0],
+                [0],
+                color=COLOR_GITTINS_G,
+                linestyle="--",
+                linewidth=2.6 * float(LINEWIDTH_MULT) * float(GITTINS_LINE_EXTRA_MULT),
+                alpha=args.stop_line_alpha,
+            )
         )
         final_labels.append("Gittins-G mean stop")
 
@@ -582,7 +606,7 @@ def main() -> int:
         loc="lower center",
         ncol=4,
         frameon=False,
-        bbox_to_anchor=(0.5, -0.075),
+        bbox_to_anchor=(0.5, -0.005),
         fontsize=args.legend_size,
         handlelength=2.0,
         handletextpad=0.35,
@@ -590,21 +614,22 @@ def main() -> int:
         borderpad=0.55,
     )
 
+    # Layout: slightly more space between panels, but use more of the full canvas.
     fig.subplots_adjust(
-        left=0.072,
-        right=0.965,
-        top=0.84,
-        bottom=0.255,
-        wspace=0.20,
-        hspace=0.68,
+        left=0.060,
+        right=0.985,
+        top=0.765,
+        bottom=0.205,
+        wspace=0.24,
+        hspace=0.46,
     )
 
     stem = f"figure1_gsm8k_piqa_B{args.batch_size}_scale{args.scale}".replace(".", "")
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
 
-    fig.savefig(out_png, dpi=260, bbox_inches="tight")
-    fig.savefig(out_pdf, bbox_inches="tight")
+    fig.savefig(out_png, dpi=260, bbox_inches="tight", pad_inches=0.22)
+    fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.22)
     plt.close(fig)
 
     print(f"Wrote {out_png}")

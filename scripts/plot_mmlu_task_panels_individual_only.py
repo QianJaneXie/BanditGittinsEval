@@ -6,7 +6,6 @@ It does not assemble grids. Use `assemble_mmlu_task_panels_grid.py` after this.
 
 Input layout:
     DATA_ROOT/task_name/runs_history.csv.gz
-    DATA_ROOT/task_name/runs_stopping.csv   optional
 
 Default MMLU-small setting:
     batch size = 4
@@ -20,6 +19,8 @@ Important for later stitching:
     Images are saved WITHOUT bbox_inches='tight'.
     If --single-width, --single-height, and --dpi are unchanged, every output PNG
     has exactly the same pixel size.
+MMLU task grids intentionally omit Gittins stopping markers; stopping is shown in the
+main GSM8K/PIQA plots but not in the dense MMLU task-panel grids.
 """
 
 from __future__ import annotations
@@ -66,6 +67,27 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--data-root", type=Path, default=Path(r"outputs\wandb_downloads\mmlu_small_merged_finished_with_stopping"))
     p.add_argument("--out-root", type=Path, default=Path(r"outputs\wandb_plots\mmlu_task_panels\small"))
     p.add_argument("--name-map", type=Path, default=Path(r"data\MMLU_matrices\task_display_names.json"))
+    p.add_argument(
+        "--task-metadata",
+        type=Path,
+        default=Path(r"data\MMLU_matrices\task_metadata.json"),
+        help="Task metadata JSON used for (S/M/L) size tags and prior-bucket grouping.",
+    )
+    p.add_argument(
+        "--no-size-label",
+        dest="show_size_label",
+        action="store_false",
+        help="Do not append (S)/(M)/(L) size tags to panel titles.",
+    )
+    p.set_defaults(show_size_label=True)
+
+    p.add_argument(
+        "--split-by-prior-bucket",
+        action="store_true",
+        default=True,
+        help="Write panels into out-root/prior_<low|medium|high>/... folders for easy aggregation.",
+    )
+    p.add_argument("--no-split-by-prior-bucket", dest="split_by_prior_bucket", action="store_false")
 
     g = p.add_mutually_exclusive_group()
     g.add_argument("--task", type=str, default=None, help="One task, e.g. econometrics")
@@ -76,20 +98,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--batch-size", type=int, default=4)
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
+    p.add_argument("--no-lrf", dest="include_lrf", action="store_false", help="Do not plot LRF, even if LRF runs are present.")
+    p.set_defaults(include_lrf=True)
 
     # Curve uncertainty band.
     p.add_argument("--range", choices=["stderr", "std", "iqr", "none"], default="stderr")
-    p.add_argument("--se-mult", type=float, default=2.0, help="Multiplier for SE bands when --range stderr or --stop-band stderr.")
+    p.add_argument("--se-mult", type=float, default=2.0, help="Multiplier for SE bands when --range stderr.")
     p.add_argument("--curve-alpha", type=float, default=0.15)
 
-    # Gittins stopping visualization.
-    p.add_argument("--show-stopping", action="store_true", default=True)
-    p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
-    p.add_argument("--stop-band", choices=["stderr", "std", "iqr", "none"], default="stderr")
-    p.add_argument("--stop-alpha", type=float, default=0.12)
-    p.add_argument("--stop-line-alpha", type=float, default=0.72)
-    p.add_argument("--fallback-stop-to-max-x", action="store_true", default=True)
-    p.add_argument("--no-fallback-stop-to-max-x", dest="fallback_stop_to_max_x", action="store_false")
+    # Backward-compatible no-op flags. MMLU dense task grids intentionally do not draw stopping.
+    p.add_argument("--show-stopping", dest="show_stopping", action="store_true", default=False, help=argparse.SUPPRESS)
+    p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false", help=argparse.SUPPRESS)
+    p.add_argument("--stop-band", choices=["stderr", "std", "iqr", "none"], default="none", help=argparse.SUPPRESS)
+    p.add_argument("--stop-alpha", type=float, default=0.0, help=argparse.SUPPRESS)
+    p.add_argument("--stop-line-alpha", type=float, default=0.0, help=argparse.SUPPRESS)
+    p.add_argument("--fallback-stop-to-max-x", dest="fallback_stop_to_max_x", action="store_true", default=False, help=argparse.SUPPRESS)
+    p.add_argument("--no-fallback-stop-to-max-x", dest="fallback_stop_to_max_x", action="store_false", help=argparse.SUPPRESS)
 
     # Fixed-size individual panel style.
     p.add_argument("--font-family", default="Times New Roman")
@@ -97,7 +121,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--single-height", type=float, default=1.65)
     p.add_argument("--dpi", type=int, default=260)
     # Slightly larger text for small panels (paper readability).
-    p.add_argument("--title-size", type=float, default=17.5)
+    p.add_argument("--title-size", type=float, default=14.5)
     # Axis tick labels (numbers) slightly smaller than titles.
     p.add_argument("--tick-size", type=float, default=14)
     p.add_argument("--line-width-scale", type=float, default=1.0)
@@ -140,8 +164,161 @@ def read_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def display_name_for_task(task: str, name_map: dict) -> str:
-    return str(name_map.get(task, task.replace("_", " ")))
+def load_task_metadata(task_metadata_path: Path) -> dict[str, dict]:
+    raw = read_json(task_metadata_path)
+    tasks = raw.get("tasks", [])
+    out: dict[str, dict] = {}
+    for t in tasks:
+        name = str(t.get("task", "")).strip()
+        if not name:
+            continue
+        out[name] = dict(t)
+    return out
+
+
+def size_bucket_to_sml(size_bucket: str | None) -> str | None:
+    if not size_bucket:
+        return None
+    s = str(size_bucket).strip().lower()
+    if s == "small":
+        return "S"
+    if s == "medium":
+        return "M"
+    if s == "large":
+        return "L"
+    return None
+
+
+def prior_bucket_norm(bucket: str | None) -> str:
+    b = str(bucket or "").strip().lower()
+    return b if b in ("low", "medium", "high") else "unknown"
+
+
+def display_name_for_task(task: str, name_map: dict, meta_by_task: dict[str, dict], show_size_label: bool) -> str:
+    base = str(name_map.get(task, task.replace("_", " ")))
+    if not show_size_label:
+        return base
+    tag = size_bucket_to_sml(meta_by_task.get(task, {}).get("size_bucket"))
+    return f"{base} ({tag})" if tag else base
+
+
+# Fallback mapping from docs/mmlu_prior_buckets.md.
+# Labels: H = hard / low expected accuracy, M = medium expected accuracy,
+# E = easy / high expected accuracy.
+DEFAULT_PRIOR_BUCKET_LABELS = {
+    # Low bucket -> hard.
+    "abstract_algebra": "H",
+    "high_school_mathematics": "H",
+    "moral_scenarios": "H",
+    "college_mathematics": "H",
+    "college_physics": "H",
+    "high_school_physics": "H",
+    "global_facts": "H",
+    "formal_logic": "H",
+    "elementary_mathematics": "H",
+    "college_chemistry": "H",
+    "econometrics": "H",
+    "professional_law": "H",
+    "professional_accounting": "H",
+    "machine_learning": "H",
+    "high_school_chemistry": "H",
+    "high_school_statistics": "H",
+    "college_computer_science": "H",
+    "virology": "H",
+    # Medium bucket -> medium.
+    "conceptual_physics": "M",
+    "college_medicine": "M",
+    "electrical_engineering": "M",
+    "anatomy": "M",
+    "high_school_macroeconomics": "M",
+    "professional_psychology": "M",
+    "professional_medicine": "M",
+    "business_ethics": "M",
+    "high_school_computer_science": "M",
+    "high_school_microeconomics": "M",
+    "clinical_knowledge": "M",
+    "astronomy": "M",
+    "public_relations": "M",
+    "philosophy": "M",
+    "human_aging": "M",
+    "college_biology": "M",
+    "medical_genetics": "M",
+    "moral_disputes": "M",
+    "high_school_european_history": "M",
+    "nutrition": "M",
+    "prehistory": "M",
+    "security_studies": "M",
+    # High bucket -> easy.
+    "jurisprudence": "E",
+    "high_school_biology": "E",
+    "logical_fallacies": "E",
+    "human_sexuality": "E",
+    "computer_security": "E",
+    "management": "E",
+    "high_school_geography": "E",
+    "international_law": "E",
+    "world_religions": "E",
+    "high_school_us_history": "E",
+    "miscellaneous": "E",
+    "high_school_world_history": "E",
+    "high_school_psychology": "E",
+    "sociology": "E",
+    "high_school_government_and_politics": "E",
+    "us_foreign_policy": "E",
+    "marketing": "E",
+}
+
+
+def resolve_prior_buckets_path(path: Path) -> Path | None:
+    candidates = [
+        path,
+        Path("docs") / "mmlu_prior_buckets.md",
+        Path("data") / "MMLU_matrices" / "mmlu_prior_buckets.md",
+        Path("mmlu_prior_buckets.md"),
+    ]
+    for cand in candidates:
+        if cand is not None and cand.is_file():
+            return cand
+    return None
+
+
+def parse_prior_bucket_labels(path: Path | None) -> dict[str, str]:
+    """Parse docs/mmlu_prior_buckets.md into task -> E/M/H labels.
+
+    The markdown groups subjects under Low/Medium/High buckets. For panel titles we use
+    H for low expected accuracy / hard subjects, M for medium expected accuracy, and
+    E for high expected accuracy / easier subjects.
+    """
+    labels = dict(DEFAULT_PRIOR_BUCKET_LABELS)
+    if path is None or not path.is_file():
+        return labels
+
+    current_label: str | None = None
+    heading_to_label = {"low": "H", "medium": "M", "high": "E"}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        m = re.match(r"^##\s+(Low|Medium|High)\s+Bucket", line, flags=re.IGNORECASE)
+        if m:
+            current_label = heading_to_label[m.group(1).lower()]
+            continue
+        if current_label is None:
+            continue
+        m = re.match(r"^-\s+`?([A-Za-z0-9_]+)`?\s*$", line)
+        if m:
+            labels[normalize_task_name(m.group(1))] = current_label
+    return labels
+
+
+def title_with_prior_bucket(task: str, base_title: str, prior_labels: dict[str, str], enabled: bool = True) -> str:
+    if not enabled:
+        return base_title
+    tag = prior_labels.get(normalize_task_name(task))
+    if not tag:
+        return base_title
+    # Avoid double-appending if a custom display name already contains a suffix.
+    if re.search(r"\([EMH]\)\s*$", base_title):
+        return base_title
+    return f"{base_title} ({tag})"
 
 
 def read_history(task_dir: Path) -> pd.DataFrame:
@@ -347,37 +524,40 @@ def draw_stopping(ax: plt.Axes, history: pd.DataFrame, stopping: pd.DataFrame, v
 
 
 def legend_handles_labels(args: argparse.Namespace) -> tuple[list[object], list[str]]:
+    """Shared legend for MMLU task panels, with no stopping markers."""
+    kinds = ["gittins_data", "gittins_default", "ucb"]
+    if bool(args.include_lrf):
+        kinds.append("lrf")
     handles: list[object] = [
-        Line2D([0], [0], color=STYLE_BY_KIND["gittins_data"]["color"], linewidth=STYLE_BY_KIND["gittins_data"]["lw"]),
-        Line2D([0], [0], color=STYLE_BY_KIND["gittins_default"]["color"], linewidth=STYLE_BY_KIND["gittins_default"]["lw"]),
-        Line2D([0], [0], color=STYLE_BY_KIND["ucb"]["color"], linewidth=STYLE_BY_KIND["ucb"]["lw"]),
-        Line2D([0], [0], color=STYLE_BY_KIND["lrf"]["color"], linewidth=STYLE_BY_KIND["lrf"]["lw"]),
+        Line2D([0], [0], color=STYLE_BY_KIND[kind]["color"], linewidth=STYLE_BY_KIND[kind]["lw"])
+        for kind in kinds
     ]
     labels: list[str] = [
-        STYLE_BY_KIND["gittins_data"]["label"],
-        STYLE_BY_KIND["gittins_default"]["label"],
-        STYLE_BY_KIND["ucb"]["label"],
-        STYLE_BY_KIND["lrf"]["label"],
+        STYLE_BY_KIND[kind]["label"]
+        for kind in kinds
     ]
-    if args.range != "none" or (args.show_stopping and args.stop_band != "none"):
+    if args.range != "none":
         handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
-        labels.append(f"±{args.se_mult:g} SE band" if args.range == "stderr" and args.stop_band == "stderr" else "Uncertainty band")
-    if args.show_stopping:
-        handles.append(Line2D([0], [0], color=COLOR_GITTINS_S, linestyle="--", linewidth=2.0, alpha=args.stop_line_alpha))
-        labels.append("Gittins-S mean stop")
-        handles.append(Line2D([0], [0], color=COLOR_GITTINS_G, linestyle="--", linewidth=2.0, alpha=args.stop_line_alpha))
-        labels.append("Gittins-G mean stop")
+        if args.range == "stderr":
+            labels.append(f"±{args.se_mult:g} SE band")
+        elif args.range == "std":
+            labels.append("±1 SD band")
+        elif args.range == "iqr":
+            labels.append("IQR band")
+        else:
+            labels.append("Uncertainty band")
     return handles, labels
-
 
 def plot_task_panel(task: str, task_dir: Path, title: str, cost_mode: str, x_axis: str, args: argparse.Namespace, out_path: Path) -> None:
     history = crop_lrf_after_warmup(read_history(task_dir))
-    stopping = read_stopping(task_dir)
     variants = variant_names(args.batch_size, args.scale, cost_mode)
 
     fig, ax = plt.subplots(figsize=(args.single_width, args.single_height))
 
-    for kind in ("gittins_data", "gittins_default", "ucb", "lrf"):
+    kinds = ["gittins_data", "gittins_default", "ucb"]
+    if bool(args.include_lrf):
+        kinds.append("lrf")
+    for kind in kinds:
         variant = variants[kind]
         vg = history[history["experiment_variant"].astype(str) == str(variant)].copy()
         if vg.empty:
@@ -390,8 +570,6 @@ def plot_task_panel(task: str, task_dir: Path, title: str, cost_mode: str, x_axi
         ax.plot(x_grid, center, color=st["color"], linewidth=float(st["lw"]) * float(args.line_width_scale), zorder=float(st["z"]))
         if args.range != "none":
             ax.fill_between(x_grid, lo, hi, color=st["color"], alpha=float(args.curve_alpha), linewidth=0, zorder=float(st["z"]) - 0.6)
-
-    draw_stopping(ax, history, stopping, variants, x_axis, args)
 
     ax.set_title(title, fontsize=float(args.title_size), pad=3)
     ax.grid(True, alpha=0.18, linewidth=0.8)
@@ -467,8 +645,11 @@ def collect_tasks(args: argparse.Namespace) -> list[tuple[str, Path]]:
 
 def main() -> int:
     args = parse_args()
+    # Force no-stopping behavior for dense MMLU panels, even if an old command passes --show-stopping.
+    args.show_stopping = False
     setup_matplotlib(args)
     name_map = read_json(args.name_map)
+    meta_by_task = load_task_metadata(args.task_metadata)
     tasks = collect_tasks(args)
     args.out_root.mkdir(parents=True, exist_ok=True)
 
@@ -479,9 +660,13 @@ def main() -> int:
         modes.append(("aware", "cum_original_cost"))
 
     for task, task_dir in tasks:
-        title = display_name_for_task(task, name_map)
+        title = display_name_for_task(task, name_map, meta_by_task, bool(args.show_size_label))
+        prior_bucket = prior_bucket_norm(meta_by_task.get(task, {}).get("dataset_prior_bucket"))
         for mode, x_axis in modes:
-            out = args.out_root / "individual" / mode / f"{safe_token(task)}_{mode}_B{args.batch_size}_scale{safe_token(args.scale)}.png"
+            root = args.out_root
+            if bool(args.split_by_prior_bucket):
+                root = root / f"prior_{prior_bucket}"
+            out = root / "individual" / mode / f"{safe_token(task)}_{mode}_B{args.batch_size}_scale{safe_token(args.scale)}.png"
             plot_task_panel(task, task_dir, title, mode, x_axis, args, out)
             print(f"Wrote {mode} panel: {out}")
 
