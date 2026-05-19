@@ -94,6 +94,15 @@ def parse_args() -> argparse.Namespace:
         help="Cost scale used by PBGI, matching the bandit Gittins default.",
     )
     p.add_argument("--observation-noise", "--observation_noise", type=float, default=1e-6)
+    p.add_argument(
+        "--extend-to-natural-stop",
+        "--extend_to_natural_stop",
+        action="store_true",
+        help=(
+            "Run past the nominal BO budget until the PBGI natural stop is observed, "
+            "capped by evaluating all configurations."
+        ),
+    )
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "bo_baselines")
     p.add_argument("--dtype", choices=["float64", "float32"], default="float64")
     return p.parse_args()
@@ -245,9 +254,14 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
     selection_phase: list[str] = []
     iter_fit_s: list[float] = []
     iter_score_s: list[float] = []
+    stop_cum_eval: int | None = None
+    stop_cum_original_cost: float | None = None
+    stop_index_value: float | None = None
 
     mu_star = float(data.Y[:, 0].max().item())
     total_cost = 0.0
+    nominal_total_configs = min(n_configs, n_init + n_steps)
+    max_bo_steps = (n_configs - n_init) if bool(args.extend_to_natural_stop) else n_steps
 
     def record(arm: int, acq_value: float, phase: str, fit_s: float, score_s: float) -> None:
         nonlocal total_cost
@@ -271,7 +285,7 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
     for arm in init:
         record(int(arm), float("nan"), "random_init", 0.0, 0.0)
 
-    for _ in range(n_steps):
+    for _ in range(max_bo_steps):
         if not remaining:
             break
         train_idx = torch.tensor(selected, dtype=torch.long)
@@ -302,8 +316,20 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         if not torch.isfinite(scores).any():
             raise RuntimeError("No finite acquisition scores were produced.")
         best_pos = int(torch.argmax(scores).item())
+        best_score = float(scores[best_pos].item())
+        best_observed = float(train_Y.max().item())
+        if stop_cum_eval is None and best_score < best_observed:
+            stop_cum_eval = int(len(selected) * data.n_examples)
+            stop_cum_original_cost = float(total_cost)
+            stop_index_value = best_score
+        if (
+            bool(args.extend_to_natural_stop)
+            and len(selected) >= nominal_total_configs
+            and stop_cum_eval is not None
+        ):
+            break
         arm = int(remaining_idx[best_pos].item())
-        record(arm, float(scores[best_pos].item()), str(args.acquisition), fit_s, score_s)
+        record(arm, best_score, str(args.acquisition), fit_s, score_s)
 
     return {
         "x": x,
@@ -317,6 +343,10 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         "selection_phase": selection_phase,
         "iter_fit_s": iter_fit_s,
         "iter_score_s": iter_score_s,
+        "stop_cum_eval": stop_cum_eval,
+        "stop_cum_original_cost": stop_cum_original_cost,
+        "stop_index_value": stop_index_value,
+        "nominal_total_configs": nominal_total_configs,
     }
 
 
@@ -339,6 +369,7 @@ def main() -> int:
         / (
             f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
             f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{args.n_steps}"
+            f"{'__extendstop' if args.extend_to_natural_stop else ''}"
         )
     )
     trace_path = out_base.with_name(out_base.name + "_traces.npz")
@@ -364,6 +395,22 @@ def main() -> int:
         n_init=int(n_init_value),
         n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
         n_steps=int(args.n_steps),
+        nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
+        extend_to_natural_stop=bool(args.extend_to_natural_stop),
+        pbgi_stop_cum_eval=np.asarray(
+            -1 if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
+            dtype=np.int32,
+        ),
+        pbgi_stop_cum_original_cost=np.asarray(
+            -1.0
+            if sim["stop_cum_original_cost"] is None
+            else float(sim["stop_cum_original_cost"]),
+            dtype=np.float64,
+        ),
+        pbgi_stop_index_value=np.asarray(
+            np.nan if sim["stop_index_value"] is None else float(sim["stop_index_value"]),
+            dtype=np.float64,
+        ),
         n_examples=int(data.n_examples),
         n_configs=int(data.X.shape[0]),
         cat_dims=np.asarray(data.cat_dims, dtype=np.int32),
@@ -401,6 +448,15 @@ def main() -> int:
         "n_init": int(n_init_value),
         "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
         "n_steps": int(args.n_steps),
+        "nominal_total_configs": int(sim["nominal_total_configs"]),
+        "extend_to_natural_stop": bool(args.extend_to_natural_stop),
+        "pbgi_stop_cum_eval": None if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
+        "pbgi_stop_cum_original_cost": (
+            None if sim["stop_cum_original_cost"] is None else float(sim["stop_cum_original_cost"])
+        ),
+        "pbgi_stop_index_value": (
+            None if sim["stop_index_value"] is None else float(sim["stop_index_value"])
+        ),
         "n_examples": int(data.n_examples),
         "n_configs": int(data.X.shape[0]),
         "trace": str(trace_path),
