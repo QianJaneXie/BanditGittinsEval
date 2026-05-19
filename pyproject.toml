@@ -30,5 +30,4 @@ py-modules = [
     "gittins_shrinking_posterior",
     "gittins_policy",
     "stable_pbgi",
-    "log_ei_puc",
 ]

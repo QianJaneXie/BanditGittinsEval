@@ -24,7 +24,6 @@ os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from botorch.acquisition.analytic import LogExpectedImprovement, UpperConfidenceBound
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import MixedSingleTaskGP
 from botorch.models.transforms.outcome import Standardize
@@ -33,11 +32,7 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
-from log_ei_puc import LogExpectedImprovementWithCost as LogEIPC  # noqa: E402
 from stable_pbgi import StableGittinsIndex  # noqa: E402
-
-
-UCB_BETA = 1.0
 
 
 @dataclass(frozen=True)
@@ -64,7 +59,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--bo-inputs", "--bo_inputs", dest="bo_inputs", type=Path, required=True)
     p.add_argument(
         "--acquisition",
-        choices=["pbgi", "logei", "ucb"],
+        choices=["pbgi"],
         default="pbgi",
         help="Acquisition used after the random initialization design.",
     )
@@ -88,8 +83,7 @@ def parse_args() -> argparse.Namespace:
         "--cost_aware",
         action="store_true",
         help=(
-            "Use costs in acquisition ranking. For PBGI this passes cost_X to the acquisition; "
-            "for LogEI this uses LogEIPC; for UCB this ranks acquisition value per scaled cost."
+            "Use costs in acquisition ranking. For PBGI this passes cost_X to the acquisition."
         ),
     )
     p.add_argument(
@@ -183,32 +177,18 @@ def score_candidates(
     model: MixedSingleTaskGP,
     candidate_X: torch.Tensor,
     candidate_cost: torch.Tensor,
-    train_Y: torch.Tensor,
     cost_aware: bool,
     cost_scaling_factor: float,
 ) -> torch.Tensor:
     Xq = candidate_X.unsqueeze(1)
     with torch.no_grad():
-        if acquisition == "pbgi":
-            acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
-            if cost_aware:
-                scores = acq(Xq, cost_X=candidate_cost)
-            else:
-                scores = acq(Xq)
-        elif acquisition == "logei":
-            if cost_aware:
-                acq = LogEIPC(model, best_f=float(train_Y.max().item()))
-                scores = acq(Xq, cost_X=candidate_cost)
-            else:
-                acq = LogExpectedImprovement(model, best_f=float(train_Y.max().item()))
-                scores = acq(Xq)
-        elif acquisition == "ucb":
-            acq = UpperConfidenceBound(model, beta=UCB_BETA)
-            scores = acq(Xq)
-            if cost_aware:
-                scores = scores / (candidate_cost * float(cost_scaling_factor))
-        else:  # pragma: no cover - argparse constrains this.
+        if acquisition != "pbgi":  # pragma: no cover - argparse constrains this.
             raise ValueError(f"Unsupported acquisition: {acquisition}")
+        acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
+        if cost_aware:
+            scores = acq(Xq, cost_X=candidate_cost)
+        else:
+            scores = acq(Xq)
     return scores.reshape(-1).detach()
 
 
@@ -314,7 +294,6 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
             model=model,
             candidate_X=data.X[remaining_idx],
             candidate_cost=data.cost[remaining_idx],
-            train_Y=train_Y,
             cost_aware=bool(args.cost_aware),
             cost_scaling_factor=float(args.cost_scaling_factor),
         )
@@ -382,7 +361,6 @@ def main() -> int:
         acquisition=str(args.acquisition),
         cost_aware=bool(args.cost_aware),
         cost_scaling_factor=float(args.cost_scaling_factor),
-        ucb_beta=float(UCB_BETA),
         n_init=int(n_init_value),
         n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
         n_steps=int(args.n_steps),
@@ -420,11 +398,6 @@ def main() -> int:
         "acquisition": str(args.acquisition),
         "cost_aware": bool(args.cost_aware),
         "cost_scaling_factor": float(args.cost_scaling_factor),
-        "ucb_beta": float(UCB_BETA),
-        "ucb_beta_note": (
-            "Default beta=1.0 matches the current bandit UCB-E default a=1 by convention; "
-            "the BoTorch and BanditEval parameters are not identical."
-        ),
         "n_init": int(n_init_value),
         "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
         "n_steps": int(args.n_steps),
