@@ -304,25 +304,40 @@ def main() -> int:
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         stop_holder: list[int | None] = [None]
+        cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
+        prev_arm: int | None = None
+
+        def gittins_step(obs: torch.Tensor, **kwargs: Any) -> Any:
+            nonlocal prev_arm
+            recompute = None if prev_arm is None else [prev_arm]
+            out = gittins_index_exploration(
+                obs,
+                prior_mean=float(args.gittins_prior_mean),
+                prior_variance=float(args.gittins_prior_variance),
+                obs_noise_variance=float(tau_sq),
+                cost_per_transition=torch.tensor(
+                    per_arm_original_cost.numpy(), dtype=torch.float64
+                ),
+                cost_scaling_factor=float(args.cost_scaling_factor),
+                batch_size=int(B),
+                return_mus=True,
+                cached_scores=cached_scores,
+                recompute_arms=recompute,
+                use_batch_mean_gittins_dp=False,
+                batch_observation_model=True,
+                roots_lookup_table=roots_torch,
+                allow_early_stop=False,
+                **kwargs,
+            )
+            batch = out[0] if isinstance(out, tuple) else out
+            if batch is not None:
+                prev_arm = int(batch[0, 0].item())
+            return out
 
         tr = simulate_simple_regret(
             ground_truth=ground_truth,
-            step=gittins_index_exploration,
-            step_kwargs={
-                "prior_mean": float(args.gittins_prior_mean),
-                "prior_variance": float(args.gittins_prior_variance),
-                "obs_noise_variance": float(tau_sq),
-                "cost_per_transition": torch.tensor(
-                    per_arm_original_cost.numpy(), dtype=torch.float64
-                ),
-                "cost_scaling_factor": float(args.cost_scaling_factor),
-                "batch_size": int(B),
-                "return_mus": True,
-                "use_batch_mean_gittins_dp": False,
-                "batch_observation_model": True,
-                "roots_lookup_table": roots_torch,
-                "allow_early_stop": False,
-            },
+            step=gittins_step,
+            step_kwargs={},
             seed=int(args.seed),
             max_evaluations=max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
