@@ -69,6 +69,76 @@ python scripts/plot_simple_regret_results.py \
   --x-axis original_cost
 ```
 
+### Bandit baselines used in comparison figures
+
+The comparison figures use `scripts/simulate_simple_regret.py` for the bandit
+baselines. Both UCB-E and Gittins use post-reveal recommendations: UCB-E
+recommends by empirical mean after the newly revealed batch, and Gittins
+recommends by posterior mean after the newly revealed batch.
+
+Use `--extend-gittins-to-natural-stop` when generating comparison traces. This
+records the first Gittins natural stopping time and still runs the Gittins curve
+to at least the nominal 10% budget, so the curve and stop marker can appear on
+the same plot.
+
+GSM8K unit-cost bandit baselines:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --out outputs/bandit_traces/gsm8k_seed1_unit_costs.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 16 \
+  --gittins-batch-size 16 \
+  --extend-gittins-to-natural-stop \
+  --algorithms ucb gittins
+```
+
+GSM8K cost-aware bandit baselines:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --out outputs/bandit_traces/gsm8k_seed1_cost_aware.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 16 \
+  --gittins-batch-size 16 \
+  --cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
+  --extend-gittins-to-natural-stop \
+  --algorithms ucb gittins
+```
+
+MMLU abstract algebra unit-cost bandit baselines:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/MMLU_matrices/abstract_algebra.npy \
+  --out outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 16 \
+  --gittins-batch-size 16 \
+  --extend-gittins-to-natural-stop \
+  --algorithms ucb gittins
+```
+
+MMLU abstract algebra cost-aware bandit baselines:
+
+```bash
+python scripts/simulate_simple_regret.py \
+  --matrix data/MMLU_matrices/abstract_algebra.npy \
+  --out outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
+  --seed 0 \
+  --eval-budget-fraction 0.10 \
+  --batch-size 16 \
+  --gittins-batch-size 16 \
+  --cost-vector data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json \
+  --extend-gittins-to-natural-stop \
+  --algorithms ucb gittins
+```
+
 ## BayesOpt PBGI baseline
 
 BayesOpt PBGI is run separately from the bandit simulators because it consumes
