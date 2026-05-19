@@ -12,6 +12,8 @@ license = { text = "MIT" }
 authors = [{ name = "Qian Xie and collaborators" }]
 dependencies = [
     "banditeval>=0.1.1",
+    "botorch",
+    "gpytorch",
     "jax>=0.4.26",
     "jaxtyping>=0.2.28",
     "matplotlib>=3.8",
@@ -27,4 +29,5 @@ py-modules = [
     "gittins_index_computation",
     "gittins_shrinking_posterior",
     "gittins_policy",
+    "stable_pbgi",
 ]
