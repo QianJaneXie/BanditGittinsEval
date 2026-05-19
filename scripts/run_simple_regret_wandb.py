@@ -260,6 +260,8 @@ def simulate_timed(
     recommend_fn: Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]],
     run: wandb.sdk.wandb_run.Run | None,
     log_step_metrics: bool,
+    min_evaluations_before_natural_stop: int = 0,
+    should_stop_after_step: Callable[[int], bool] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
 
@@ -338,6 +340,13 @@ def simulate_timed(
                 }
             )
 
+        if (
+            should_stop_after_step is not None
+            and evaluated >= int(min_evaluations_before_natural_stop)
+            and should_stop_after_step(int(evaluated))
+        ):
+            break
+
     return {
         "x": x,
         "x_original_cost": x_original_cost,
@@ -380,6 +389,15 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "wandb_simple_regret")
     p.add_argument("--log-step-metrics", "--log_step_metrics", action="store_true")
+    p.add_argument(
+        "--extend-gittins-to-natural-stop",
+        "--extend_gittins_to_natural_stop",
+        action="store_true",
+        help=(
+            "For Gittins variants, keep running past the nominal eval budget until the "
+            "natural stopping time is observed, capped by the full matrix."
+        ),
+    )
 
     p.add_argument("--wandb-entity", "--wandb_entity", default=None)
     p.add_argument("--wandb-project", "--wandb_project", default="GittinsBanditEval")
@@ -585,15 +603,14 @@ def main() -> int:
             return out
 
         def recommend_fn(obs: torch.Tensor, aux: Any):
-            if isinstance(aux, torch.Tensor):
-                mus = aux.detach().to(torch.float32)
-            else:
-                mus = posterior_means(
-                    obs,
-                    prior_mean=float(prior_mean),
-                    prior_variance=float(prior_variance),
-                    tau_sq_cell=float(tau_sq_cell),
-                )
+            # Recommendation is evaluated after the simulator reveals the selected batch.
+            # Recompute posterior means from updated observations instead of using pre-reveal aux.
+            mus = posterior_means(
+                obs,
+                prior_mean=float(prior_mean),
+                prior_variance=float(prior_variance),
+                tau_sq_cell=float(tau_sq_cell),
+            )
             scores = torch.where(torch.isnan(mus), torch.full_like(mus, -float("inf")), mus)
             if not torch.isfinite(scores).any():
                 return 0, mus
@@ -602,16 +619,37 @@ def main() -> int:
     else:
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")
 
+    sim_max_evaluations = (
+        int(n_cells)
+        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
+        else max_evaluations
+    )
+    stop_after_step = (
+        (lambda evaluated: natural_stop_holder[0] is not None)
+        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
+        else None
+    )
+
     sim = simulate_timed(
         ground_truth=ground_truth,
         step_fn=step_fn,
         seed=int(args.run_seed),
-        max_evaluations=max_evaluations,
+        max_evaluations=sim_max_evaluations,
         original_cost_per_arm=actual_cost_per_arm,
         recommend_fn=recommend_fn,
         run=run,
         log_step_metrics=bool(args.log_step_metrics),
+        min_evaluations_before_natural_stop=max_evaluations,
+        should_stop_after_step=stop_after_step,
     )
+    if (
+        args.extend_gittins_to_natural_stop
+        and variant.policy_family == "gittins"
+        and natural_stop_holder[0] is None
+        and sim["x"]
+        and int(sim["x"][-1]) >= int(n_cells)
+    ):
+        natural_stop_holder[0] = int(n_cells)
 
     np.savez(
         trace_path,
@@ -627,6 +665,8 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
+        extend_gittins_to_natural_stop=bool(args.extend_gittins_to_natural_stop),
+        run_max_evals=int(sim_max_evaluations),
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
         lookup_table_s=np.asarray(-1.0 if lookup_table_s is None else lookup_table_s, dtype=np.float64),
@@ -658,6 +698,8 @@ def main() -> int:
         "n_examples": n_examples,
         "n_cells": n_cells,
         "budget_max_evals": max_evaluations,
+        "run_max_evals": int(sim_max_evaluations),
+        "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),
