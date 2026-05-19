@@ -12,7 +12,7 @@ The BO input .npz contains:
   X: shape (n_configs, 4), integer configuration features
   Y: shape (n_configs, 1), average score over all examples
   arm_ids: shape (n_configs,)
-  cost: shape (n_configs,)
+  cost: shape (n_configs,), full-evaluation cost for the configuration
   metadata_json: JSON string containing feature maps and provenance
 """
 
@@ -256,7 +256,7 @@ def construct_arrays(
     np.ndarray,
     pd.DataFrame,
 ]:
-    n_configs, _ = matrix.shape
+    n_configs, n_examples = matrix.shape
 
     X = np.empty((n_configs, 4), dtype=np.int64)
     Y = matrix.mean(axis=1, keepdims=True).astype(np.float64)
@@ -302,7 +302,7 @@ def construct_arrays(
         X[i, 2] = MAX_LEN_ID_MAP[max_tokens]
         X[i, 3] = PROMPT_ID_MAP[prompt_name]
 
-        cost[i] = float(row["estimated_cost_per_1m_input_tokens"])
+        cost[i] = float(row["estimated_cost_per_1m_input_tokens"]) * float(n_examples)
         temperatures[i] = temperature
         max_tokens_values[i] = max_tokens
 
@@ -323,6 +323,9 @@ def construct_arrays(
                 "prompt_name": prompt_name,
                 "prompt_type": prompt_type,
                 "cost": float(cost[i]),
+                "raw_estimated_cost_per_1m_input_tokens": float(
+                    row["estimated_cost_per_1m_input_tokens"]
+                ),
                 "average_score": float(Y[i, 0]),
             }
         )
@@ -369,6 +372,12 @@ def build_metadata(
             "X[:, 3]": "prompt_id",
             "Y[:, 0]": "average score over all examples for the same row/configuration",
         },
+        "cost_multiplier_applied_to_bo_inputs": int(matrix.shape[1]),
+        "cost_field_note": (
+            "cost is the estimated full-evaluation cost for this configuration, not a "
+            "per-example evaluation cost. It is computed from estimated_cost_per_1m_input_tokens "
+            "by multiplying by the number of examples in the source matrix."
+        ),
         "model_id_map": model_id_map,
         "model_id_to_name": model_id_to_name,
         "temp_id_map": {str(k): int(v) for k, v in TEMP_ID_MAP.items()},
