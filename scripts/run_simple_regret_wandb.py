@@ -493,6 +493,7 @@ def main() -> int:
 
     lookup_table_s: float | None = None
     natural_stop_holder: list[int | None] = [None]
+    natural_stop_cost_holder: list[float | None] = [None]
 
     if variant.policy_family == "ucb":
         def step_fn(obs: torch.Tensor, sim_cum_eval: int):
@@ -642,6 +643,11 @@ def main() -> int:
         min_evaluations_before_natural_stop=max_evaluations,
         should_stop_after_step=stop_after_step,
     )
+    if natural_stop_holder[0] is not None and sim["x"]:
+        stop_eval = int(natural_stop_holder[0])
+        stop_idx = int(np.searchsorted(np.asarray(sim["x"], dtype=np.int64), stop_eval, side="left"))
+        if stop_idx < len(sim["x_original_cost"]):
+            natural_stop_cost_holder[0] = float(sim["x_original_cost"][stop_idx])
     if (
         args.extend_gittins_to_natural_stop
         and variant.policy_family == "gittins"
@@ -650,6 +656,7 @@ def main() -> int:
         and int(sim["x"][-1]) >= int(n_cells)
     ):
         natural_stop_holder[0] = int(n_cells)
+        natural_stop_cost_holder[0] = float(sim["x_original_cost"][-1])
 
     np.savez(
         trace_path,
@@ -683,6 +690,10 @@ def main() -> int:
             -1 if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
             dtype=np.int32,
         ),
+        gittins_stop_cum_original_cost=np.asarray(
+            -1.0 if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0]),
+            dtype=np.float64,
+        ),
     )
 
     step_summary = timing_summary(sim["iter_step_s"])
@@ -700,6 +711,10 @@ def main() -> int:
         "budget_max_evals": max_evaluations,
         "run_max_evals": int(sim_max_evaluations),
         "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
+        "gittins_stop_cum_eval": None if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
+        "gittins_stop_cum_original_cost": (
+            None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
+        ),
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),
@@ -769,6 +784,12 @@ def main() -> int:
                 "matrix_seed": matrix_seed,
                 "run_seed": int(args.run_seed),
                 "experiment_variant": variant.raw,
+                "gittins_stop_cum_eval": (
+                    None if natural_stop_holder[0] is None else int(natural_stop_holder[0])
+                ),
+                "gittins_stop_cum_original_cost": (
+                    None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
+                ),
             }
         )
         run.log({"regret_vs_evals": wandb.Image(str(fig_eval_path))})
