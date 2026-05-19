@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot bandit and PBGI bayesopt simple-regret curves from trace files."""
+"""Plot bandit and BayesOpt PBGI simple-regret curves from trace files."""
 
 from __future__ import annotations
 
@@ -77,10 +77,10 @@ def main() -> int:
     plt.figure(figsize=(8, 5))
     _plot_curve(bandit, x_key=ucb_x, y_key="ucb_regret", label="bandit UCB-E")
     _plot_curve(bandit, x_key=gittins_x, y_key="gittins_regret", label="bandit Gittins")
-    _plot_curve(pbgi, x_key=pbgi_x, y_key="regret", label="bayesopt PBGI")
+    _plot_curve(pbgi, x_key=pbgi_x, y_key="regret", label="BayesOpt PBGI")
 
     _plot_stop(_scalar(bandit, gittins_stop_key), label="bandit Gittins stop", color="C1")
-    _plot_stop(_scalar(pbgi, pbgi_stop_key), label="bayesopt PBGI stop", color="C2")
+    _plot_stop(_scalar(pbgi, pbgi_stop_key), label="BayesOpt PBGI stop", color="C2")
 
     plt.xlabel(xlabel)
     plt.ylabel("Simple regret")
