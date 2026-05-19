@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert BanditEval GSM8K/PIQA matrices to BO baseline inputs.
+"""Convert evaluation matrices to BO baseline inputs.
 
 Core output:
   - data/bo_inputs/{dataset}/{matrix_stem}_bo_inputs.npz
@@ -9,7 +9,7 @@ Optional debug sidecar files with --write-sidecars:
   - data/bo_inputs/{dataset}/{matrix_stem}_bo_metadata.json
 
 The BO input .npz contains:
-  X: shape (n_configs, 4), integer configuration features
+  X: shape (n_configs, n_features), integer configuration features
   Y: shape (n_configs, 1), average score over all examples
   arm_ids: shape (n_configs,)
   cost: shape (n_configs,), full-evaluation cost for the configuration
@@ -30,7 +30,8 @@ TEMP_ID_MAP = {0.0: 0, 0.5: 1, 1.0: 2}
 MAX_LEN_ID_MAP = {128: 0, 512: 1}
 PROMPT_ID_MAP = {"empty": 0, "step_by_step": 1}
 PROMPT_NAME_TO_TYPE = {"empty": "direct", "step_by_step": "cot"}
-FEATURE_NAMES = ["model_id", "temp_id", "max_len_id", "prompt_id"]
+BANDITEVAL_FEATURE_NAMES = ["model_id", "temp_id", "max_len_id", "prompt_id"]
+MMLU_FEATURE_NAMES = ["model_idx", "prompt_idx"]
 MODEL_ID_MAP_FIXED = {
     "gpt2": 0,
     "gpt2_large": 1,
@@ -80,8 +81,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def infer_dataset_and_seed(matrix_path: Path) -> tuple[str, int]:
+def infer_dataset_and_seed(matrix_path: Path) -> tuple[str, int | None]:
     stem = matrix_path.stem.lower()
+
+    if matrix_path.parent.name == "MMLU_matrices":
+        return "mmlu", None
 
     if stem.startswith("gsm8k_"):
         dataset = "gsm8k"
@@ -127,6 +131,8 @@ def default_config_json_path(dataset: str) -> Path:
             "data_analysis/pricing/"
             "piqa_various_models_configurations_input_price.json"
         )
+    if dataset == "mmlu":
+        return Path("data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json")
     raise ValueError(f"Unsupported dataset for default config JSON: {dataset}")
 
 
@@ -146,7 +152,7 @@ def load_matrix(matrix_path: Path) -> np.ndarray:
     return matrix
 
 
-def load_and_validate_configs(config_json_path: Path, n_configs: int) -> list[dict]:
+def load_and_validate_configs(config_json_path: Path, n_configs: int, dataset: str) -> list[dict]:
     if not config_json_path.is_file():
         raise FileNotFoundError(f"Config JSON file not found: {config_json_path}")
 
@@ -177,13 +183,21 @@ def load_and_validate_configs(config_json_path: Path, n_configs: int) -> list[di
             f"but matrix has n_configs={n_configs}"
         )
 
-    required_fields = [
-        "model_name",
-        "temperature",
-        "max_tokens",
-        "prompt_name",
-        "estimated_cost_per_1m_input_tokens",
-    ]
+    if dataset == "mmlu":
+        required_fields = [
+            "model_name",
+            "model_idx",
+            "prompt_idx",
+            "estimated_cost_per_1m_input_tokens",
+        ]
+    else:
+        required_fields = [
+            "model_name",
+            "temperature",
+            "max_tokens",
+            "prompt_name",
+            "estimated_cost_per_1m_input_tokens",
+        ]
 
     rows: list[dict] = []
     for i in range(n_configs):
@@ -244,6 +258,7 @@ def construct_arrays(
     config_rows: list[dict],
     model_id_map: dict[str, int],
     matrix: np.ndarray,
+    dataset: str,
 ) -> tuple[
     np.ndarray,
     np.ndarray,
@@ -255,10 +270,12 @@ def construct_arrays(
     np.ndarray,
     np.ndarray,
     pd.DataFrame,
+    list[str],
 ]:
     n_configs, n_examples = matrix.shape
+    feature_names = MMLU_FEATURE_NAMES if dataset == "mmlu" else BANDITEVAL_FEATURE_NAMES
 
-    X = np.empty((n_configs, 4), dtype=np.int64)
+    X = np.empty((n_configs, len(feature_names)), dtype=np.int64)
     Y = matrix.mean(axis=1, keepdims=True).astype(np.float64)
     arm_ids = np.arange(n_configs, dtype=np.int64)
     cost = np.empty((n_configs,), dtype=np.float64)
@@ -273,45 +290,63 @@ def construct_arrays(
 
     for i, row in enumerate(config_rows):
         model_name = str(row["model_name"])
-        temperature = to_float_temperature(row["temperature"], i)
-        max_tokens = to_int_max_tokens(row["max_tokens"], i)
-        prompt_name = str(row["prompt_name"])
-
-        if temperature not in TEMP_ID_MAP:
-            raise ValueError(
-                f"Unsupported temperature at row {i}: {temperature}. "
-                f"Supported values: {list(TEMP_ID_MAP.keys())}"
-            )
-
-        if max_tokens not in MAX_LEN_ID_MAP:
-            raise ValueError(
-                f"Unsupported max_tokens at row {i}: {max_tokens}. "
-                f"Supported values: {list(MAX_LEN_ID_MAP.keys())}"
-            )
-
-        if prompt_name not in PROMPT_ID_MAP:
-            raise ValueError(
-                f"Unsupported prompt_name at row {i}: {prompt_name}. "
-                f"Supported values: {list(PROMPT_ID_MAP.keys())}"
-            )
-
-        prompt_type = PROMPT_NAME_TO_TYPE[prompt_name]
-
-        X[i, 0] = model_id_map[model_name]
-        X[i, 1] = TEMP_ID_MAP[temperature]
-        X[i, 2] = MAX_LEN_ID_MAP[max_tokens]
-        X[i, 3] = PROMPT_ID_MAP[prompt_name]
-
         cost[i] = float(row["estimated_cost_per_1m_input_tokens"]) * float(n_examples)
-        temperatures[i] = temperature
-        max_tokens_values[i] = max_tokens
-
         model_names.append(model_name)
-        prompt_names.append(prompt_name)
-        prompt_types.append(prompt_type)
 
-        csv_rows.append(
-            {
+        if dataset == "mmlu":
+            model_idx = int(row["model_idx"])
+            prompt_idx = int(row["prompt_idx"])
+            X[i, 0] = model_idx
+            X[i, 1] = prompt_idx
+            temperatures[i] = np.nan
+            max_tokens_values[i] = -1
+            prompt_names.append(f"prompt_{prompt_idx}")
+            prompt_types.append("")
+            csv_row = {
+                "arm_id": int(arm_ids[i]),
+                "model_idx": model_idx,
+                "prompt_idx": prompt_idx,
+                "model_name": model_name,
+                "cost": float(cost[i]),
+                "raw_estimated_cost_per_1m_input_tokens": float(
+                    row["estimated_cost_per_1m_input_tokens"]
+                ),
+                "average_score": float(Y[i, 0]),
+            }
+        else:
+            temperature = to_float_temperature(row["temperature"], i)
+            max_tokens = to_int_max_tokens(row["max_tokens"], i)
+            prompt_name = str(row["prompt_name"])
+
+            if temperature not in TEMP_ID_MAP:
+                raise ValueError(
+                    f"Unsupported temperature at row {i}: {temperature}. "
+                    f"Supported values: {list(TEMP_ID_MAP.keys())}"
+                )
+
+            if max_tokens not in MAX_LEN_ID_MAP:
+                raise ValueError(
+                    f"Unsupported max_tokens at row {i}: {max_tokens}. "
+                    f"Supported values: {list(MAX_LEN_ID_MAP.keys())}"
+                )
+
+            if prompt_name not in PROMPT_ID_MAP:
+                raise ValueError(
+                    f"Unsupported prompt_name at row {i}: {prompt_name}. "
+                    f"Supported values: {list(PROMPT_ID_MAP.keys())}"
+                )
+
+            prompt_type = PROMPT_NAME_TO_TYPE[prompt_name]
+
+            X[i, 0] = model_id_map[model_name]
+            X[i, 1] = TEMP_ID_MAP[temperature]
+            X[i, 2] = MAX_LEN_ID_MAP[max_tokens]
+            X[i, 3] = PROMPT_ID_MAP[prompt_name]
+            temperatures[i] = temperature
+            max_tokens_values[i] = max_tokens
+            prompt_names.append(prompt_name)
+            prompt_types.append(prompt_type)
+            csv_row = {
                 "arm_id": int(arm_ids[i]),
                 "model_id": int(X[i, 0]),
                 "temp_id": int(X[i, 1]),
@@ -328,7 +363,7 @@ def construct_arrays(
                 ),
                 "average_score": float(Y[i, 0]),
             }
-        )
+        csv_rows.append(csv_row)
 
     configs_df = pd.DataFrame(csv_rows)
 
@@ -343,47 +378,40 @@ def construct_arrays(
         np.asarray(prompt_names, dtype=str),
         np.asarray(prompt_types, dtype=str),
         configs_df,
+        feature_names,
     )
 
 
 def build_metadata(
     *,
     dataset: str,
-    seed: int,
+    seed: int | None,
     matrix_path: Path,
     config_json_path: Path,
     matrix: np.ndarray,
     model_id_map: dict[str, int],
+    feature_names: list[str],
 ) -> dict:
-    model_id_to_name = [None] * len(model_id_map)
-    for name, idx in model_id_map.items():
-        model_id_to_name[idx] = name
+    feature_definition = {
+        f"X[:, {idx}]": name for idx, name in enumerate(feature_names)
+    }
+    feature_definition["Y[:, 0]"] = (
+        "average score over all examples for the same row/configuration"
+    )
 
-    return {
+    metadata = {
         "dataset": dataset,
-        "matrix_seed": int(seed),
+        "matrix_seed": None if seed is None else int(seed),
         "n_configs": int(matrix.shape[0]),
         "n_examples": int(matrix.shape[1]),
-        "feature_names": FEATURE_NAMES,
-        "feature_definition": {
-            "X[:, 0]": "model_id",
-            "X[:, 1]": "temp_id",
-            "X[:, 2]": "max_len_id",
-            "X[:, 3]": "prompt_id",
-            "Y[:, 0]": "average score over all examples for the same row/configuration",
-        },
+        "feature_names": feature_names,
+        "feature_definition": feature_definition,
         "cost_multiplier_applied_to_bo_inputs": int(matrix.shape[1]),
         "cost_field_note": (
             "cost is the estimated full-evaluation cost for this configuration, not a "
             "per-example evaluation cost. It is computed from estimated_cost_per_1m_input_tokens "
             "by multiplying by the number of examples in the source matrix."
         ),
-        "model_id_map": model_id_map,
-        "model_id_to_name": model_id_to_name,
-        "temp_id_map": {str(k): int(v) for k, v in TEMP_ID_MAP.items()},
-        "max_len_id_map": {str(k): int(v) for k, v in MAX_LEN_ID_MAP.items()},
-        "prompt_id_map": PROMPT_ID_MAP,
-        "prompt_name_to_type": PROMPT_NAME_TO_TYPE,
         "matrix_path": str(matrix_path),
         "config_json_path": str(config_json_path),
         "source_description": (
@@ -392,12 +420,29 @@ def build_metadata(
             "The per-example 0/1 matrix is compressed into Y by averaging across examples."
         ),
     }
+    if dataset == "mmlu":
+        metadata["feature_note"] = "MMLU rows are aligned by model_idx and prompt_idx."
+    else:
+        model_id_to_name = [None] * len(model_id_map)
+        for name, idx in model_id_map.items():
+            model_id_to_name[idx] = name
+        metadata.update(
+            {
+                "model_id_map": model_id_map,
+                "model_id_to_name": model_id_to_name,
+                "temp_id_map": {str(k): int(v) for k, v in TEMP_ID_MAP.items()},
+                "max_len_id_map": {str(k): int(v) for k, v in MAX_LEN_ID_MAP.items()},
+                "prompt_id_map": PROMPT_ID_MAP,
+                "prompt_name_to_type": PROMPT_NAME_TO_TYPE,
+            }
+        )
+    return metadata
 
 
 def write_outputs(
     *,
     dataset: str,
-    seed: int,
+    seed: int | None,
     out_dir: Path,
     matrix_path: Path,
     config_json_path: Path,
@@ -413,6 +458,7 @@ def write_outputs(
     prompt_names: np.ndarray,
     prompt_types: np.ndarray,
     configs_df: pd.DataFrame,
+    feature_names: list[str],
     write_sidecars: bool,
 ) -> tuple[Path, Path | None, Path | None]:
     dataset_dir = out_dir / dataset
@@ -432,8 +478,14 @@ def write_outputs(
         config_json_path=config_json_path,
         matrix=matrix,
         model_id_map=model_id_map,
+        feature_names=feature_names,
     )
     metadata_json = json.dumps(metadata, indent=2, ensure_ascii=False)
+    matrix_seed_array = (
+        np.asarray(seed, dtype=np.int64)
+        if seed is not None
+        else np.asarray("", dtype="<U32")
+    )
 
     np.savez(
         npz_path,
@@ -447,12 +499,12 @@ def write_outputs(
         max_tokens=max_tokens_values,
         prompt_names=prompt_names,
         prompt_types=prompt_types,
-        feature_names=np.asarray(FEATURE_NAMES, dtype="<U32"),
+        feature_names=np.asarray(feature_names, dtype="<U32"),
         matrix_path=np.asarray(str(matrix_path), dtype="<U512"),
         config_json_path=np.asarray(str(config_json_path), dtype="<U512"),
         dataset=np.asarray(dataset, dtype="<U32"),
-        matrix_seed=np.asarray(seed, dtype=np.int64),
-        metadata_json=np.asarray(metadata_json, dtype="<U8192"),
+        matrix_seed=matrix_seed_array,
+        metadata_json=np.asarray(metadata_json),
     )
 
     written_csv_path: Path | None = None
@@ -480,8 +532,12 @@ def main() -> int:
     )
 
     matrix = load_matrix(matrix_path)
-    config_rows = load_and_validate_configs(config_json_path, n_configs=int(matrix.shape[0]))
-    model_id_map = build_model_id_map(config_rows)
+    config_rows = load_and_validate_configs(
+        config_json_path,
+        n_configs=int(matrix.shape[0]),
+        dataset=dataset,
+    )
+    model_id_map = {} if dataset == "mmlu" else build_model_id_map(config_rows)
 
     (
         X,
@@ -494,10 +550,12 @@ def main() -> int:
         prompt_names,
         prompt_types,
         configs_df,
+        feature_names,
     ) = construct_arrays(
         config_rows=config_rows,
         model_id_map=model_id_map,
         matrix=matrix,
+        dataset=dataset,
     )
 
     npz_path, csv_path, metadata_path = write_outputs(
@@ -518,6 +576,7 @@ def main() -> int:
         prompt_names=prompt_names,
         prompt_types=prompt_types,
         configs_df=configs_df,
+        feature_names=feature_names,
         write_sidecars=bool(args.write_sidecars),
     )
 
