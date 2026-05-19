@@ -32,7 +32,7 @@ Simulate and save traces:
 ```bash
 python scripts/simulate_simple_regret.py \
   --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
-  --out outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --out outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
   --seed 0 \
   --eval-budget-fraction 0.10 \
   --batch-size 32 \
@@ -55,7 +55,7 @@ Plot from the saved traces:
 
 ```bash
 python scripts/plot_simple_regret_results.py \
-  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --traces outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
   --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png \
   --x-axis evals
 ```
@@ -64,7 +64,7 @@ Plot versus cumulative monetary cost (when you used a pricing cost vector):
 
 ```bash
 python scripts/plot_simple_regret_results.py \
-  --traces outputs/traces/gsm8k_various_models_seed1_ucb_gittins.npz \
+  --traces outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
   --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins_cost.png \
   --x-axis original_cost
 ```
@@ -97,7 +97,7 @@ python scripts/plot_simple_regret.py
 | `--ucb-a A` | UCB exploration parameter (default `1`) |
 | `--lrf-device DEVICE` | e.g. `cpu` or `cuda` for the low-rank factorization step |
 | `--gittins-grid-points N` | Tabular DP grid size for Gittins (default `1025`) |
-| `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. The bundled GSM8K configurations pricing JSON uses **USD per 1M input tokens**; other pricing files follow whatever unit they declare. When `aware`, the figure uses that unit on the x-axis. If UCB/LRF/RR run **alongside** cost-aware Gittins, the default is **one panel**: every curve is plotted vs cumulative cost (the trace bundle stores per-method cumulative cost; see **Trace files**). **Legacy** trace bundles without `ucb_x_original_cost` / `lrf_x_original_cost`, or `--merge-ucb-lrf-from` pointing at such a file, fall back to **two panels** (evals for UCB/LRF vs cost for Gittins). |
+| `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. The bundled GSM8K configurations pricing JSON uses **USD per 1M input tokens**; other pricing files follow whatever unit they declare. When `aware`, the figure uses that unit on the x-axis. If UCB/LRF/RR run **alongside** cost-aware Gittins, the default is **one panel**: every curve is plotted vs cumulative cost (the trace bundle stores per-method cumulative cost; see **Bandit trace files**). **Legacy** trace bundles without `ucb_x_original_cost` / `lrf_x_original_cost`, or `--merge-ucb-lrf-from` pointing at such a file, fall back to **two panels** (evals for UCB/LRF vs cost for Gittins). |
 | `--gittins-cost C` | Ignored for cost-unaware Gittins (DP uses `1.0`); kept for compatibility |
 | `--gittins-cost-vector FILE` | Required for `aware`: per-arm costs (JSON or `.npy`; bundled GSM8K configurations file: USD per 1M input tokens). Ignored when `unaware` |
 | `--gittins-prior-mean`, `--gittins-prior-variance` | Prior \(\theta_k \sim \mathcal{N}(\mu_0, v_0)\) for Gittins (optional; see **Gittins prior** below) |
@@ -140,7 +140,7 @@ python scripts/plot_simple_regret.py \
   --eval-budget-fraction 0.02
 ```
 
-### Trace files
+### Bandit trace files
 
 By default, next to the figure you get:
 
