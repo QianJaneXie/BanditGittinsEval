@@ -33,11 +33,10 @@ from gpytorch.mlls import ExactMarginalLogLikelihood
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
+from log_ei_puc import LogExpectedImprovementWithCost as LogEIPC  # noqa: E402
 from stable_pbgi import StableGittinsIndex  # noqa: E402
 
 
-CAT_DIMS = [0, 1, 2, 3]
-DEFAULT_N_INIT = len(CAT_DIMS) + 1
 UCB_BETA = 1.0
 
 
@@ -51,6 +50,8 @@ class BoData:
     dataset: str
     matrix_seed: str
     n_examples: int
+    cat_dims: list[int]
+    default_n_init: int
     metadata: dict[str, Any]
 
 
@@ -72,7 +73,7 @@ def parse_args() -> argparse.Namespace:
         "--n-init",
         "--n_init",
         type=int,
-        default=DEFAULT_N_INIT,
+        default=None,
         help="Number of random initial configurations. Defaults to dim + 1.",
     )
     p.add_argument(
@@ -88,7 +89,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Use costs in acquisition ranking. For PBGI this passes cost_X to the acquisition; "
-            "for LogEI/UCB this ranks acquisition value per scaled cost."
+            "for LogEI this uses LogEIPC; for UCB this ranks acquisition value per scaled cost."
         ),
     )
     p.add_argument(
@@ -118,8 +119,8 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
     Y_np = np.asarray(z["Y"], dtype=np.float64).reshape(-1, 1)
     cost_np = np.asarray(z["cost"], dtype=np.float64).reshape(-1)
 
-    if X_np.ndim != 2 or X_np.shape[1] != 4:
-        raise ValueError(f"Expected X with shape (n_configs, 4), got {X_np.shape}")
+    if X_np.ndim != 2 or X_np.shape[1] <= 0:
+        raise ValueError(f"Expected X with shape (n_configs, n_features), got {X_np.shape}")
     if Y_np.shape != (X_np.shape[0], 1):
         raise ValueError(f"Expected Y with shape ({X_np.shape[0]}, 1), got {Y_np.shape}")
     if cost_np.shape != (X_np.shape[0],):
@@ -138,6 +139,7 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
         else str(metadata.get("matrix_seed", ""))
     )
     n_examples = int(metadata.get("n_examples", 1))
+    cat_dims = list(range(int(X_np.shape[1])))
 
     return BoData(
         path=path,
@@ -148,6 +150,8 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
         dataset=dataset,
         matrix_seed=matrix_seed,
         n_examples=n_examples,
+        cat_dims=cat_dims,
+        default_n_init=len(cat_dims) + 1,
         metadata=metadata,
     )
 
@@ -157,12 +161,13 @@ def fit_mixed_gp(
     train_Y: torch.Tensor,
     *,
     observation_noise: float,
+    cat_dims: list[int],
 ) -> MixedSingleTaskGP:
     train_Yvar = torch.full_like(train_Y, float(observation_noise))
     model = MixedSingleTaskGP(
         train_X=train_X,
         train_Y=train_Y,
-        cat_dims=CAT_DIMS,
+        cat_dims=cat_dims,
         train_Yvar=train_Yvar,
         outcome_transform=Standardize(m=1),
     )
@@ -191,10 +196,12 @@ def score_candidates(
             else:
                 scores = acq(Xq)
         elif acquisition == "logei":
-            acq = LogExpectedImprovement(model, best_f=float(train_Y.max().item()))
-            scores = acq(Xq)
             if cost_aware:
-                scores = scores / (candidate_cost * float(cost_scaling_factor))
+                acq = LogEIPC(model, best_f=float(train_Y.max().item()))
+                scores = acq(Xq, cost_X=candidate_cost)
+            else:
+                acq = LogExpectedImprovement(model, best_f=float(train_Y.max().item()))
+                scores = acq(Xq)
         elif acquisition == "ucb":
             acq = UpperConfidenceBound(model, beta=UCB_BETA)
             scores = acq(Xq)
@@ -239,7 +246,8 @@ def save_line_plot(
 def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
     rng = np.random.default_rng(int(args.seed))
     n_configs = int(data.X.shape[0])
-    n_init = min(max(int(args.n_init), 1), n_configs)
+    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
+    n_init = min(max(requested_n_init, 1), n_configs)
     n_steps = min(max(int(args.n_steps), 0), n_configs - n_init)
 
     init = rng.choice(n_configs, size=n_init, replace=False).astype(int).tolist()
@@ -295,6 +303,7 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
             train_X,
             train_Y,
             observation_noise=float(args.observation_noise),
+            cat_dims=data.cat_dims,
         )
         fit_s = float(time.perf_counter() - fit_t0)
 
@@ -339,6 +348,7 @@ def main() -> int:
     torch.manual_seed(int(args.seed))
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
+    n_init_value = data.default_n_init if args.n_init is None else int(args.n_init)
     variant = str(args.acquisition)
     if args.cost_aware:
         variant = f"{variant}_cost_aware"
@@ -349,7 +359,7 @@ def main() -> int:
         / safe_token(variant)
         / (
             f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
-            f"__{safe_token(variant)}__ninit{args.n_init}__nsteps{args.n_steps}"
+            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{args.n_steps}"
         )
     )
     trace_path = out_base.with_name(out_base.name + "_traces.npz")
@@ -373,12 +383,12 @@ def main() -> int:
         cost_aware=bool(args.cost_aware),
         cost_scaling_factor=float(args.cost_scaling_factor),
         ucb_beta=float(UCB_BETA),
-        n_init=int(args.n_init),
-        n_init_rule="dim_plus_1_default" if int(args.n_init) == DEFAULT_N_INIT else "user_set",
+        n_init=int(n_init_value),
+        n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
         n_steps=int(args.n_steps),
         n_examples=int(data.n_examples),
         n_configs=int(data.X.shape[0]),
-        cat_dims=np.asarray(CAT_DIMS, dtype=np.int32),
+        cat_dims=np.asarray(data.cat_dims, dtype=np.int32),
         x=np.asarray(sim["x"], dtype=np.int32),
         x_original_cost=np.asarray(sim["x_original_cost"], dtype=np.float64),
         regret=np.asarray(sim["regret"], dtype=np.float32),
@@ -415,8 +425,8 @@ def main() -> int:
             "Default beta=1.0 matches the current bandit UCB-E default a=1 by convention; "
             "the BoTorch and BanditEval parameters are not identical."
         ),
-        "n_init": int(args.n_init),
-        "n_init_rule": "dim_plus_1_default" if int(args.n_init) == DEFAULT_N_INIT else "user_set",
+        "n_init": int(n_init_value),
+        "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
         "n_steps": int(args.n_steps),
         "n_examples": int(data.n_examples),
         "n_configs": int(data.X.shape[0]),
