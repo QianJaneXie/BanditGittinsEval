@@ -51,6 +51,23 @@ def _recommend_from_means(mus: torch.Tensor) -> int:
     return int(torch.argmax(scores).item())
 
 
+def _posterior_means(
+    obs: torch.Tensor,
+    *,
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq_cell: float,
+) -> torch.Tensor:
+    counts = (~obs.isnan()).sum(dim=1).to(torch.float64)
+    obs_sum = torch.nan_to_num(obs, nan=0.0).sum(dim=1).to(torch.float64)
+    v0 = float(prior_variance)
+    prec = 1.0 / v0 + counts / float(tau_sq_cell)
+    v_t = 1.0 / prec
+    mus = v_t * (float(prior_mean) / v0 + obs_sum / float(tau_sq_cell))
+    mus[counts == 0] = float(prior_mean)
+    return mus.to(torch.float32)
+
+
 def simulate_simple_regret(
     *,
     ground_truth: torch.Tensor,
@@ -59,6 +76,9 @@ def simulate_simple_regret(
     seed: int,
     max_evaluations: int,
     per_arm_original_cost: torch.Tensor,
+    recommend: Callable[[torch.Tensor, Any], torch.Tensor] | None = None,
+    min_evaluations_before_natural_stop: int = 0,
+    stop_after_natural_stop: bool = False,
     pass_sim_cum_eval: bool = False,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
 ) -> Trace:
@@ -109,8 +129,9 @@ def simulate_simple_regret(
         unit_cost = float(per_arm_original_cost[pulled_arm].item())
         total_original_cost += unit_cost * float(n_batch)
 
-        if mus is None:
-            # Policies we use here always set return_mus=True; this is a safety fallback.
+        if recommend is not None:
+            mus = recommend(obs, mus)
+        elif mus is None:
             mus = torch.nanmean(obs, dim=1)
         arm = _recommend_from_means(mus)
         simple_regret = mu_star - float(true_means[arm].item())
@@ -120,6 +141,13 @@ def simulate_simple_regret(
         cum_original_cost.append(float(total_original_cost))
         rec_arm.append(int(arm))
         rec_mean.append(float(mus[arm].item()) if torch.isfinite(mus[arm]) else float("nan"))
+
+        if (
+            stop_after_natural_stop
+            and evaluated >= int(min_evaluations_before_natural_stop)
+            and stop_cum_eval is not None
+        ):
+            break
 
     return Trace(
         x=cum_evaluated,
@@ -217,6 +245,14 @@ def main() -> int:
         "B=--gittins-batch-size.",
     )
     p.add_argument(
+        "--extend-gittins-to-natural-stop",
+        action="store_true",
+        help=(
+            "Run Gittins past the nominal eval budget until its natural stopping time is "
+            "observed, capped by the full matrix. UCB still runs only to the nominal budget."
+        ),
+    )
+    p.add_argument(
         "--algorithms",
         nargs="+",
         default=["ucb", "gittins"],
@@ -240,6 +276,7 @@ def main() -> int:
         "n_arms": int(n_arms),
         "n_examples": int(n_examples),
         "budget_evals": int(max_evaluations),
+        "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
         "cost_scaling_factor": float(args.cost_scaling_factor),
         "cost_per_arm_original": np.asarray(per_arm_original_cost.numpy(), dtype=np.float64),
         "ucb_a": float(args.ucb_a),
@@ -260,6 +297,7 @@ def main() -> int:
             seed=int(args.seed),
             max_evaluations=max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
+            recommend=lambda obs, aux: torch.nanmean(obs, dim=1),
         )
         out.update(
             ucb_x=np.asarray(tr.x, dtype=np.int32),
@@ -334,16 +372,44 @@ def main() -> int:
                 prev_arm = int(batch[0, 0].item())
             return out
 
+        gittins_max_evaluations = (
+            int(n_arms * n_examples)
+            if bool(args.extend_gittins_to_natural_stop)
+            else max_evaluations
+        )
         tr = simulate_simple_regret(
             ground_truth=ground_truth,
             step=gittins_step,
             step_kwargs={},
             seed=int(args.seed),
-            max_evaluations=max_evaluations,
+            max_evaluations=gittins_max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
+            recommend=lambda obs, aux: _posterior_means(
+                obs,
+                prior_mean=float(args.gittins_prior_mean),
+                prior_variance=float(args.gittins_prior_variance),
+                tau_sq_cell=float(tau_sq_cell),
+            ),
+            min_evaluations_before_natural_stop=max_evaluations,
+            stop_after_natural_stop=bool(args.extend_gittins_to_natural_stop),
             pass_sim_cum_eval=True,
             natural_stop_cum_eval_holder=stop_holder,
         )
+        if (
+            args.extend_gittins_to_natural_stop
+            and tr.stop_cum_eval is None
+            and tr.x
+            and int(tr.x[-1]) >= int(n_arms * n_examples)
+        ):
+            tr = Trace(
+                x=tr.x,
+                x_original_cost=tr.x_original_cost,
+                regret=tr.regret,
+                recommended_arm=tr.recommended_arm,
+                recommended_mean=tr.recommended_mean,
+                stop_cum_eval=int(n_arms * n_examples),
+                stop_cum_original_cost=float(tr.x_original_cost[-1]),
+            )
         out.update(
             gittins_x=np.asarray(tr.x, dtype=np.int32),
             gittins_x_original_cost=np.asarray(tr.x_original_cost, dtype=np.float64),
@@ -352,6 +418,7 @@ def main() -> int:
             gittins_recommended_mean=np.asarray(tr.recommended_mean, dtype=np.float32),
             tau_sq_gittins=np.asarray(tau_sq, dtype=np.float32),
             gittins_batch_size=np.asarray(B, dtype=np.int32),
+            gittins_run_max_evals=np.asarray(gittins_max_evaluations, dtype=np.int32),
             gittins_stop_cum_eval=np.asarray(-1 if tr.stop_cum_eval is None else tr.stop_cum_eval, dtype=np.int32),
             gittins_stop_cum_original_cost=np.asarray(
                 -1.0 if tr.stop_cum_original_cost is None else tr.stop_cum_original_cost,
