@@ -69,6 +69,100 @@ python scripts/plot_simple_regret_results.py \
   --x-axis original_cost
 ```
 
+## BayesOpt PBGI baseline
+
+BayesOpt PBGI is run separately from the bandit simulators because it consumes
+`data/bo_inputs/*.npz`: each row is a complete configuration, and evaluating one
+candidate reveals its aggregate `Y` and consumes the full-evaluation `cost`.
+
+The runner is `scripts/run_bo_baseline.py`. It uses BoTorch `MixedSingleTaskGP`
+with all `X` columns treated as categorical dimensions, and then scores remaining
+candidates with `StableGittinsIndex`. The default random initialization is
+`dim + 1`, but for MMLU we use `--n-init 6` (`2 * (dim + 1)`) because `dim=2`
+and three initial points is too small for a stable GP fit over 1500 candidates.
+
+### GSM8K BayesOpt PBGI
+
+Unit-cost run:
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
+  --seed 0 \
+  --n-steps 7 \
+  --extend-to-natural-stop \
+  --out-dir outputs/bo_baselines
+```
+
+Cost-aware run:
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
+  --cost-aware \
+  --seed 0 \
+  --n-steps 7 \
+  --extend-to-natural-stop \
+  --out-dir outputs/bo_baselines
+```
+
+Here `n_init` defaults to `5` because GSM8K has four categorical input
+dimensions, so `5 + 7 = 12` configurations, approximately 10% of 122 configs.
+
+### MMLU Abstract Algebra BayesOpt PBGI
+
+Unit-cost run:
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
+  --seed 0 \
+  --n-init 6 \
+  --n-steps 144 \
+  --extend-to-natural-stop \
+  --out-dir outputs/bo_baselines
+```
+
+Cost-aware run:
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
+  --cost-aware \
+  --seed 0 \
+  --n-init 6 \
+  --n-steps 144 \
+  --extend-to-natural-stop \
+  --out-dir outputs/bo_baselines
+```
+
+Here `6 + 144 = 150` configurations, exactly 10% of 1500 MMLU configurations.
+
+### Combined bandit/PBGI plots
+
+Use `scripts/plot_bandit_bo_comparison.py` to combine a bandit trace from
+`scripts/simulate_simple_regret.py` with a BayesOpt PBGI trace. The legend labels
+are `bandit UCB-E`, `bandit Gittins`, and `BayesOpt PBGI`; if available, the plot
+also marks `bandit Gittins stop` and `BayesOpt PBGI stop`.
+
+MMLU examples:
+
+```bash
+python scripts/plot_bandit_bo_comparison.py \
+  --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
+  --pbgi-trace outputs/bo_baselines/mmlu/pbgi/abstract_algebra_bo_inputs__runseed0__pbgi__ninit6__nsteps144__extendstop_traces.npz \
+  --out outputs/figures/mmlu_abstract_algebra_unit_costs_bandit_bo_regret_vs_evals.png \
+  --title "MMLU abstract algebra unit-cost: simple regret vs cumulative examples" \
+  --x-axis evals
+
+python scripts/plot_bandit_bo_comparison.py \
+  --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
+  --pbgi-trace outputs/bo_baselines/mmlu/pbgi_cost_aware/abstract_algebra_bo_inputs__runseed0__pbgi_cost_aware__ninit6__nsteps144__extendstop_traces.npz \
+  --out outputs/figures/mmlu_abstract_algebra_cost_aware_bandit_bo_regret_vs_full_cost.png \
+  --title "MMLU abstract algebra cost-aware: simple regret vs cumulative cost" \
+  --x-axis original_cost
+```
+
 ## Simple regret simulation and figure: `plot_simple_regret.py`
 
 Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens for the bundled GSM8K configurations file) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
