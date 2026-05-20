@@ -813,6 +813,12 @@ def main() -> int:
                 "matrix_seed": matrix_seed,
                 "run_seed": int(args.run_seed),
                 "experiment_variant": variant.raw,
+                "gittins_stop_cum_eval": (
+                    None if natural_stop_holder[0] is None else int(natural_stop_holder[0])
+                ),
+                "gittins_stop_cum_original_cost": (
+                    None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
+                ),
             }
         )
         run.log({"regret_vs_evals": wandb.Image(str(fig_eval_path))})
