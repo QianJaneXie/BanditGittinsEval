@@ -38,6 +38,8 @@ class Trace:
     recommended_mean: list[float]
     stop_cum_eval: int | None = None
     stop_cum_original_cost: float | None = None
+    recommendation_aware_stop_cum_eval: int | None = None
+    recommendation_aware_stop_cum_original_cost: float | None = None
 
 
 def _recommend_from_means(mus: torch.Tensor) -> int:
@@ -61,6 +63,7 @@ def simulate_simple_regret(
     per_arm_original_cost: torch.Tensor,
     pass_sim_cum_eval: bool = False,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
 ) -> Trace:
     torch.manual_seed(int(seed))
     obs = torch.full_like(ground_truth, float("nan"))
@@ -76,6 +79,8 @@ def simulate_simple_regret(
     total_original_cost = 0.0
     stop_cum_eval: int | None = None
     stop_cum_original_cost: float | None = None
+    recommendation_aware_stop_cum_eval: int | None = None
+    recommendation_aware_stop_cum_original_cost: float | None = None
 
     while evaluated < max_evaluations:
         call_kw = dict(step_kwargs)
@@ -83,6 +88,10 @@ def simulate_simple_regret(
             call_kw["sim_cum_eval"] = int(evaluated)
         if natural_stop_cum_eval_holder is not None:
             call_kw["natural_stop_cum_eval_holder"] = natural_stop_cum_eval_holder
+        if recommendation_aware_stop_cum_eval_holder is not None:
+            call_kw["recommendation_aware_stop_cum_eval_holder"] = (
+                recommendation_aware_stop_cum_eval_holder
+            )
         out = step(obs, **call_kw)
         if (
             stop_cum_eval is None
@@ -92,6 +101,16 @@ def simulate_simple_regret(
         ):
             stop_cum_eval = int(natural_stop_cum_eval_holder[0])
             stop_cum_original_cost = float(total_original_cost)
+        if (
+            recommendation_aware_stop_cum_eval is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+        ):
+            recommendation_aware_stop_cum_eval = int(
+                recommendation_aware_stop_cum_eval_holder[0]
+            )
+            recommendation_aware_stop_cum_original_cost = float(total_original_cost)
         if out is None:
             break
         if isinstance(out, tuple):
@@ -129,6 +148,8 @@ def simulate_simple_regret(
         recommended_mean=rec_mean,
         stop_cum_eval=stop_cum_eval,
         stop_cum_original_cost=stop_cum_original_cost,
+        recommendation_aware_stop_cum_eval=recommendation_aware_stop_cum_eval,
+        recommendation_aware_stop_cum_original_cost=recommendation_aware_stop_cum_original_cost,
     )
 
 
@@ -304,6 +325,7 @@ def main() -> int:
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         stop_holder: list[int | None] = [None]
+        recommendation_aware_stop_holder: list[int | None] = [None]
 
         tr = simulate_simple_regret(
             ground_truth=ground_truth,
@@ -328,6 +350,7 @@ def main() -> int:
             per_arm_original_cost=per_arm_original_cost,
             pass_sim_cum_eval=True,
             natural_stop_cum_eval_holder=stop_holder,
+            recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
         )
         out.update(
             gittins_x=np.asarray(tr.x, dtype=np.int32),
@@ -342,6 +365,18 @@ def main() -> int:
                 -1.0 if tr.stop_cum_original_cost is None else tr.stop_cum_original_cost,
                 dtype=np.float64,
             ),
+            gittins_recommendation_aware_stop_cum_eval=np.asarray(
+                -1
+                if tr.recommendation_aware_stop_cum_eval is None
+                else tr.recommendation_aware_stop_cum_eval,
+                dtype=np.int32,
+            ),
+            gittins_recommendation_aware_stop_cum_original_cost=np.asarray(
+                -1.0
+                if tr.recommendation_aware_stop_cum_original_cost is None
+                else tr.recommendation_aware_stop_cum_original_cost,
+                dtype=np.float64,
+            ),
         )
     else:
         out.update(
@@ -352,6 +387,8 @@ def main() -> int:
             gittins_recommended_mean=np.asarray([], dtype=np.float32),
             gittins_stop_cum_eval=np.asarray(-1, dtype=np.int32),
             gittins_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
+            gittins_recommendation_aware_stop_cum_eval=np.asarray(-1, dtype=np.int32),
+            gittins_recommendation_aware_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

@@ -76,6 +76,7 @@ def gittins_index_exploration(
     allow_early_stop: bool = True,
     sim_cum_eval: int | None = None,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
     roots_lookup_table: torch.Tensor | None = None,
     force_per_observation_dp: bool = False,
     batch_observation_model: bool = False,
@@ -98,7 +99,9 @@ def gittins_index_exploration(
     continue (e.g. to a fixed eval budget). When ``natural_stop_cum_eval_holder`` is a one-element
     list ``[None]`` and ``sim_cum_eval`` is the simulator’s cumulative eval count **before** this
     step, the first time the argmax arm is fully observed we set ``holder[0]`` to that count (for
-    plotting a nominal stopping time).
+    plotting a nominal stopping time). When ``recommendation_aware_stop_cum_eval_holder`` is set,
+    the first time ``max_{k incomplete} Γ_k < max_j μ_j`` (best incomplete Gittins index below
+    best posterior mean) we record that count—aligned with recommend-by-posterior-mean.
 
     **Batch semantics (not a mixed pair minibatch):** compute the Gittins index for every arm,
     choose the single arm k* with the largest index, then evaluate **that method** on
@@ -147,9 +150,11 @@ def gittins_index_exploration(
         allow_early_stop: If False, never return ``None`` just because the top-scoring arm is
             complete; instead pull the best arm that still has free cells.
         sim_cum_eval: Optional cumulative evaluations revealed **before** this policy step; used
-            with ``natural_stop_cum_eval_holder`` only.
-        natural_stop_cum_eval_holder: Optional ``[None]`` list; first natural-stop step sets
-            ``holder[0]`` to ``sim_cum_eval``.
+            with stop-time holders.
+        natural_stop_cum_eval_holder: Optional ``[None]`` list; first index-induced stop (argmax
+            arm complete) sets ``holder[0]`` to ``sim_cum_eval``.
+        recommendation_aware_stop_cum_eval_holder: Optional ``[None]`` list; first step with
+            ``max_{k incomplete} Γ_k < max_j μ_j`` sets ``holder[0]`` to ``sim_cum_eval``.
 
     Returns:
         ``batch`` with shape ``(2, b)``, ``b ≤ batch_size``, or ``None`` if every cell is observed.
@@ -288,6 +293,19 @@ def gittins_index_exploration(
     for k in range(m_methods):
         if completely_sensed_mask[k]:
             scores[k] = float(mus_posterior[k].item())
+
+    if (
+        recommendation_aware_stop_cum_eval_holder is not None
+        and len(recommendation_aware_stop_cum_eval_holder) == 1
+        and recommendation_aware_stop_cum_eval_holder[0] is None
+        and sim_cum_eval is not None
+    ):
+        incomplete = ~completely_sensed_mask
+        if bool(incomplete.any()):
+            max_gittins = float(scores[incomplete].max().item())
+            max_mu = float(mus_posterior.max().item())
+            if max_gittins < max_mu:
+                recommendation_aware_stop_cum_eval_holder[0] = int(sim_cum_eval)
 
     best_method_index = int(torch.argmax(scores).item())
     winner_complete = bool(completely_sensed_mask[best_method_index])

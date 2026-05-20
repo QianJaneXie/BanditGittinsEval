@@ -250,6 +250,23 @@ def save_line_plot(
     plt.close()
 
 
+def _original_cost_at_cum_eval(
+    cum_evals: list[int] | np.ndarray,
+    cum_costs: list[float] | np.ndarray,
+    target_eval: int,
+) -> float:
+    """Cumulative original cost at ``target_eval`` (``-1`` if not found)."""
+    target_eval = int(target_eval)
+    if target_eval < 0:
+        return -1.0
+    if target_eval == 0:
+        return 0.0
+    for e, c in zip(cum_evals, cum_costs):
+        if int(e) == target_eval:
+            return float(c)
+    return -1.0
+
+
 def simulate_timed(
     *,
     ground_truth: torch.Tensor,
@@ -475,6 +492,7 @@ def main() -> int:
 
     lookup_table_s: float | None = None
     natural_stop_holder: list[int | None] = [None]
+    recommendation_aware_stop_holder: list[int | None] = [None]
 
     if variant.policy_family == "ucb":
         def step_fn(obs: torch.Tensor, sim_cum_eval: int):
@@ -573,6 +591,7 @@ def main() -> int:
                 allow_early_stop=False,
                 sim_cum_eval=int(sim_cum_eval),
                 natural_stop_cum_eval_holder=natural_stop_holder,
+                recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
                 roots_lookup_table=roots_torch,
                 batch_observation_model=True,
             )
@@ -642,6 +661,22 @@ def main() -> int:
         gittins_stop_cum_eval=np.asarray(
             -1 if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
             dtype=np.int32,
+        ),
+        gittins_recommendation_aware_stop_cum_eval=np.asarray(
+            -1
+            if recommendation_aware_stop_holder[0] is None
+            else int(recommendation_aware_stop_holder[0]),
+            dtype=np.int32,
+        ),
+        gittins_recommendation_aware_stop_cum_original_cost=np.asarray(
+            _original_cost_at_cum_eval(
+                sim["x"],
+                sim["x_original_cost"],
+                -1
+                if recommendation_aware_stop_holder[0] is None
+                else int(recommendation_aware_stop_holder[0]),
+            ),
+            dtype=np.float64,
         ),
     )
 
