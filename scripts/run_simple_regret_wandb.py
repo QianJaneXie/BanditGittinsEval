@@ -260,6 +260,8 @@ def simulate_timed(
     recommend_fn: Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]],
     run: wandb.sdk.wandb_run.Run | None,
     log_step_metrics: bool,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
     min_evaluations_before_natural_stop: int = 0,
     should_stop_after_step: Callable[[int], bool] | None = None,
 ) -> dict[str, Any]:
@@ -281,12 +283,29 @@ def simulate_timed(
     evaluated = 0
     total_cost = 0.0
     step_idx = 0
+    natural_stop_cum_original_cost: float | None = None
+    recommendation_aware_stop_cum_original_cost: float | None = None
 
     while evaluated < max_evaluations:
         t0 = time.perf_counter()
         ts0 = time.perf_counter()
         out = step_fn(obs, evaluated)
         ts1 = time.perf_counter()
+
+        if (
+            natural_stop_cum_original_cost is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+        ):
+            natural_stop_cum_original_cost = float(total_cost)
+        if (
+            recommendation_aware_stop_cum_original_cost is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+        ):
+            recommendation_aware_stop_cum_original_cost = float(total_cost)
 
         if out is None:
             break
@@ -356,6 +375,8 @@ def simulate_timed(
         "iter_step_s": iter_step_s,
         "iter_total_s": iter_total_s,
         "batch_cells": batch_cells,
+        "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
+        "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
     }
 
 
@@ -394,8 +415,8 @@ def parse_args() -> argparse.Namespace:
         "--extend_gittins_to_natural_stop",
         action="store_true",
         help=(
-            "For Gittins variants, keep running past the nominal eval budget until the "
-            "natural stopping time is observed, capped by the full matrix."
+            "Gittins only: run until index-induced natural stop (up to full matrix), "
+            "not only until --eval-budget-fraction."
         ),
     )
 
@@ -493,7 +514,7 @@ def main() -> int:
 
     lookup_table_s: float | None = None
     natural_stop_holder: list[int | None] = [None]
-    natural_stop_cost_holder: list[float | None] = [None]
+    recommendation_aware_stop_holder: list[int | None] = [None]
 
     if variant.policy_family == "ucb":
         def step_fn(obs: torch.Tensor, sim_cum_eval: int):
@@ -592,6 +613,7 @@ def main() -> int:
                 allow_early_stop=False,
                 sim_cum_eval=int(sim_cum_eval),
                 natural_stop_cum_eval_holder=natural_stop_holder,
+                recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
                 roots_lookup_table=roots_torch,
                 batch_observation_model=True,
             )
@@ -604,8 +626,6 @@ def main() -> int:
             return out
 
         def recommend_fn(obs: torch.Tensor, aux: Any):
-            # Recommendation is evaluated after the simulator reveals the selected batch.
-            # Recompute posterior means from updated observations instead of using pre-reveal aux.
             mus = posterior_means(
                 obs,
                 prior_mean=float(prior_mean),
@@ -640,23 +660,19 @@ def main() -> int:
         recommend_fn=recommend_fn,
         run=run,
         log_step_metrics=bool(args.log_step_metrics),
+        natural_stop_cum_eval_holder=natural_stop_holder,
+        recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
         min_evaluations_before_natural_stop=max_evaluations,
         should_stop_after_step=stop_after_step,
     )
-    if natural_stop_holder[0] is not None and sim["x"]:
-        stop_eval = int(natural_stop_holder[0])
-        stop_idx = int(np.searchsorted(np.asarray(sim["x"], dtype=np.int64), stop_eval, side="left"))
-        if stop_idx < len(sim["x_original_cost"]):
-            natural_stop_cost_holder[0] = float(sim["x_original_cost"][stop_idx])
     if (
-        args.extend_gittins_to_natural_stop
+        bool(args.extend_gittins_to_natural_stop)
         and variant.policy_family == "gittins"
         and natural_stop_holder[0] is None
         and sim["x"]
         and int(sim["x"][-1]) >= int(n_cells)
     ):
         natural_stop_holder[0] = int(n_cells)
-        natural_stop_cost_holder[0] = float(sim["x_original_cost"][-1])
 
     np.savez(
         trace_path,
@@ -672,8 +688,11 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
-        extend_gittins_to_natural_stop=bool(args.extend_gittins_to_natural_stop),
-        run_max_evals=int(sim_max_evaluations),
+        extend_gittins_to_natural_stop=np.asarray(
+            bool(args.extend_gittins_to_natural_stop), dtype=np.bool_
+        ),
+        gittins_run_max_evals=np.asarray(int(sim_max_evaluations), dtype=np.int32),
+        budget_evals=np.asarray(int(max_evaluations), dtype=np.int32),
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
         lookup_table_s=np.asarray(-1.0 if lookup_table_s is None else lookup_table_s, dtype=np.float64),
@@ -691,7 +710,21 @@ def main() -> int:
             dtype=np.int32,
         ),
         gittins_stop_cum_original_cost=np.asarray(
-            -1.0 if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0]),
+            -1.0
+            if sim["natural_stop_cum_original_cost"] is None
+            else float(sim["natural_stop_cum_original_cost"]),
+            dtype=np.float64,
+        ),
+        gittins_recommendation_aware_stop_cum_eval=np.asarray(
+            -1
+            if recommendation_aware_stop_holder[0] is None
+            else int(recommendation_aware_stop_holder[0]),
+            dtype=np.int32,
+        ),
+        gittins_recommendation_aware_stop_cum_original_cost=np.asarray(
+            -1.0
+            if sim["recommendation_aware_stop_cum_original_cost"] is None
+            else float(sim["recommendation_aware_stop_cum_original_cost"]),
             dtype=np.float64,
         ),
     )
@@ -709,12 +742,8 @@ def main() -> int:
         "n_examples": n_examples,
         "n_cells": n_cells,
         "budget_max_evals": max_evaluations,
-        "run_max_evals": int(sim_max_evaluations),
+        "gittins_run_max_evals": int(sim_max_evaluations),
         "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
-        "gittins_stop_cum_eval": None if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
-        "gittins_stop_cum_original_cost": (
-            None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
-        ),
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),
