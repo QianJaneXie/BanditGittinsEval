@@ -53,6 +53,10 @@ BASE_COLUMNS = [
     "prior_type",
     "prior_mean_resolved",
     "prior_variance_resolved",
+    "prior_bucket",
+    "prior_source",
+    "mmlu_task",
+    "mmlu_size_bucket",
 ]
 
 SUMMARY_COLUMNS = BASE_COLUMNS + [
@@ -66,6 +70,13 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "gittins_recommendation_aware_stop_cum_eval",
     "gittins_recommendation_aware_stop_cum_original_cost",
     "lookup_table_s",
+    "lookup_memory_rss_before_mb",
+    "lookup_memory_rss_after_mb",
+    "lookup_memory_rss_delta_mb",
+    "lookup_memory_peak_before_mb",
+    "lookup_memory_peak_after_mb",
+    "lookup_memory_peak_delta_mb",
+    "lookup_roots_table_mb",
     "iter_step_mean_s",
     "iter_step_median_s",
     "iter_step_p90_s",
@@ -144,6 +155,10 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "prior_type": cfg.get("prior_type", fallback.get("prior_type")),
         "prior_mean_resolved": get_field(cfg, summary, "prior_mean_resolved"),
         "prior_variance_resolved": get_field(cfg, summary, "prior_variance_resolved"),
+        "prior_bucket": get_field(cfg, summary, "prior_bucket"),
+        "prior_source": get_field(cfg, summary, "prior_source"),
+        "mmlu_task": get_field(cfg, summary, "mmlu_task"),
+        "mmlu_size_bucket": get_field(cfg, summary, "mmlu_size_bucket"),
     }
     return row
 
