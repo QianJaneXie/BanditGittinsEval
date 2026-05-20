@@ -817,7 +817,19 @@ def main() -> int:
                     None if natural_stop_holder[0] is None else int(natural_stop_holder[0])
                 ),
                 "gittins_stop_cum_original_cost": (
-                    None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
+                    None
+                    if sim["natural_stop_cum_original_cost"] is None
+                    else float(sim["natural_stop_cum_original_cost"])
+                ),
+                "gittins_recommendation_aware_stop_cum_eval": (
+                    None
+                    if recommendation_aware_stop_holder[0] is None
+                    else int(recommendation_aware_stop_holder[0])
+                ),
+                "gittins_recommendation_aware_stop_cum_original_cost": (
+                    None
+                    if sim["recommendation_aware_stop_cum_original_cost"] is None
+                    else float(sim["recommendation_aware_stop_cum_original_cost"])
                 ),
             }
         )

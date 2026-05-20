@@ -7,6 +7,7 @@ command:
   - /scratch/yh6415/conda_envs/gittins/bin/python
   - ${program}
   - --log-step-metrics
+  - --extend-gittins-to-natural-stop
   - ${args}
 
 metric:
