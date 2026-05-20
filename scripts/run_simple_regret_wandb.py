@@ -250,23 +250,6 @@ def save_line_plot(
     plt.close()
 
 
-def _original_cost_at_cum_eval(
-    cum_evals: list[int] | np.ndarray,
-    cum_costs: list[float] | np.ndarray,
-    target_eval: int,
-) -> float:
-    """Cumulative original cost at ``target_eval`` (``-1`` if not found)."""
-    target_eval = int(target_eval)
-    if target_eval < 0:
-        return -1.0
-    if target_eval == 0:
-        return 0.0
-    for e, c in zip(cum_evals, cum_costs):
-        if int(e) == target_eval:
-            return float(c)
-    return -1.0
-
-
 def simulate_timed(
     *,
     ground_truth: torch.Tensor,
@@ -277,6 +260,8 @@ def simulate_timed(
     recommend_fn: Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]],
     run: wandb.sdk.wandb_run.Run | None,
     log_step_metrics: bool,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
 
@@ -296,12 +281,29 @@ def simulate_timed(
     evaluated = 0
     total_cost = 0.0
     step_idx = 0
+    natural_stop_cum_original_cost: float | None = None
+    recommendation_aware_stop_cum_original_cost: float | None = None
 
     while evaluated < max_evaluations:
         t0 = time.perf_counter()
         ts0 = time.perf_counter()
         out = step_fn(obs, evaluated)
         ts1 = time.perf_counter()
+
+        if (
+            natural_stop_cum_original_cost is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+        ):
+            natural_stop_cum_original_cost = float(total_cost)
+        if (
+            recommendation_aware_stop_cum_original_cost is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+        ):
+            recommendation_aware_stop_cum_original_cost = float(total_cost)
 
         if out is None:
             break
@@ -364,6 +366,8 @@ def simulate_timed(
         "iter_step_s": iter_step_s,
         "iter_total_s": iter_total_s,
         "batch_cells": batch_cells,
+        "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
+        "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
     }
 
 
@@ -630,6 +634,8 @@ def main() -> int:
         recommend_fn=recommend_fn,
         run=run,
         log_step_metrics=bool(args.log_step_metrics),
+        natural_stop_cum_eval_holder=natural_stop_holder,
+        recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
     )
 
     np.savez(
@@ -662,6 +668,12 @@ def main() -> int:
             -1 if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
             dtype=np.int32,
         ),
+        gittins_stop_cum_original_cost=np.asarray(
+            -1.0
+            if sim["natural_stop_cum_original_cost"] is None
+            else float(sim["natural_stop_cum_original_cost"]),
+            dtype=np.float64,
+        ),
         gittins_recommendation_aware_stop_cum_eval=np.asarray(
             -1
             if recommendation_aware_stop_holder[0] is None
@@ -669,13 +681,9 @@ def main() -> int:
             dtype=np.int32,
         ),
         gittins_recommendation_aware_stop_cum_original_cost=np.asarray(
-            _original_cost_at_cum_eval(
-                sim["x"],
-                sim["x_original_cost"],
-                -1
-                if recommendation_aware_stop_holder[0] is None
-                else int(recommendation_aware_stop_holder[0]),
-            ),
+            -1.0
+            if sim["recommendation_aware_stop_cum_original_cost"] is None
+            else float(sim["recommendation_aware_stop_cum_original_cost"]),
             dtype=np.float64,
         ),
     )
