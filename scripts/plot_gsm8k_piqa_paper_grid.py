@@ -143,10 +143,32 @@ def read_history(folder: Path) -> pd.DataFrame:
 
 
 def read_stopping(folder: Path) -> pd.DataFrame:
-    path = folder / "runs_stopping.csv"
-    if not path.exists():
+    stop_cols = [
+        "run_id",
+        "experiment_variant",
+        "gittins_stop_cum_eval",
+        "gittins_stop_cum_original_cost",
+        "gittins_recommendation_aware_stop_cum_eval",
+        "gittins_recommendation_aware_stop_cum_original_cost",
+    ]
+
+    stopping_path = folder / "runs_stopping.csv"
+    if stopping_path.exists():
+        sdf = pd.read_csv(stopping_path)
+        if any(c in sdf.columns for c in stop_cols[2:]):
+            return sdf
+
+    # New downloader path: stopping metrics are written directly to runs_summary.csv.
+    summary_path = folder / "runs_summary.csv"
+    if not summary_path.exists():
         return pd.DataFrame()
-    return pd.read_csv(path)
+
+    header = pd.read_csv(summary_path, nrows=0)
+    usecols = [c for c in stop_cols if c in header.columns]
+    if not usecols:
+        return pd.DataFrame()
+
+    return pd.read_csv(summary_path, usecols=usecols)
 
 
 def variant_names(batch_size: int, scale: str, cost_mode: str) -> dict[str, str]:
