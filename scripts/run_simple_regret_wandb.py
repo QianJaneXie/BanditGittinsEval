@@ -18,9 +18,12 @@ This runner is designed for the current lightweight code path:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import math
+import os
 import re
+import resource
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -31,6 +34,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
+
+try:
+    import psutil
+except Exception:  # pragma: no cover - optional dependency
+    psutil = None
 
 from banditeval.bandits import upper_confidence_bound_exploration
 
@@ -135,6 +143,53 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
 def infer_matrix_seed(matrix: Path) -> str | None:
     m = re.search(r"seed(\d+)", matrix.stem)
     return m.group(1) if m else None
+
+
+def mmlu_size_bucket(n_examples: int) -> str:
+    """Return the MMLU subject-size bucket used by the sweep YAMLs."""
+    if int(n_examples) <= 150:
+        return "small"
+    if int(n_examples) <= 400:
+        return "medium"
+    return "large"
+
+
+def current_rss_mb() -> float | None:
+    """Current resident set size in MiB, best effort without requiring psutil."""
+    if psutil is not None:
+        try:
+            return float(psutil.Process(os.getpid()).memory_info().rss) / (1024.0 ** 2)
+        except Exception:
+            pass
+
+    # Linux fallback. /proc/self/statm second field is resident pages.
+    statm = Path("/proc/self/statm")
+    if statm.is_file():
+        try:
+            resident_pages = int(statm.read_text(encoding="utf-8").split()[1])
+            return float(resident_pages * os.sysconf("SC_PAGE_SIZE")) / (1024.0 ** 2)
+        except Exception:
+            return None
+
+    return None
+
+
+def peak_rss_mb() -> float:
+    """Process peak resident set size in MiB. Linux reports KiB; macOS reports bytes."""
+    usage = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
+    if sys.platform == "darwin":
+        return usage / (1024.0 ** 2)
+    return usage / 1024.0
+
+
+def optional_delta(after: float | None, before: float | None) -> float | None:
+    if after is None or before is None:
+        return None
+    return float(after) - float(before)
+
+
+def optional_float_to_np(value: float | None) -> np.ndarray:
+    return np.asarray(np.nan if value is None else float(value), dtype=np.float64)
 
 
 def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
@@ -448,6 +503,7 @@ def main() -> int:
     n_arms, n_examples = int(ground_truth.shape[0]), int(ground_truth.shape[1])
     n_cells = int(ground_truth.numel())
     max_evaluations = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
+    size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
 
     if args.cost_vector is not None:
         actual_cost_per_arm = load_cost_vector(args.cost_vector, n_arms)
@@ -490,6 +546,7 @@ def main() -> int:
                 "n_examples": n_examples,
                 "n_cells": n_cells,
                 "budget_max_evals": max_evaluations,
+                "mmlu_size_bucket": size_bucket,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
             },
@@ -513,6 +570,13 @@ def main() -> int:
     trace_path.parent.mkdir(parents=True, exist_ok=True)
 
     lookup_table_s: float | None = None
+    lookup_memory_rss_before_mb: float | None = None
+    lookup_memory_rss_after_mb: float | None = None
+    lookup_memory_rss_delta_mb: float | None = None
+    lookup_memory_peak_before_mb: float | None = None
+    lookup_memory_peak_after_mb: float | None = None
+    lookup_memory_peak_delta_mb: float | None = None
+    lookup_roots_table_mb: float | None = None
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
 
@@ -573,7 +637,11 @@ def main() -> int:
         else:
             raise ValueError(f"Unsupported Gittins cost_mode: {variant.cost_mode}")
 
+        gc.collect()
+        lookup_memory_rss_before_mb = current_rss_mb()
+        lookup_memory_peak_before_mb = peak_rss_mb()
         t_lookup0 = time.perf_counter()
+
         transition_stds = transition_stds_shrinking_gaussian_posterior(
             np.float32(float(prior_variance)),
             np.float32(float(tau_sq_cell)),
@@ -588,8 +656,19 @@ def main() -> int:
             costs_per_arm=dp_costs_per_arm,
             n_points=int(args.gittins_grid_points),
         )
-        roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
+        roots_np = np.asarray(roots, dtype=np.float32)
+        roots_torch = torch.tensor(roots_np, dtype=torch.float32)
+
         lookup_table_s = float(time.perf_counter() - t_lookup0)
+        lookup_memory_rss_after_mb = current_rss_mb()
+        lookup_memory_peak_after_mb = peak_rss_mb()
+        lookup_memory_rss_delta_mb = optional_delta(
+            lookup_memory_rss_after_mb, lookup_memory_rss_before_mb
+        )
+        lookup_memory_peak_delta_mb = optional_delta(
+            lookup_memory_peak_after_mb, lookup_memory_peak_before_mb
+        )
+        lookup_roots_table_mb = float(roots_np.nbytes) / (1024.0 ** 2)
 
         cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         prev_arm: int | None = None
@@ -696,6 +775,13 @@ def main() -> int:
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
         lookup_table_s=np.asarray(-1.0 if lookup_table_s is None else lookup_table_s, dtype=np.float64),
+        lookup_memory_rss_before_mb=optional_float_to_np(lookup_memory_rss_before_mb),
+        lookup_memory_rss_after_mb=optional_float_to_np(lookup_memory_rss_after_mb),
+        lookup_memory_rss_delta_mb=optional_float_to_np(lookup_memory_rss_delta_mb),
+        lookup_memory_peak_before_mb=optional_float_to_np(lookup_memory_peak_before_mb),
+        lookup_memory_peak_after_mb=optional_float_to_np(lookup_memory_peak_after_mb),
+        lookup_memory_peak_delta_mb=optional_float_to_np(lookup_memory_peak_delta_mb),
+        lookup_roots_table_mb=optional_float_to_np(lookup_roots_table_mb),
         x=np.asarray(sim["x"], dtype=np.int32),
         x_original_cost=np.asarray(sim["x_original_cost"], dtype=np.float64),
         regret=np.asarray(sim["regret"], dtype=np.float32),
@@ -742,6 +828,7 @@ def main() -> int:
         "n_examples": n_examples,
         "n_cells": n_cells,
         "budget_max_evals": max_evaluations,
+        "mmlu_size_bucket": size_bucket,
         "gittins_run_max_evals": int(sim_max_evaluations),
         "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
         "eval_budget_fraction": float(args.eval_budget_fraction),
@@ -753,6 +840,13 @@ def main() -> int:
         "figure_cost": str(fig_cost_path),
         "timing": {
             "lookup_table_s": lookup_table_s,
+            "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
+            "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
+            "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
+            "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
+            "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
+            "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
+            "lookup_roots_table_mb": lookup_roots_table_mb,
             "iter_step_s": step_summary,
             "iter_total_s": total_summary,
         },
@@ -789,6 +883,8 @@ def main() -> int:
     print(f"Wrote figure: {fig_eval_path}")
     print(f"Wrote cost figure: {fig_cost_path}")
     print(f"lookup_table_s={lookup_table_s}")
+    print(f"lookup_memory_peak_delta_mb={lookup_memory_peak_delta_mb}")
+    print(f"lookup_roots_table_mb={lookup_roots_table_mb}")
     print(f"iter_step_mean_s={step_summary['mean_s']}")
     print(f"iter_step_p90_s={step_summary['p90_s']}")
     print(f"final_simple_regret={meta['final']['final_simple_regret']}")
@@ -802,6 +898,13 @@ def main() -> int:
                 "final_cum_original_cost": meta["final"]["final_cum_original_cost"],
                 "num_batches": meta["final"]["num_batches"],
                 "lookup_table_s": lookup_table_s,
+                "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
+                "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
+                "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
+                "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
+                "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
+                "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
+                "lookup_roots_table_mb": lookup_roots_table_mb,
                 "iter_step_mean_s": step_summary["mean_s"],
                 "iter_step_median_s": step_summary["median_s"],
                 "iter_step_p90_s": step_summary["p90_s"],
@@ -811,13 +914,26 @@ def main() -> int:
                 "prior_mean_resolved": float(prior_mean),
                 "prior_variance_resolved": float(prior_variance),
                 "matrix_seed": matrix_seed,
+                "mmlu_size_bucket": size_bucket,
                 "run_seed": int(args.run_seed),
                 "experiment_variant": variant.raw,
                 "gittins_stop_cum_eval": (
                     None if natural_stop_holder[0] is None else int(natural_stop_holder[0])
                 ),
                 "gittins_stop_cum_original_cost": (
-                    None if natural_stop_cost_holder[0] is None else float(natural_stop_cost_holder[0])
+                    None
+                    if sim["natural_stop_cum_original_cost"] is None
+                    else float(sim["natural_stop_cum_original_cost"])
+                ),
+                "gittins_recommendation_aware_stop_cum_eval": (
+                    None
+                    if recommendation_aware_stop_holder[0] is None
+                    else int(recommendation_aware_stop_holder[0])
+                ),
+                "gittins_recommendation_aware_stop_cum_original_cost": (
+                    None
+                    if sim["recommendation_aware_stop_cum_original_cost"] is None
+                    else float(sim["recommendation_aware_stop_cum_original_cost"])
                 ),
             }
         )
