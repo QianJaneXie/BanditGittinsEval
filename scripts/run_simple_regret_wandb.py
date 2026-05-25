@@ -23,7 +23,6 @@ import json
 import math
 import os
 import re
-import resource
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -39,6 +38,11 @@ try:
     import psutil
 except Exception:  # pragma: no cover - optional dependency
     psutil = None
+
+try:
+    import resource
+except Exception:  # pragma: no cover - optional dependency (missing on Windows)
+    resource = None
 
 from banditeval.bandits import upper_confidence_bound_exploration
 
@@ -67,6 +71,14 @@ DATASET_PRIORS: dict[str, tuple[float, float]] = {
     "gsm8k": (0.2, 0.01),
     "piqa": (0.3, 0.02),
 }
+
+MMLU_PRIOR_BY_BUCKET: dict[str, tuple[float, float]] = {
+    "low": (0.4, 0.02),
+    "medium": (0.6, 0.02),
+    "high": (0.75, 0.02),
+}
+
+DEFAULT_MMLU_TASK_METADATA = REPO_ROOT / "data" / "MMLU_matrices" / "task_metadata.json"
 
 
 @dataclass(frozen=True)
@@ -145,6 +157,65 @@ def infer_matrix_seed(matrix: Path) -> str | None:
     return m.group(1) if m else None
 
 
+def infer_matrix_task_name(matrix: Path) -> str:
+    """Infer canonical task name from matrix filename."""
+    stem = matrix.stem
+    synthetic_marker = "_synthetic_"
+    if synthetic_marker in stem:
+        return stem.split(synthetic_marker, 1)[0]
+    return stem
+
+
+def load_mmlu_task_prior_buckets(path: Path) -> dict[str, str]:
+    """Load MMLU task -> dataset prior bucket mapping from task metadata."""
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    out: dict[str, str] = {}
+    for row in data.get("tasks", []):
+        if not isinstance(row, dict):
+            continue
+        task = str(row.get("task", "")).strip()
+        bucket = str(row.get("dataset_prior_bucket", "")).strip().lower()
+        if task and bucket in MMLU_PRIOR_BY_BUCKET:
+            out[task] = bucket
+    return out
+
+
+def resolve_prior(
+    *,
+    dataset_tag: str,
+    prior_type: str,
+    matrix_path: Path,
+    mmlu_task_prior_buckets: dict[str, str],
+) -> tuple[float, float, str | None, str]:
+    """Resolve prior mean/variance and provenance."""
+    if prior_type == "default":
+        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "default"
+
+    if prior_type != "dataset":
+        raise ValueError(f"Unsupported prior_type: {prior_type}")
+
+    if dataset_tag == "mmlu":
+        task = infer_matrix_task_name(matrix_path)
+        bucket = mmlu_task_prior_buckets.get(task)
+        if bucket is not None and bucket in MMLU_PRIOR_BY_BUCKET:
+            mean, var = MMLU_PRIOR_BY_BUCKET[bucket]
+            return float(mean), float(var), bucket, "mmlu_task_bucket"
+        # Keep behavior safe if metadata is missing or task not found.
+        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "mmlu_bucket_fallback_default"
+
+    if dataset_tag in DATASET_PRIORS:
+        mean, var = DATASET_PRIORS[dataset_tag]
+        return float(mean), float(var), None, "dataset_tag_map"
+
+    return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "dataset_fallback_default"
+
+
 def mmlu_size_bucket(n_examples: int) -> str:
     """Return the MMLU subject-size bucket used by the sweep YAMLs."""
     if int(n_examples) <= 150:
@@ -176,6 +247,8 @@ def current_rss_mb() -> float | None:
 
 def peak_rss_mb() -> float:
     """Process peak resident set size in MiB. Linux reports KiB; macOS reports bytes."""
+    if resource is None:
+        return float("nan")
     usage = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
     if sys.platform == "darwin":
         return usage / (1024.0 ** 2)
@@ -462,6 +535,13 @@ def parse_args() -> argparse.Namespace:
     # Optional explicit overrides. Normally these are resolved from experiment_variant.
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument(
+        "--mmlu-task-metadata",
+        "--mmlu_task_metadata",
+        type=Path,
+        default=DEFAULT_MMLU_TASK_METADATA,
+        help="MMLU task metadata JSON with dataset_prior_bucket for subject-level dataset priors.",
+    )
 
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "wandb_simple_regret")
     p.add_argument("--log-step-metrics", "--log_step_metrics", action="store_true")
@@ -504,23 +584,29 @@ def main() -> int:
     n_cells = int(ground_truth.numel())
     max_evaluations = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
     size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
+    matrix_task = infer_matrix_task_name(args.matrix)
 
     if args.cost_vector is not None:
         actual_cost_per_arm = load_cost_vector(args.cost_vector, n_arms)
     else:
         actual_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
 
-    if variant.prior_type == "default":
-        prior_mean, prior_variance = DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE
-    elif variant.prior_type == "dataset":
-        prior_mean, prior_variance = DATASET_PRIORS.get(dataset_tag, (DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE))
-    else:
-        raise ValueError(f"Unsupported prior_type: {variant.prior_type}")
+    mmlu_task_prior_buckets = (
+        load_mmlu_task_prior_buckets(args.mmlu_task_metadata) if dataset_tag == "mmlu" else {}
+    )
+    prior_mean, prior_variance, prior_bucket, prior_source = resolve_prior(
+        dataset_tag=dataset_tag,
+        prior_type=variant.prior_type,
+        matrix_path=args.matrix,
+        mmlu_task_prior_buckets=mmlu_task_prior_buckets,
+    )
 
     if args.gittins_prior_mean is not None:
         prior_mean = float(args.gittins_prior_mean)
+        prior_source = "manual_override"
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
+        prior_source = "manual_override"
 
     matrix_seed_label = f"seed{matrix_seed}" if matrix_seed is not None else "seedNA"
     run_name = args.wandb_name or f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
@@ -541,6 +627,7 @@ def main() -> int:
                 **vars(args),
                 **asdict(variant),
                 "dataset_tag_resolved": dataset_tag,
+                "matrix_task": matrix_task,
                 "matrix_seed": matrix_seed,
                 "n_arms": n_arms,
                 "n_examples": n_examples,
@@ -549,6 +636,8 @@ def main() -> int:
                 "mmlu_size_bucket": size_bucket,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
+                "prior_bucket": prior_bucket,
+                "prior_source": prior_source,
             },
         )
         run.define_metric("cum_eval")
@@ -757,6 +846,7 @@ def main() -> int:
         trace_path,
         matrix=str(args.matrix),
         dataset_tag=dataset_tag,
+        matrix_task=matrix_task,
         matrix_seed="" if matrix_seed is None else matrix_seed,
         run_seed=int(args.run_seed),
         experiment_variant=variant.raw,
@@ -767,6 +857,8 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
+        prior_bucket="" if prior_bucket is None else str(prior_bucket),
+        prior_source=str(prior_source),
         extend_gittins_to_natural_stop=np.asarray(
             bool(args.extend_gittins_to_natural_stop), dtype=np.bool_
         ),
@@ -820,6 +912,7 @@ def main() -> int:
     meta = {
         "matrix": str(args.matrix),
         "dataset_tag": dataset_tag,
+        "matrix_task": matrix_task,
         "matrix_seed": matrix_seed,
         "run_seed": int(args.run_seed),
         "experiment_variant": variant.raw,
@@ -834,6 +927,8 @@ def main() -> int:
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),
+        "prior_bucket": prior_bucket,
+        "prior_source": prior_source,
         "cost_vector": str(args.cost_vector) if args.cost_vector else None,
         "trace": str(trace_path),
         "figure_eval": str(fig_eval_path),
@@ -913,6 +1008,8 @@ def main() -> int:
                 "iter_total_p90_s": total_summary["p90_s"],
                 "prior_mean_resolved": float(prior_mean),
                 "prior_variance_resolved": float(prior_variance),
+                "prior_bucket": prior_bucket,
+                "prior_source": prior_source,
                 "matrix_seed": matrix_seed,
                 "mmlu_size_bucket": size_bucket,
                 "run_seed": int(args.run_seed),

@@ -1,0 +1,232 @@
+{
+  "tasks": [
+    {
+      "task": "abstract_algebra",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_mathematics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "moral_scenarios",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "college_mathematics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "college_physics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_physics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "global_facts",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "formal_logic",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "elementary_mathematics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "college_chemistry",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "econometrics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "professional_law",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "professional_accounting",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "machine_learning",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_chemistry",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_statistics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "college_computer_science",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "virology",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "conceptual_physics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "college_medicine",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "electrical_engineering",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "anatomy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_macroeconomics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "professional_psychology",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "professional_medicine",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "business_ethics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_computer_science",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_microeconomics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "clinical_knowledge",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "astronomy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "public_relations",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "philosophy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "human_aging",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "college_biology",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "medical_genetics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "moral_disputes",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_european_history",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "nutrition",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "prehistory",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "security_studies",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "jurisprudence",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_biology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "logical_fallacies",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "human_sexuality",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "computer_security",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "management",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_geography",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "international_law",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "world_religions",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_us_history",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "miscellaneous",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_world_history",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_psychology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "sociology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_government_and_politics",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "us_foreign_policy",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "marketing",
+      "dataset_prior_bucket": "high"
+    }
+  ]
+}
