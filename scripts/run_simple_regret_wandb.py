@@ -18,10 +18,8 @@ This runner is designed for the current lightweight code path:
 from __future__ import annotations
 
 import argparse
-import gc
 import json
 import math
-import os
 import re
 import sys
 import time
@@ -33,16 +31,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
-
-try:
-    import psutil
-except Exception:  # pragma: no cover - optional dependency
-    psutil = None
-
-try:
-    import resource
-except Exception:  # pragma: no cover - optional dependency (missing on Windows)
-    resource = None
 
 from banditeval.bandits import upper_confidence_bound_exploration
 
@@ -72,6 +60,9 @@ DATASET_PRIORS: dict[str, tuple[float, float]] = {
     "piqa": (0.3, 0.02),
 }
 
+
+# MMLU dataset priors are resolved through task_metadata.json buckets.
+# default prior remains N(0.5, 0.04); dataset prior uses these bucket-level values.
 MMLU_PRIOR_BY_BUCKET: dict[str, tuple[float, float]] = {
     "low": (0.4, 0.02),
     "medium": (0.6, 0.02),
@@ -157,18 +148,22 @@ def infer_matrix_seed(matrix: Path) -> str | None:
     return m.group(1) if m else None
 
 
-def infer_matrix_task_name(matrix: Path) -> str:
-    """Infer canonical task name from matrix filename."""
+def infer_mmlu_task(matrix: Path) -> str | None:
+    """Infer MMLU subject name from matrix filename.
+
+    Current MMLU matrices are expected as data/MMLU_matrices/<subject>.npy.
+    For synthetic or suffixed files, keep the stem before "_synthetic_" as the task name.
+    """
     stem = matrix.stem
     synthetic_marker = "_synthetic_"
     if synthetic_marker in stem:
         return stem.split(synthetic_marker, 1)[0]
-    return stem
+    return stem if stem else None
 
 
-def load_mmlu_task_prior_buckets(path: Path) -> dict[str, str]:
+def load_mmlu_task_prior_buckets(path: Path | None) -> dict[str, str]:
     """Load MMLU task -> dataset prior bucket mapping from task metadata."""
-    if not path.is_file():
+    if path is None or not path.is_file():
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -186,38 +181,7 @@ def load_mmlu_task_prior_buckets(path: Path) -> dict[str, str]:
     return out
 
 
-def resolve_prior(
-    *,
-    dataset_tag: str,
-    prior_type: str,
-    matrix_path: Path,
-    mmlu_task_prior_buckets: dict[str, str],
-) -> tuple[float, float, str | None, str]:
-    """Resolve prior mean/variance and provenance."""
-    if prior_type == "default":
-        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "default"
-
-    if prior_type != "dataset":
-        raise ValueError(f"Unsupported prior_type: {prior_type}")
-
-    if dataset_tag == "mmlu":
-        task = infer_matrix_task_name(matrix_path)
-        bucket = mmlu_task_prior_buckets.get(task)
-        if bucket is not None and bucket in MMLU_PRIOR_BY_BUCKET:
-            mean, var = MMLU_PRIOR_BY_BUCKET[bucket]
-            return float(mean), float(var), bucket, "mmlu_task_bucket"
-        # Keep behavior safe if metadata is missing or task not found.
-        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "mmlu_bucket_fallback_default"
-
-    if dataset_tag in DATASET_PRIORS:
-        mean, var = DATASET_PRIORS[dataset_tag]
-        return float(mean), float(var), None, "dataset_tag_map"
-
-    return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, "dataset_fallback_default"
-
-
 def mmlu_size_bucket(n_examples: int) -> str:
-    """Return the MMLU subject-size bucket used by the sweep YAMLs."""
     if int(n_examples) <= 150:
         return "small"
     if int(n_examples) <= 400:
@@ -225,44 +189,38 @@ def mmlu_size_bucket(n_examples: int) -> str:
     return "large"
 
 
-def current_rss_mb() -> float | None:
-    """Current resident set size in MiB, best effort without requiring psutil."""
-    if psutil is not None:
-        try:
-            return float(psutil.Process(os.getpid()).memory_info().rss) / (1024.0 ** 2)
-        except Exception:
-            pass
+def resolve_prior(
+    *,
+    dataset_tag: str,
+    prior_type: str,
+    matrix: Path,
+    mmlu_task_prior_buckets: dict[str, str],
+) -> tuple[float, float, str | None, str | None, str]:
+    """Return (prior_mean, prior_variance, mmlu_task, prior_bucket, prior_source)."""
+    task = infer_mmlu_task(matrix) if dataset_tag == "mmlu" else None
 
-    # Linux fallback. /proc/self/statm second field is resident pages.
-    statm = Path("/proc/self/statm")
-    if statm.is_file():
-        try:
-            resident_pages = int(statm.read_text(encoding="utf-8").split()[1])
-            return float(resident_pages * os.sysconf("SC_PAGE_SIZE")) / (1024.0 ** 2)
-        except Exception:
-            return None
+    if prior_type == "default":
+        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, task, None, "default"
 
-    return None
+    if prior_type != "dataset":
+        raise ValueError(f"Unsupported prior_type: {prior_type}")
 
+    if dataset_tag == "mmlu":
+        if task is None:
+            return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, None, None, "mmlu_bucket_fallback_default"
+        bucket = mmlu_task_prior_buckets.get(task)
+        if bucket is not None and bucket in MMLU_PRIOR_BY_BUCKET:
+            mean, variance = MMLU_PRIOR_BY_BUCKET[bucket]
+            return float(mean), float(variance), task, bucket, "mmlu_task_bucket"
+        return DEFAULT_PRIOR_MEAN, DEFAULT_PRIOR_VARIANCE, task, None, "mmlu_bucket_fallback_default"
 
-def peak_rss_mb() -> float:
-    """Process peak resident set size in MiB. Linux reports KiB; macOS reports bytes."""
-    if resource is None:
-        return float("nan")
-    usage = float(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)
-    if sys.platform == "darwin":
-        return usage / (1024.0 ** 2)
-    return usage / 1024.0
-
-
-def optional_delta(after: float | None, before: float | None) -> float | None:
-    if after is None or before is None:
-        return None
-    return float(after) - float(before)
-
-
-def optional_float_to_np(value: float | None) -> np.ndarray:
-    return np.asarray(np.nan if value is None else float(value), dtype=np.float64)
+    if dataset_tag not in DATASET_PRIORS:
+        raise ValueError(
+            f"No dataset prior is defined for dataset_tag={dataset_tag!r}. "
+            "Use *_default or add a DATASET_PRIORS entry."
+        )
+    mean, variance = DATASET_PRIORS[dataset_tag]
+    return float(mean), float(variance), None, dataset_tag, "dataset_global"
 
 
 def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
@@ -407,6 +365,15 @@ def simulate_timed(
     iter_step_s: list[float] = []
     iter_total_s: list[float] = []
     batch_cells: list[int] = []
+    # Pull diagnostics: record which arm(s) the policy actually evaluates each step.
+    # `pulled_arm` is the primary arm used by the existing cost accounting;
+    # `pulled_arms_json` preserves the full set in case a future policy returns a mixed-arm batch.
+    pulled_arm_history: list[int] = []
+    pulled_arms_json: list[str] = []
+    pulled_rows_json: list[str] = []
+    pulled_cols_json: list[str] = []
+    n_pulled_arms: list[int] = []
+    n_pulled_cols: list[int] = []
 
     evaluated = 0
     total_cost = 0.0
@@ -453,6 +420,10 @@ def simulate_timed(
         evaluated += n_batch
 
         pulled_arm = int(row_idx[0].item())
+        pulled_rows = [int(x) for x in row_idx.reshape(-1).tolist()]
+        pulled_cols = [int(x) for x in col_idx.reshape(-1).tolist()]
+        unique_pulled_arms = sorted(set(pulled_rows))
+        unique_pulled_cols = sorted(set(pulled_cols))
         total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
 
         arm, mus = recommend_fn(obs, aux)
@@ -471,6 +442,12 @@ def simulate_timed(
         iter_step_s.append(step_time)
         iter_total_s.append(total_time)
         batch_cells.append(n_batch)
+        pulled_arm_history.append(int(pulled_arm))
+        pulled_arms_json.append(json.dumps(unique_pulled_arms, separators=(",", ":")))
+        pulled_rows_json.append(json.dumps(pulled_rows, separators=(",", ":")))
+        pulled_cols_json.append(json.dumps(pulled_cols, separators=(",", ":")))
+        n_pulled_arms.append(int(len(unique_pulled_arms)))
+        n_pulled_cols.append(int(len(unique_pulled_cols)))
 
         if run is not None and log_step_metrics:
             run.log(
@@ -480,6 +457,12 @@ def simulate_timed(
                     "simple_regret": float(simple_regret),
                     "recommended_arm": int(arm),
                     "recommended_mean": recommended_mean[-1],
+                    "pulled_arm": int(pulled_arm),
+                    "pulled_arms_json": pulled_arms_json[-1],
+                    "pulled_rows_json": pulled_rows_json[-1],
+                    "pulled_cols_json": pulled_cols_json[-1],
+                    "n_pulled_arms": n_pulled_arms[-1],
+                    "n_pulled_cols": n_pulled_cols[-1],
                     "iter_step_s": step_time,
                     "iter_total_s": total_time,
                     "batch_cells": n_batch,
@@ -503,6 +486,12 @@ def simulate_timed(
         "iter_step_s": iter_step_s,
         "iter_total_s": iter_total_s,
         "batch_cells": batch_cells,
+        "pulled_arm": pulled_arm_history,
+        "pulled_arms_json": pulled_arms_json,
+        "pulled_rows_json": pulled_rows_json,
+        "pulled_cols_json": pulled_cols_json,
+        "n_pulled_arms": n_pulled_arms,
+        "n_pulled_cols": n_pulled_cols,
         "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
         "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
     }
@@ -583,32 +572,34 @@ def main() -> int:
     n_arms, n_examples = int(ground_truth.shape[0]), int(ground_truth.shape[1])
     n_cells = int(ground_truth.numel())
     max_evaluations = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
-    size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
-    matrix_task = infer_matrix_task_name(args.matrix)
 
     if args.cost_vector is not None:
         actual_cost_per_arm = load_cost_vector(args.cost_vector, n_arms)
     else:
         actual_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
 
+    size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
     mmlu_task_prior_buckets = (
         load_mmlu_task_prior_buckets(args.mmlu_task_metadata) if dataset_tag == "mmlu" else {}
     )
-    prior_mean, prior_variance, prior_bucket, prior_source = resolve_prior(
+    prior_mean, prior_variance, mmlu_task, prior_bucket, prior_source = resolve_prior(
         dataset_tag=dataset_tag,
         prior_type=variant.prior_type,
-        matrix_path=args.matrix,
+        matrix=args.matrix,
         mmlu_task_prior_buckets=mmlu_task_prior_buckets,
     )
 
     if args.gittins_prior_mean is not None:
         prior_mean = float(args.gittins_prior_mean)
-        prior_source = "manual_override"
+        prior_source = f"{prior_source}+manual_mean_override"
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
-        prior_source = "manual_override"
+        prior_source = f"{prior_source}+manual_variance_override"
 
-    matrix_seed_label = f"seed{matrix_seed}" if matrix_seed is not None else "seedNA"
+    if dataset_tag == "mmlu" and mmlu_task is not None:
+        matrix_seed_label = f"task{safe_token(mmlu_task)}"
+    else:
+        matrix_seed_label = f"seed{matrix_seed}" if matrix_seed is not None else "seedNA"
     run_name = args.wandb_name or f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
 
 
@@ -627,17 +618,17 @@ def main() -> int:
                 **vars(args),
                 **asdict(variant),
                 "dataset_tag_resolved": dataset_tag,
-                "matrix_task": matrix_task,
                 "matrix_seed": matrix_seed,
                 "n_arms": n_arms,
                 "n_examples": n_examples,
                 "n_cells": n_cells,
                 "budget_max_evals": max_evaluations,
-                "mmlu_size_bucket": size_bucket,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
                 "prior_bucket": prior_bucket,
                 "prior_source": prior_source,
+                "mmlu_task": mmlu_task,
+                "mmlu_size_bucket": size_bucket,
             },
         )
         run.define_metric("cum_eval")
@@ -645,6 +636,9 @@ def main() -> int:
         run.define_metric("cum_original_cost")
         run.define_metric("iter_step_s", step_metric="cum_eval")
         run.define_metric("iter_total_s", step_metric="cum_eval")
+        run.define_metric("pulled_arm", step_metric="cum_eval")
+        run.define_metric("n_pulled_arms", step_metric="cum_eval")
+        run.define_metric("n_pulled_cols", step_metric="cum_eval")
 
     out_base = (
         args.out_dir
@@ -659,13 +653,6 @@ def main() -> int:
     trace_path.parent.mkdir(parents=True, exist_ok=True)
 
     lookup_table_s: float | None = None
-    lookup_memory_rss_before_mb: float | None = None
-    lookup_memory_rss_after_mb: float | None = None
-    lookup_memory_rss_delta_mb: float | None = None
-    lookup_memory_peak_before_mb: float | None = None
-    lookup_memory_peak_after_mb: float | None = None
-    lookup_memory_peak_delta_mb: float | None = None
-    lookup_roots_table_mb: float | None = None
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
 
@@ -726,11 +713,7 @@ def main() -> int:
         else:
             raise ValueError(f"Unsupported Gittins cost_mode: {variant.cost_mode}")
 
-        gc.collect()
-        lookup_memory_rss_before_mb = current_rss_mb()
-        lookup_memory_peak_before_mb = peak_rss_mb()
         t_lookup0 = time.perf_counter()
-
         transition_stds = transition_stds_shrinking_gaussian_posterior(
             np.float32(float(prior_variance)),
             np.float32(float(tau_sq_cell)),
@@ -745,19 +728,8 @@ def main() -> int:
             costs_per_arm=dp_costs_per_arm,
             n_points=int(args.gittins_grid_points),
         )
-        roots_np = np.asarray(roots, dtype=np.float32)
-        roots_torch = torch.tensor(roots_np, dtype=torch.float32)
-
+        roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         lookup_table_s = float(time.perf_counter() - t_lookup0)
-        lookup_memory_rss_after_mb = current_rss_mb()
-        lookup_memory_peak_after_mb = peak_rss_mb()
-        lookup_memory_rss_delta_mb = optional_delta(
-            lookup_memory_rss_after_mb, lookup_memory_rss_before_mb
-        )
-        lookup_memory_peak_delta_mb = optional_delta(
-            lookup_memory_peak_after_mb, lookup_memory_peak_before_mb
-        )
-        lookup_roots_table_mb = float(roots_np.nbytes) / (1024.0 ** 2)
 
         cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         prev_arm: int | None = None
@@ -846,7 +818,6 @@ def main() -> int:
         trace_path,
         matrix=str(args.matrix),
         dataset_tag=dataset_tag,
-        matrix_task=matrix_task,
         matrix_seed="" if matrix_seed is None else matrix_seed,
         run_seed=int(args.run_seed),
         experiment_variant=variant.raw,
@@ -857,8 +828,6 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
-        prior_bucket="" if prior_bucket is None else str(prior_bucket),
-        prior_source=str(prior_source),
         extend_gittins_to_natural_stop=np.asarray(
             bool(args.extend_gittins_to_natural_stop), dtype=np.bool_
         ),
@@ -866,14 +835,11 @@ def main() -> int:
         budget_evals=np.asarray(int(max_evaluations), dtype=np.int32),
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
+        prior_bucket="" if prior_bucket is None else prior_bucket,
+        prior_source=prior_source,
+        mmlu_task="" if mmlu_task is None else mmlu_task,
+        mmlu_size_bucket="" if size_bucket is None else size_bucket,
         lookup_table_s=np.asarray(-1.0 if lookup_table_s is None else lookup_table_s, dtype=np.float64),
-        lookup_memory_rss_before_mb=optional_float_to_np(lookup_memory_rss_before_mb),
-        lookup_memory_rss_after_mb=optional_float_to_np(lookup_memory_rss_after_mb),
-        lookup_memory_rss_delta_mb=optional_float_to_np(lookup_memory_rss_delta_mb),
-        lookup_memory_peak_before_mb=optional_float_to_np(lookup_memory_peak_before_mb),
-        lookup_memory_peak_after_mb=optional_float_to_np(lookup_memory_peak_after_mb),
-        lookup_memory_peak_delta_mb=optional_float_to_np(lookup_memory_peak_delta_mb),
-        lookup_roots_table_mb=optional_float_to_np(lookup_roots_table_mb),
         x=np.asarray(sim["x"], dtype=np.int32),
         x_original_cost=np.asarray(sim["x_original_cost"], dtype=np.float64),
         regret=np.asarray(sim["regret"], dtype=np.float32),
@@ -882,6 +848,12 @@ def main() -> int:
         iter_step_s=np.asarray(sim["iter_step_s"], dtype=np.float64),
         iter_total_s=np.asarray(sim["iter_total_s"], dtype=np.float64),
         batch_cells=np.asarray(sim["batch_cells"], dtype=np.int32),
+        pulled_arm=np.asarray(sim["pulled_arm"], dtype=np.int32),
+        pulled_arms_json=np.asarray(sim["pulled_arms_json"], dtype="<U4096"),
+        pulled_rows_json=np.asarray(sim["pulled_rows_json"], dtype="<U4096"),
+        pulled_cols_json=np.asarray(sim["pulled_cols_json"], dtype="<U4096"),
+        n_pulled_arms=np.asarray(sim["n_pulled_arms"], dtype=np.int32),
+        n_pulled_cols=np.asarray(sim["n_pulled_cols"], dtype=np.int32),
         cost_per_arm_original=np.asarray(actual_cost_per_arm.numpy(), dtype=np.float64),
         gittins_stop_cum_eval=np.asarray(
             -1 if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
@@ -912,7 +884,6 @@ def main() -> int:
     meta = {
         "matrix": str(args.matrix),
         "dataset_tag": dataset_tag,
-        "matrix_task": matrix_task,
         "matrix_seed": matrix_seed,
         "run_seed": int(args.run_seed),
         "experiment_variant": variant.raw,
@@ -921,7 +892,6 @@ def main() -> int:
         "n_examples": n_examples,
         "n_cells": n_cells,
         "budget_max_evals": max_evaluations,
-        "mmlu_size_bucket": size_bucket,
         "gittins_run_max_evals": int(sim_max_evaluations),
         "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
         "eval_budget_fraction": float(args.eval_budget_fraction),
@@ -929,19 +899,14 @@ def main() -> int:
         "prior_variance_resolved": float(prior_variance),
         "prior_bucket": prior_bucket,
         "prior_source": prior_source,
+        "mmlu_task": mmlu_task,
+        "mmlu_size_bucket": size_bucket,
         "cost_vector": str(args.cost_vector) if args.cost_vector else None,
         "trace": str(trace_path),
         "figure_eval": str(fig_eval_path),
         "figure_cost": str(fig_cost_path),
         "timing": {
             "lookup_table_s": lookup_table_s,
-            "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
-            "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
-            "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
-            "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
-            "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
-            "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
-            "lookup_roots_table_mb": lookup_roots_table_mb,
             "iter_step_s": step_summary,
             "iter_total_s": total_summary,
         },
@@ -951,6 +916,7 @@ def main() -> int:
             "final_cum_eval": int(sim["x"][-1]) if sim["x"] else None,
             "final_cum_original_cost": float(sim["x_original_cost"][-1]) if sim["x_original_cost"] else None,
             "num_batches": len(sim["regret"]),
+            "num_distinct_pulled_arms": int(len(set(sim["pulled_arm"]))) if sim["pulled_arm"] else 0,
         },
     }
     meta_path.write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -978,8 +944,6 @@ def main() -> int:
     print(f"Wrote figure: {fig_eval_path}")
     print(f"Wrote cost figure: {fig_cost_path}")
     print(f"lookup_table_s={lookup_table_s}")
-    print(f"lookup_memory_peak_delta_mb={lookup_memory_peak_delta_mb}")
-    print(f"lookup_roots_table_mb={lookup_roots_table_mb}")
     print(f"iter_step_mean_s={step_summary['mean_s']}")
     print(f"iter_step_p90_s={step_summary['p90_s']}")
     print(f"final_simple_regret={meta['final']['final_simple_regret']}")
@@ -993,13 +957,6 @@ def main() -> int:
                 "final_cum_original_cost": meta["final"]["final_cum_original_cost"],
                 "num_batches": meta["final"]["num_batches"],
                 "lookup_table_s": lookup_table_s,
-                "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
-                "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
-                "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
-                "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
-                "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
-                "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
-                "lookup_roots_table_mb": lookup_roots_table_mb,
                 "iter_step_mean_s": step_summary["mean_s"],
                 "iter_step_median_s": step_summary["median_s"],
                 "iter_step_p90_s": step_summary["p90_s"],
@@ -1010,8 +967,9 @@ def main() -> int:
                 "prior_variance_resolved": float(prior_variance),
                 "prior_bucket": prior_bucket,
                 "prior_source": prior_source,
-                "matrix_seed": matrix_seed,
+                "mmlu_task": mmlu_task,
                 "mmlu_size_bucket": size_bucket,
+                "matrix_seed": matrix_seed,
                 "run_seed": int(args.run_seed),
                 "experiment_variant": variant.raw,
                 "gittins_stop_cum_eval": (
