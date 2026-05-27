@@ -75,7 +75,7 @@ DATASET_PRIORS: dict[str, tuple[float, float]] = {
 MMLU_PRIOR_BY_BUCKET: dict[str, tuple[float, float]] = {
     "low": (0.4, 0.02),
     "medium": (0.6, 0.02),
-    "high": (0.75, 0.02),
+    "high": (0.75, 0.01),
 }
 
 DEFAULT_MMLU_TASK_METADATA = REPO_ROOT / "data" / "MMLU_matrices" / "task_metadata.json"
