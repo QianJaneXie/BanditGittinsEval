@@ -24,6 +24,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from botorch.acquisition import LogExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import MixedSingleTaskGP
 from botorch.models.transforms.outcome import Standardize
@@ -33,6 +34,7 @@ if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
 from stable_pbgi import StableGittinsIndex  # noqa: E402
+from log_ei_puc import LogExpectedImprovementWithCost  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -59,7 +61,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--bo-inputs", "--bo_inputs", dest="bo_inputs", type=Path, required=True)
     p.add_argument(
         "--acquisition",
-        choices=["pbgi"],
+        choices=["pbgi", "logei", "logeipc"],
         default="pbgi",
         help="Acquisition used after the random initialization design.",
     )
@@ -83,7 +85,8 @@ def parse_args() -> argparse.Namespace:
         "--cost_aware",
         action="store_true",
         help=(
-            "Use costs in acquisition ranking. For PBGI this passes cost_X to the acquisition."
+            "Use costs in acquisition ranking. For PBGI and LogEIPC this passes cost_X "
+            "to the acquisition."
         ),
     )
     p.add_argument(
@@ -184,6 +187,7 @@ def score_candidates(
     *,
     acquisition: str,
     model: MixedSingleTaskGP,
+    best_f: float,
     candidate_X: torch.Tensor,
     candidate_cost: torch.Tensor,
     cost_aware: bool,
@@ -191,13 +195,23 @@ def score_candidates(
 ) -> torch.Tensor:
     Xq = candidate_X.unsqueeze(1)
     with torch.no_grad():
-        if acquisition != "pbgi":  # pragma: no cover - argparse constrains this.
-            raise ValueError(f"Unsupported acquisition: {acquisition}")
-        acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
-        if cost_aware:
-            scores = acq(Xq, cost_X=candidate_cost)
-        else:
+        if acquisition == "pbgi":
+            acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
+            if cost_aware:
+                scores = acq(Xq, cost_X=candidate_cost)
+            else:
+                scores = acq(Xq)
+        elif acquisition == "logei":
+            acq = LogExpectedImprovement(model=model, best_f=float(best_f), maximize=True)
             scores = acq(Xq)
+        elif acquisition == "logeipc":
+            acq = LogExpectedImprovementWithCost(model=model, best_f=float(best_f), maximize=True)
+            if cost_aware:
+                scores = acq(Xq, cost_X=candidate_cost)
+            else:
+                scores = acq(Xq)
+        else:  # pragma: no cover - argparse constrains this.
+            raise ValueError(f"Unsupported acquisition: {acquisition}")
     return scores.reshape(-1).detach()
 
 
@@ -262,6 +276,8 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
     total_cost = 0.0
     nominal_total_configs = min(n_configs, n_init + n_steps)
     max_bo_steps = (n_configs - n_init) if bool(args.extend_to_natural_stop) else n_steps
+    log_lambda = float(np.log(float(args.cost_scaling_factor)))
+    effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
 
     def record(arm: int, acq_value: float, phase: str, fit_s: float, score_s: float) -> None:
         nonlocal total_cost
@@ -306,9 +322,10 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         scores = score_candidates(
             acquisition=str(args.acquisition),
             model=model,
+            best_f=float(train_Y.max().item()),
             candidate_X=data.X[remaining_idx],
             candidate_cost=data.cost[remaining_idx],
-            cost_aware=bool(args.cost_aware),
+            cost_aware=bool(effective_cost_aware),
             cost_scaling_factor=float(args.cost_scaling_factor),
         )
         score_s = float(time.perf_counter() - score_t0)
@@ -318,10 +335,16 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         best_pos = int(torch.argmax(scores).item())
         best_score = float(scores[best_pos].item())
         best_observed = float(train_Y.max().item())
-        if stop_cum_eval is None and best_score < best_observed:
-            stop_cum_eval = int(len(selected) * data.n_examples)
-            stop_cum_original_cost = float(total_cost)
-            stop_index_value = best_score
+        if stop_cum_eval is None:
+            should_stop = False
+            if str(args.acquisition) in {"logei", "logeipc"}:
+                should_stop = bool(best_score < log_lambda)
+            elif str(args.acquisition) == "pbgi":
+                should_stop = bool(best_score < best_observed)
+            if should_stop:
+                stop_cum_eval = int(len(selected) * data.n_examples)
+                stop_cum_original_cost = float(total_cost)
+                stop_index_value = best_score
         if (
             bool(args.extend_to_natural_stop)
             and len(selected) >= nominal_total_configs
@@ -358,8 +381,9 @@ def main() -> int:
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
     n_init_value = data.default_n_init if args.n_init is None else int(args.n_init)
+    effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
     variant = str(args.acquisition)
-    if args.cost_aware:
+    if effective_cost_aware:
         variant = f"{variant}_cost_aware"
 
     out_base = (
@@ -390,7 +414,7 @@ def main() -> int:
         policy_variant=variant,
         policy_family="bo",
         acquisition=str(args.acquisition),
-        cost_aware=bool(args.cost_aware),
+        cost_aware=bool(effective_cost_aware),
         cost_scaling_factor=float(args.cost_scaling_factor),
         n_init=int(n_init_value),
         n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
@@ -443,7 +467,7 @@ def main() -> int:
         "experiment_variant": variant,
         "policy_family": "bo",
         "acquisition": str(args.acquisition),
-        "cost_aware": bool(args.cost_aware),
+        "cost_aware": bool(effective_cost_aware),
         "cost_scaling_factor": float(args.cost_scaling_factor),
         "n_init": int(n_init_value),
         "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
