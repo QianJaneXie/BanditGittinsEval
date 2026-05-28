@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 import math
 import os
@@ -35,6 +36,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import wandb
+try:
+    import resource
+except Exception:  # pragma: no cover
+    resource = None
+
+
+def _load_psutil():
+    try:
+        return importlib.import_module("psutil")
+    except Exception:  # pragma: no cover
+        return None
+
+
+psutil = _load_psutil()
 
 from banditeval.bandits import upper_confidence_bound_exploration
 
@@ -362,6 +377,43 @@ def timing_summary(values: list[float]) -> dict[str, float | int | None]:
         "min_s": float(arr.min()),
         "max_s": float(arr.max()),
     }
+
+
+def _ru_maxrss_bytes() -> int | None:
+    if resource is None:
+        return None
+    try:
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+        maxrss = float(ru.ru_maxrss)
+        if sys.platform == "darwin":
+            return int(maxrss)
+        return int(maxrss * 1024.0)
+    except Exception:
+        return None
+
+
+def current_rss_bytes() -> int | None:
+    if psutil is not None:
+        try:
+            return int(psutil.Process(os.getpid()).memory_info().rss)
+        except Exception:
+            pass
+    return None
+
+
+def peak_rss_bytes() -> int | None:
+    ru_peak = _ru_maxrss_bytes()
+    if ru_peak is not None:
+        return ru_peak
+    if psutil is not None:
+        try:
+            mem = psutil.Process(os.getpid()).memory_info()
+            if hasattr(mem, "peak_wset"):
+                return int(getattr(mem, "peak_wset"))
+            return int(mem.rss)
+        except Exception:
+            pass
+    return None
 
 
 def save_line_plot(
@@ -721,6 +773,14 @@ def main() -> int:
     trace_path.parent.mkdir(parents=True, exist_ok=True)
 
     lookup_table_s: float | None = None
+    lookup_memory_rss_before_mb: float | None = None
+    lookup_memory_rss_after_mb: float | None = None
+    lookup_memory_rss_delta_mb: float | None = None
+    lookup_memory_peak_before_mb: float | None = None
+    lookup_memory_peak_after_mb: float | None = None
+    lookup_memory_peak_delta_mb: float | None = None
+    peak_rss_gb: float | None = None
+    extra_peak_memory_gb: float | None = None
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
 
@@ -781,6 +841,8 @@ def main() -> int:
         else:
             raise ValueError(f"Unsupported Gittins cost_mode: {variant.cost_mode}")
 
+        rss_before_b = current_rss_bytes()
+        peak_before_b = peak_rss_bytes()
         t_lookup0 = time.perf_counter()
         transition_stds = transition_stds_shrinking_gaussian_posterior(
             np.float32(float(prior_variance)),
@@ -798,6 +860,27 @@ def main() -> int:
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         lookup_table_s = float(time.perf_counter() - t_lookup0)
+        rss_after_b = current_rss_bytes()
+        peak_after_b = peak_rss_bytes()
+
+        if rss_before_b is not None:
+            lookup_memory_rss_before_mb = float(rss_before_b) / (1024.0**2)
+        if rss_after_b is not None:
+            lookup_memory_rss_after_mb = float(rss_after_b) / (1024.0**2)
+        if rss_before_b is not None and rss_after_b is not None:
+            lookup_memory_rss_delta_mb = max(0.0, float(rss_after_b - rss_before_b) / (1024.0**2))
+
+        if peak_before_b is not None:
+            lookup_memory_peak_before_mb = float(peak_before_b) / (1024.0**2)
+        if peak_after_b is not None:
+            lookup_memory_peak_after_mb = float(peak_after_b) / (1024.0**2)
+        if peak_before_b is not None and peak_after_b is not None:
+            lookup_memory_peak_delta_mb = max(0.0, float(peak_after_b - peak_before_b) / (1024.0**2))
+
+        if peak_after_b is not None:
+            peak_rss_gb = float(peak_after_b) / (1024.0**3)
+        if peak_before_b is not None and peak_after_b is not None:
+            extra_peak_memory_gb = max(0.0, float(peak_after_b - peak_before_b) / (1024.0**3))
 
         cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         prev_arm: int | None = None
@@ -908,6 +991,28 @@ def main() -> int:
         mmlu_task="" if mmlu_task is None else mmlu_task,
         mmlu_size_bucket="" if size_bucket is None else size_bucket,
         lookup_table_s=np.asarray(-1.0 if lookup_table_s is None else lookup_table_s, dtype=np.float64),
+        lookup_memory_rss_before_mb=np.asarray(
+            -1.0 if lookup_memory_rss_before_mb is None else lookup_memory_rss_before_mb, dtype=np.float64
+        ),
+        lookup_memory_rss_after_mb=np.asarray(
+            -1.0 if lookup_memory_rss_after_mb is None else lookup_memory_rss_after_mb, dtype=np.float64
+        ),
+        lookup_memory_rss_delta_mb=np.asarray(
+            -1.0 if lookup_memory_rss_delta_mb is None else lookup_memory_rss_delta_mb, dtype=np.float64
+        ),
+        lookup_memory_peak_before_mb=np.asarray(
+            -1.0 if lookup_memory_peak_before_mb is None else lookup_memory_peak_before_mb, dtype=np.float64
+        ),
+        lookup_memory_peak_after_mb=np.asarray(
+            -1.0 if lookup_memory_peak_after_mb is None else lookup_memory_peak_after_mb, dtype=np.float64
+        ),
+        lookup_memory_peak_delta_mb=np.asarray(
+            -1.0 if lookup_memory_peak_delta_mb is None else lookup_memory_peak_delta_mb, dtype=np.float64
+        ),
+        peak_rss_gb=np.asarray(-1.0 if peak_rss_gb is None else peak_rss_gb, dtype=np.float64),
+        extra_peak_memory_gb=np.asarray(
+            -1.0 if extra_peak_memory_gb is None else extra_peak_memory_gb, dtype=np.float64
+        ),
         x=np.asarray(sim["x"], dtype=np.int32),
         x_original_cost=np.asarray(sim["x_original_cost"], dtype=np.float64),
         regret=np.asarray(sim["regret"], dtype=np.float32),
@@ -984,6 +1089,14 @@ def main() -> int:
         "figure_cost": str(fig_cost_path),
         "timing": {
             "lookup_table_s": lookup_table_s,
+            "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
+            "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
+            "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
+            "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
+            "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
+            "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
+            "peak_rss_gb": peak_rss_gb,
+            "extra_peak_memory_gb": extra_peak_memory_gb,
             "iter_step_s": step_summary,
             "iter_total_s": total_summary,
             "total_wall_time_s": total_wall_time_s,
@@ -1022,6 +1135,8 @@ def main() -> int:
     print(f"Wrote figure: {fig_eval_path}")
     print(f"Wrote cost figure: {fig_cost_path}")
     print(f"lookup_table_s={lookup_table_s}")
+    print(f"peak_rss_gb={peak_rss_gb}")
+    print(f"extra_peak_memory_gb={extra_peak_memory_gb}")
     print(f"total_wall_time_s={total_wall_time_s}")
     print(f"iter_step_mean_s={step_summary['mean_s']}")
     print(f"iter_step_p90_s={step_summary['p90_s']}")
@@ -1036,6 +1151,14 @@ def main() -> int:
                 "final_cum_original_cost": meta["final"]["final_cum_original_cost"],
                 "num_batches": meta["final"]["num_batches"],
                 "lookup_table_s": lookup_table_s,
+                "lookup_memory_rss_before_mb": lookup_memory_rss_before_mb,
+                "lookup_memory_rss_after_mb": lookup_memory_rss_after_mb,
+                "lookup_memory_rss_delta_mb": lookup_memory_rss_delta_mb,
+                "lookup_memory_peak_before_mb": lookup_memory_peak_before_mb,
+                "lookup_memory_peak_after_mb": lookup_memory_peak_after_mb,
+                "lookup_memory_peak_delta_mb": lookup_memory_peak_delta_mb,
+                "peak_rss_gb": peak_rss_gb,
+                "extra_peak_memory_gb": extra_peak_memory_gb,
                 "total_wall_time_s": total_wall_time_s,
                 "iter_step_mean_s": step_summary["mean_s"],
                 "iter_step_median_s": step_summary["median_s"],

@@ -141,6 +141,8 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "lookup_memory_peak_before_mb",
     "lookup_memory_peak_after_mb",
     "lookup_memory_peak_delta_mb",
+    "peak_rss_gb",
+    "extra_peak_memory_gb",
     "lookup_roots_table_mb",
     "iter_step_mean_s",
     "iter_step_median_s",
