@@ -37,10 +37,16 @@ def _plot_curve(
         plt.plot(x, y, linewidth=linewidth, label=label, color=color)
 
 
-def _plot_stop(x: float, *, label: str, color: str) -> None:
+def _plot_stop(
+    x: float,
+    *,
+    label: str,
+    color: str,
+    linestyle: str = "--",
+) -> None:
     if x < 0:
         return
-    plt.axvline(x, color=color, linestyle="--", alpha=0.8, linewidth=1.2, label=label)
+    plt.axvline(x, color=color, linestyle=linestyle, alpha=0.8, linewidth=1.2, label=label)
 
 
 def _plot_bo_with_stop(
@@ -165,6 +171,7 @@ def main() -> int:
         gittins_x = "gittins_x"
         bo_x = "x"
         gittins_stop_key = "gittins_stop_cum_eval"
+        gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_eval"
         bo_stop_key = str(args.bo_stop_key_evals)
         bo2_stop_key = str(args.bo2_stop_key_evals)
         xlabel = "Cumulative examples evaluated"
@@ -173,6 +180,7 @@ def main() -> int:
         gittins_x = "gittins_x_original_cost"
         bo_x = "x_original_cost"
         gittins_stop_key = "gittins_stop_cum_original_cost"
+        gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_original_cost"
         bo_stop_key = str(args.bo_stop_key_cost)
         bo2_stop_key = str(args.bo2_stop_key_cost)
         xlabel = "Cumulative full-evaluation cost"
@@ -200,7 +208,18 @@ def main() -> int:
             stop_color=str(args.bo2_stop_color),
         )
 
-    _plot_stop(_scalar(bandit, gittins_stop_key), label="bandit Gittins stop", color="C1")
+    _plot_stop(
+        _scalar(bandit, gittins_stop_key),
+        label="bandit Gittins stop (index)",
+        color="C1",
+        linestyle="--",
+    )
+    _plot_stop(
+        _scalar(bandit, gittins_rec_stop_key),
+        label="bandit Gittins stop (recommendation)",
+        color="C1",
+        linestyle="-.",
+    )
 
     plt.xlabel(xlabel)
     plt.ylabel("Simple regret")
