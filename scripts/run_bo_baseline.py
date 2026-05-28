@@ -56,6 +56,50 @@ def safe_token(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(s))
 
 
+MAJOR_CATEGORY_COL_BY_DATASET: dict[str, int] = {
+    "gsm8k": 0,  # model_id
+    "piqa": 0,  # model_id
+    "mmlu": 1,  # prompt_idx
+}
+
+
+def major_category_n_init(X_np: np.ndarray, dataset: str) -> int:
+    ds = str(dataset).lower()
+    if ds not in MAJOR_CATEGORY_COL_BY_DATASET:
+        raise ValueError(
+            "Unsupported dataset for major-category n_init default: "
+            f"{dataset!r}. Supported: {sorted(MAJOR_CATEGORY_COL_BY_DATASET)}"
+        )
+    col = MAJOR_CATEGORY_COL_BY_DATASET[ds]
+    if X_np.ndim != 2 or col >= X_np.shape[1]:
+        raise ValueError(
+            f"Cannot infer major-category n_init from X shape {X_np.shape} for dataset {dataset!r}"
+        )
+    return int(len(np.unique(X_np[:, col])))
+
+
+def resolve_bo_budget(
+    *,
+    n_configs: int,
+    n_init: int,
+    n_steps: int | None,
+    eval_budget_fraction: float,
+) -> tuple[int, int, int, str]:
+    n_init_eff = min(max(int(n_init), 1), int(n_configs))
+    if n_steps is None:
+        nominal_total = min(
+            int(n_configs),
+            max(1, int(np.floor(float(eval_budget_fraction) * int(n_configs)))),
+        )
+        n_steps_eff = max(0, nominal_total - n_init_eff)
+        n_steps_rule = "eval_budget_fraction_default"
+    else:
+        n_steps_eff = min(max(int(n_steps), 0), int(n_configs) - n_init_eff)
+        n_steps_rule = "user_set"
+        nominal_total = min(int(n_configs), n_init_eff + n_steps_eff)
+    return n_init_eff, n_steps_eff, nominal_total, n_steps_rule
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bo-inputs", "--bo_inputs", dest="bo_inputs", type=Path, required=True)
@@ -71,14 +115,31 @@ def parse_args() -> argparse.Namespace:
         "--n_init",
         type=int,
         default=None,
-        help="Number of random initial configurations. Defaults to dim + 1.",
+        help=(
+            "Number of random initial configurations. Defaults to the number of "
+            "levels in the major categorical dimension (model_id for GSM8K/PIQA, "
+            "prompt_idx for MMLU)."
+        ),
     )
     p.add_argument(
         "--n-steps",
         "--n_steps",
         type=int,
-        default=20,
-        help="Number of BO-selected configurations after initialization.",
+        default=None,
+        help=(
+            "Number of BO-selected configurations after initialization. "
+            "Defaults to max(0, floor(eval_budget_fraction * n_configs) - n_init)."
+        ),
+    )
+    p.add_argument(
+        "--eval-budget-fraction",
+        "--eval_budget_fraction",
+        type=float,
+        default=0.10,
+        help=(
+            "Nominal fraction of all configurations to evaluate, counting random "
+            "initialization and BO-selected points together."
+        ),
     )
     p.add_argument(
         "--cost-aware",
@@ -102,8 +163,8 @@ def parse_args() -> argparse.Namespace:
         "--extend_to_natural_stop",
         action="store_true",
         help=(
-            "Run past the nominal BO budget until the PBGI natural stop is observed, "
-            "capped by evaluating all configurations."
+            "Run past the nominal eval-budget until the acquisition natural stop is "
+            "observed, capped by evaluating all configurations."
         ),
     )
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "bo_baselines")
@@ -157,7 +218,7 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
         matrix_seed=matrix_seed,
         n_examples=n_examples,
         cat_dims=cat_dims,
-        default_n_init=len(cat_dims) + 1,
+        default_n_init=major_category_n_init(X_np, dataset),
         metadata=metadata,
     )
 
@@ -246,12 +307,17 @@ def save_line_plot(
     plt.close()
 
 
-def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
+def run_bo(
+    args: argparse.Namespace,
+    data: BoData,
+    *,
+    n_init: int,
+    n_steps: int,
+) -> dict[str, Any]:
     rng = np.random.default_rng(int(args.seed))
     n_configs = int(data.X.shape[0])
-    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
-    n_init = min(max(requested_n_init, 1), n_configs)
-    n_steps = min(max(int(args.n_steps), 0), n_configs - n_init)
+    n_init = min(max(int(n_init), 1), n_configs)
+    n_steps = min(max(int(n_steps), 0), n_configs - n_init)
 
     init = rng.choice(n_configs, size=n_init, replace=False).astype(int).tolist()
     selected: list[int] = []
@@ -380,7 +446,13 @@ def main() -> int:
     torch.manual_seed(int(args.seed))
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
-    n_init_value = data.default_n_init if args.n_init is None else int(args.n_init)
+    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
+    n_init_value, n_steps_value, nominal_total_value, n_steps_rule = resolve_bo_budget(
+        n_configs=int(data.X.shape[0]),
+        n_init=int(requested_n_init),
+        n_steps=args.n_steps,
+        eval_budget_fraction=float(args.eval_budget_fraction),
+    )
     effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
     variant = str(args.acquisition)
     if effective_cost_aware:
@@ -392,7 +464,7 @@ def main() -> int:
         / safe_token(variant)
         / (
             f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
-            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{args.n_steps}"
+            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{n_steps_value}"
             f"{'__extendstop' if args.extend_to_natural_stop else ''}"
         )
     )
@@ -402,7 +474,7 @@ def main() -> int:
     fig_cost_path = out_base.with_name(out_base.name + "_regret_vs_cost.png")
     trace_path.parent.mkdir(parents=True, exist_ok=True)
 
-    sim = run_bo(args, data)
+    sim = run_bo(args, data, n_init=n_init_value, n_steps=n_steps_value)
 
     np.savez(
         trace_path,
@@ -416,9 +488,11 @@ def main() -> int:
         acquisition=str(args.acquisition),
         cost_aware=bool(effective_cost_aware),
         cost_scaling_factor=float(args.cost_scaling_factor),
+        eval_budget_fraction=np.asarray(float(args.eval_budget_fraction), dtype=np.float64),
         n_init=int(n_init_value),
-        n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
-        n_steps=int(args.n_steps),
+        n_init_rule="major_category_levels_default" if args.n_init is None else "user_set",
+        n_steps=int(n_steps_value),
+        n_steps_rule=str(n_steps_rule),
         nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
         extend_to_natural_stop=bool(args.extend_to_natural_stop),
         pbgi_stop_cum_eval=np.asarray(
@@ -469,9 +543,11 @@ def main() -> int:
         "acquisition": str(args.acquisition),
         "cost_aware": bool(effective_cost_aware),
         "cost_scaling_factor": float(args.cost_scaling_factor),
+        "eval_budget_fraction": float(args.eval_budget_fraction),
         "n_init": int(n_init_value),
-        "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
-        "n_steps": int(args.n_steps),
+        "n_init_rule": "major_category_levels_default" if args.n_init is None else "user_set",
+        "n_steps": int(n_steps_value),
+        "n_steps_rule": str(n_steps_rule),
         "nominal_total_configs": int(sim["nominal_total_configs"]),
         "extend_to_natural_stop": bool(args.extend_to_natural_stop),
         "pbgi_stop_cum_eval": None if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
