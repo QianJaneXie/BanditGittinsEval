@@ -18,9 +18,13 @@ This runner is designed for the current lightweight code path:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
+import os
 import re
+import socket
+import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -288,6 +292,53 @@ def posterior_means(
     return mus.to(torch.float32)
 
 
+def sha256_file(path: Path | None) -> str | None:
+    if path is None or not path.is_file():
+        return None
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while True:
+            chunk = f.read(1024 * 1024)
+            if not chunk:
+                break
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _run_git_cmd(args: list[str]) -> str | None:
+    try:
+        return subprocess.check_output(
+            ["git", *args],
+            cwd=REPO_ROOT,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        return None
+
+
+def collect_provenance(args: argparse.Namespace) -> dict[str, Any]:
+    git_status = _run_git_cmd(["status", "--porcelain"])
+    git_dirty: bool | None
+    if git_status is None:
+        git_dirty = None
+    else:
+        git_dirty = bool(git_status)
+
+    return {
+        "git_commit": _run_git_cmd(["rev-parse", "HEAD"]),
+        "git_dirty": git_dirty,
+        "matrix_sha256": sha256_file(args.matrix),
+        "cost_vector_sha256": sha256_file(args.cost_vector) if args.cost_vector is not None else None,
+        "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+        "slurm_array_job_id": os.environ.get("SLURM_ARRAY_JOB_ID"),
+        "slurm_array_task_id": os.environ.get("SLURM_ARRAY_TASK_ID"),
+        "hostname": socket.gethostname(),
+        "python_version": sys.version.replace("\n", " "),
+        "python_executable": sys.executable,
+    }
+
+
 def timing_summary(values: list[float]) -> dict[str, float | int | None]:
     if not values:
         return {
@@ -533,7 +584,21 @@ def parse_args() -> argparse.Namespace:
     )
 
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "wandb_simple_regret")
-    p.add_argument("--log-step-metrics", "--log_step_metrics", action="store_true")
+    p.add_argument(
+        "--log-step-metrics",
+        "--log_step_metrics",
+        dest="log_step_metrics",
+        action="store_true",
+        default=True,
+        help="Enable per-step W&B history logging (default: enabled).",
+    )
+    p.add_argument(
+        "--no-log-step-metrics",
+        "--no_log_step_metrics",
+        dest="log_step_metrics",
+        action="store_false",
+        help="Disable per-step W&B history logging.",
+    )
     p.add_argument(
         "--extend-gittins-to-natural-stop",
         "--extend_gittins_to_natural_stop",
@@ -554,7 +619,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    run_wall_t0 = time.perf_counter()
     args = parse_args()
+    provenance = collect_provenance(args)
     variant = parse_experiment_variant(args.experiment_variant)
     dataset_tag = safe_token(args.dataset_tag.lower())
     matrix_seed = infer_matrix_seed(args.matrix)
@@ -617,6 +684,7 @@ def main() -> int:
             config={
                 **vars(args),
                 **asdict(variant),
+                **provenance,
                 "dataset_tag_resolved": dataset_tag,
                 "matrix_seed": matrix_seed,
                 "n_arms": n_arms,
@@ -854,6 +922,13 @@ def main() -> int:
         pulled_cols_json=np.asarray(sim["pulled_cols_json"], dtype="<U4096"),
         n_pulled_arms=np.asarray(sim["n_pulled_arms"], dtype=np.int32),
         n_pulled_cols=np.asarray(sim["n_pulled_cols"], dtype=np.int32),
+        git_commit=np.asarray(provenance["git_commit"] or "", dtype="<U64"),
+        git_dirty=np.asarray(False if provenance["git_dirty"] is None else provenance["git_dirty"], dtype=np.bool_),
+        matrix_sha256=np.asarray(provenance["matrix_sha256"] or "", dtype="<U64"),
+        cost_vector_sha256=np.asarray(provenance["cost_vector_sha256"] or "", dtype="<U64"),
+        slurm_job_id=np.asarray(provenance["slurm_job_id"] or "", dtype="<U64"),
+        hostname=np.asarray(provenance["hostname"] or "", dtype="<U256"),
+        python_version=np.asarray(provenance["python_version"] or "", dtype="<U1024"),
         cost_per_arm_original=np.asarray(actual_cost_per_arm.numpy(), dtype=np.float64),
         gittins_stop_cum_eval=np.asarray(
             -1 if natural_stop_holder[0] is None else int(natural_stop_holder[0]),
@@ -881,6 +956,7 @@ def main() -> int:
 
     step_summary = timing_summary(sim["iter_step_s"])
     total_summary = timing_summary(sim["iter_total_s"])
+    total_wall_time_s = float(time.perf_counter() - run_wall_t0)
     meta = {
         "matrix": str(args.matrix),
         "dataset_tag": dataset_tag,
@@ -901,6 +977,7 @@ def main() -> int:
         "prior_source": prior_source,
         "mmlu_task": mmlu_task,
         "mmlu_size_bucket": size_bucket,
+        "provenance": provenance,
         "cost_vector": str(args.cost_vector) if args.cost_vector else None,
         "trace": str(trace_path),
         "figure_eval": str(fig_eval_path),
@@ -909,6 +986,7 @@ def main() -> int:
             "lookup_table_s": lookup_table_s,
             "iter_step_s": step_summary,
             "iter_total_s": total_summary,
+            "total_wall_time_s": total_wall_time_s,
         },
         "final": {
             "final_simple_regret": float(sim["regret"][-1]) if sim["regret"] else None,
@@ -944,6 +1022,7 @@ def main() -> int:
     print(f"Wrote figure: {fig_eval_path}")
     print(f"Wrote cost figure: {fig_cost_path}")
     print(f"lookup_table_s={lookup_table_s}")
+    print(f"total_wall_time_s={total_wall_time_s}")
     print(f"iter_step_mean_s={step_summary['mean_s']}")
     print(f"iter_step_p90_s={step_summary['p90_s']}")
     print(f"final_simple_regret={meta['final']['final_simple_regret']}")
@@ -957,6 +1036,7 @@ def main() -> int:
                 "final_cum_original_cost": meta["final"]["final_cum_original_cost"],
                 "num_batches": meta["final"]["num_batches"],
                 "lookup_table_s": lookup_table_s,
+                "total_wall_time_s": total_wall_time_s,
                 "iter_step_mean_s": step_summary["mean_s"],
                 "iter_step_median_s": step_summary["median_s"],
                 "iter_step_p90_s": step_summary["p90_s"],
@@ -972,6 +1052,15 @@ def main() -> int:
                 "matrix_seed": matrix_seed,
                 "run_seed": int(args.run_seed),
                 "experiment_variant": variant.raw,
+                "git_commit": provenance["git_commit"],
+                "git_dirty": provenance["git_dirty"],
+                "matrix_sha256": provenance["matrix_sha256"],
+                "cost_vector_sha256": provenance["cost_vector_sha256"],
+                "slurm_job_id": provenance["slurm_job_id"],
+                "slurm_array_job_id": provenance["slurm_array_job_id"],
+                "slurm_array_task_id": provenance["slurm_array_task_id"],
+                "hostname": provenance["hostname"],
+                "python_version": provenance["python_version"],
                 "gittins_stop_cum_eval": (
                     None if natural_stop_holder[0] is None else int(natural_stop_holder[0])
                 ),
