@@ -27,13 +27,14 @@ def _plot_curve(
     y_key: str,
     label: str,
     linewidth: float = 1.7,
+    color: str | None = None,
 ) -> None:
     if x_key not in z.files or y_key not in z.files:
         return
     x = np.asarray(z[x_key])
     y = np.asarray(z[y_key])
     if x.size and y.size:
-        plt.plot(x, y, linewidth=linewidth, label=label)
+        plt.plot(x, y, linewidth=linewidth, label=label, color=color)
 
 
 def _plot_stop(x: float, *, label: str, color: str) -> None:
@@ -48,10 +49,11 @@ def _plot_bo_with_stop(
     x_key: str,
     stop_key: str,
     label: str,
+    curve_color: str | None,
     stop_label: str,
     stop_color: str,
 ) -> None:
-    _plot_curve(z, x_key=x_key, y_key="regret", label=label)
+    _plot_curve(z, x_key=x_key, y_key="regret", label=label, color=curve_color)
     _plot_stop(_scalar(z, stop_key), label=stop_label, color=stop_color)
 
 
@@ -97,6 +99,12 @@ def main() -> int:
         help="Matplotlib color for BO stop marker.",
     )
     p.add_argument(
+        "--bo-color",
+        type=str,
+        default=None,
+        help="Optional matplotlib color for the BO curve.",
+    )
+    p.add_argument(
         "--bo2-trace",
         type=Path,
         default=None,
@@ -131,6 +139,12 @@ def main() -> int:
         type=str,
         default="C3",
         help="Matplotlib color for second BO stop marker.",
+    )
+    p.add_argument(
+        "--bo2-color",
+        type=str,
+        default=None,
+        help="Optional matplotlib color for the second BO curve.",
     )
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--title", type=str, required=True)
@@ -171,6 +185,7 @@ def main() -> int:
         x_key=bo_x,
         stop_key=bo_stop_key,
         label=str(args.bo_label),
+        curve_color=args.bo_color,
         stop_label=str(args.bo_stop_label),
         stop_color=str(args.bo_stop_color),
     )
@@ -180,6 +195,7 @@ def main() -> int:
             x_key=bo_x,
             stop_key=bo2_stop_key,
             label=str(args.bo2_label),
+            curve_color=args.bo2_color,
             stop_label=str(args.bo2_stop_label),
             stop_color=str(args.bo2_stop_color),
         )
