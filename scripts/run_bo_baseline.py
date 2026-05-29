@@ -24,6 +24,7 @@ os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from botorch.acquisition import LogExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import MixedSingleTaskGP
 from botorch.models.transforms.outcome import Standardize
@@ -33,6 +34,7 @@ if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
 from stable_pbgi import StableGittinsIndex  # noqa: E402
+from log_ei_puc import LogExpectedImprovementWithCost  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -54,12 +56,56 @@ def safe_token(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(s))
 
 
+MAJOR_CATEGORY_COL_BY_DATASET: dict[str, int] = {
+    "gsm8k": 0,  # model_id
+    "piqa": 0,  # model_id
+    "mmlu": 1,  # prompt_idx
+}
+
+
+def major_category_n_init(X_np: np.ndarray, dataset: str) -> int:
+    ds = str(dataset).lower()
+    if ds not in MAJOR_CATEGORY_COL_BY_DATASET:
+        raise ValueError(
+            "Unsupported dataset for major-category n_init default: "
+            f"{dataset!r}. Supported: {sorted(MAJOR_CATEGORY_COL_BY_DATASET)}"
+        )
+    col = MAJOR_CATEGORY_COL_BY_DATASET[ds]
+    if X_np.ndim != 2 or col >= X_np.shape[1]:
+        raise ValueError(
+            f"Cannot infer major-category n_init from X shape {X_np.shape} for dataset {dataset!r}"
+        )
+    return int(len(np.unique(X_np[:, col])))
+
+
+def resolve_bo_budget(
+    *,
+    n_configs: int,
+    n_init: int,
+    n_steps: int | None,
+    eval_budget_fraction: float,
+) -> tuple[int, int, int, str]:
+    n_init_eff = min(max(int(n_init), 1), int(n_configs))
+    if n_steps is None:
+        nominal_total = min(
+            int(n_configs),
+            max(1, int(np.floor(float(eval_budget_fraction) * int(n_configs)))),
+        )
+        n_steps_eff = max(0, nominal_total - n_init_eff)
+        n_steps_rule = "eval_budget_fraction_default"
+    else:
+        n_steps_eff = min(max(int(n_steps), 0), int(n_configs) - n_init_eff)
+        n_steps_rule = "user_set"
+        nominal_total = min(int(n_configs), n_init_eff + n_steps_eff)
+    return n_init_eff, n_steps_eff, nominal_total, n_steps_rule
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bo-inputs", "--bo_inputs", dest="bo_inputs", type=Path, required=True)
     p.add_argument(
         "--acquisition",
-        choices=["pbgi"],
+        choices=["pbgi", "logei", "logeipc"],
         default="pbgi",
         help="Acquisition used after the random initialization design.",
     )
@@ -69,21 +115,39 @@ def parse_args() -> argparse.Namespace:
         "--n_init",
         type=int,
         default=None,
-        help="Number of random initial configurations. Defaults to dim + 1.",
+        help=(
+            "Number of random initial configurations. Defaults to the number of "
+            "levels in the major categorical dimension (model_id for GSM8K/PIQA, "
+            "prompt_idx for MMLU)."
+        ),
     )
     p.add_argument(
         "--n-steps",
         "--n_steps",
         type=int,
-        default=20,
-        help="Number of BO-selected configurations after initialization.",
+        default=None,
+        help=(
+            "Number of BO-selected configurations after initialization. "
+            "Defaults to max(0, floor(eval_budget_fraction * n_configs) - n_init)."
+        ),
+    )
+    p.add_argument(
+        "--eval-budget-fraction",
+        "--eval_budget_fraction",
+        type=float,
+        default=0.10,
+        help=(
+            "Nominal fraction of all configurations to evaluate, counting random "
+            "initialization and BO-selected points together."
+        ),
     )
     p.add_argument(
         "--cost-aware",
         "--cost_aware",
         action="store_true",
         help=(
-            "Use costs in acquisition ranking. For PBGI this passes cost_X to the acquisition."
+            "Use costs in acquisition ranking. For PBGI and LogEIPC this passes cost_X "
+            "to the acquisition."
         ),
     )
     p.add_argument(
@@ -99,8 +163,8 @@ def parse_args() -> argparse.Namespace:
         "--extend_to_natural_stop",
         action="store_true",
         help=(
-            "Run past the nominal BO budget until the PBGI natural stop is observed, "
-            "capped by evaluating all configurations."
+            "Run past the nominal eval-budget until the acquisition natural stop is "
+            "observed, capped by evaluating all configurations."
         ),
     )
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "bo_baselines")
@@ -154,7 +218,7 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
         matrix_seed=matrix_seed,
         n_examples=n_examples,
         cat_dims=cat_dims,
-        default_n_init=len(cat_dims) + 1,
+        default_n_init=major_category_n_init(X_np, dataset),
         metadata=metadata,
     )
 
@@ -184,6 +248,7 @@ def score_candidates(
     *,
     acquisition: str,
     model: MixedSingleTaskGP,
+    best_f: float,
     candidate_X: torch.Tensor,
     candidate_cost: torch.Tensor,
     cost_aware: bool,
@@ -191,13 +256,23 @@ def score_candidates(
 ) -> torch.Tensor:
     Xq = candidate_X.unsqueeze(1)
     with torch.no_grad():
-        if acquisition != "pbgi":  # pragma: no cover - argparse constrains this.
-            raise ValueError(f"Unsupported acquisition: {acquisition}")
-        acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
-        if cost_aware:
-            scores = acq(Xq, cost_X=candidate_cost)
-        else:
+        if acquisition == "pbgi":
+            acq = StableGittinsIndex(model, lmbda=float(cost_scaling_factor))
+            if cost_aware:
+                scores = acq(Xq, cost_X=candidate_cost)
+            else:
+                scores = acq(Xq)
+        elif acquisition == "logei":
+            acq = LogExpectedImprovement(model=model, best_f=float(best_f), maximize=True)
             scores = acq(Xq)
+        elif acquisition == "logeipc":
+            acq = LogExpectedImprovementWithCost(model=model, best_f=float(best_f), maximize=True)
+            if cost_aware:
+                scores = acq(Xq, cost_X=candidate_cost)
+            else:
+                scores = acq(Xq)
+        else:  # pragma: no cover - argparse constrains this.
+            raise ValueError(f"Unsupported acquisition: {acquisition}")
     return scores.reshape(-1).detach()
 
 
@@ -232,12 +307,17 @@ def save_line_plot(
     plt.close()
 
 
-def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
+def run_bo(
+    args: argparse.Namespace,
+    data: BoData,
+    *,
+    n_init: int,
+    n_steps: int,
+) -> dict[str, Any]:
     rng = np.random.default_rng(int(args.seed))
     n_configs = int(data.X.shape[0])
-    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
-    n_init = min(max(requested_n_init, 1), n_configs)
-    n_steps = min(max(int(args.n_steps), 0), n_configs - n_init)
+    n_init = min(max(int(n_init), 1), n_configs)
+    n_steps = min(max(int(n_steps), 0), n_configs - n_init)
 
     init = rng.choice(n_configs, size=n_init, replace=False).astype(int).tolist()
     selected: list[int] = []
@@ -262,6 +342,8 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
     total_cost = 0.0
     nominal_total_configs = min(n_configs, n_init + n_steps)
     max_bo_steps = (n_configs - n_init) if bool(args.extend_to_natural_stop) else n_steps
+    log_lambda = float(np.log(float(args.cost_scaling_factor)))
+    effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
 
     def record(arm: int, acq_value: float, phase: str, fit_s: float, score_s: float) -> None:
         nonlocal total_cost
@@ -306,9 +388,10 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         scores = score_candidates(
             acquisition=str(args.acquisition),
             model=model,
+            best_f=float(train_Y.max().item()),
             candidate_X=data.X[remaining_idx],
             candidate_cost=data.cost[remaining_idx],
-            cost_aware=bool(args.cost_aware),
+            cost_aware=bool(effective_cost_aware),
             cost_scaling_factor=float(args.cost_scaling_factor),
         )
         score_s = float(time.perf_counter() - score_t0)
@@ -318,10 +401,16 @@ def run_bo(args: argparse.Namespace, data: BoData) -> dict[str, Any]:
         best_pos = int(torch.argmax(scores).item())
         best_score = float(scores[best_pos].item())
         best_observed = float(train_Y.max().item())
-        if stop_cum_eval is None and best_score < best_observed:
-            stop_cum_eval = int(len(selected) * data.n_examples)
-            stop_cum_original_cost = float(total_cost)
-            stop_index_value = best_score
+        if stop_cum_eval is None:
+            should_stop = False
+            if str(args.acquisition) in {"logei", "logeipc"}:
+                should_stop = bool(best_score < log_lambda)
+            elif str(args.acquisition) == "pbgi":
+                should_stop = bool(best_score < best_observed)
+            if should_stop:
+                stop_cum_eval = int(len(selected) * data.n_examples)
+                stop_cum_original_cost = float(total_cost)
+                stop_index_value = best_score
         if (
             bool(args.extend_to_natural_stop)
             and len(selected) >= nominal_total_configs
@@ -357,9 +446,16 @@ def main() -> int:
     torch.manual_seed(int(args.seed))
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
-    n_init_value = data.default_n_init if args.n_init is None else int(args.n_init)
+    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
+    n_init_value, n_steps_value, nominal_total_value, n_steps_rule = resolve_bo_budget(
+        n_configs=int(data.X.shape[0]),
+        n_init=int(requested_n_init),
+        n_steps=args.n_steps,
+        eval_budget_fraction=float(args.eval_budget_fraction),
+    )
+    effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
     variant = str(args.acquisition)
-    if args.cost_aware:
+    if effective_cost_aware:
         variant = f"{variant}_cost_aware"
 
     out_base = (
@@ -368,7 +464,7 @@ def main() -> int:
         / safe_token(variant)
         / (
             f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
-            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{args.n_steps}"
+            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{n_steps_value}"
             f"{'__extendstop' if args.extend_to_natural_stop else ''}"
         )
     )
@@ -378,7 +474,7 @@ def main() -> int:
     fig_cost_path = out_base.with_name(out_base.name + "_regret_vs_cost.png")
     trace_path.parent.mkdir(parents=True, exist_ok=True)
 
-    sim = run_bo(args, data)
+    sim = run_bo(args, data, n_init=n_init_value, n_steps=n_steps_value)
 
     np.savez(
         trace_path,
@@ -390,11 +486,13 @@ def main() -> int:
         policy_variant=variant,
         policy_family="bo",
         acquisition=str(args.acquisition),
-        cost_aware=bool(args.cost_aware),
+        cost_aware=bool(effective_cost_aware),
         cost_scaling_factor=float(args.cost_scaling_factor),
+        eval_budget_fraction=np.asarray(float(args.eval_budget_fraction), dtype=np.float64),
         n_init=int(n_init_value),
-        n_init_rule="dim_plus_1_default" if args.n_init is None else "user_set",
-        n_steps=int(args.n_steps),
+        n_init_rule="major_category_levels_default" if args.n_init is None else "user_set",
+        n_steps=int(n_steps_value),
+        n_steps_rule=str(n_steps_rule),
         nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
         extend_to_natural_stop=bool(args.extend_to_natural_stop),
         pbgi_stop_cum_eval=np.asarray(
@@ -443,11 +541,13 @@ def main() -> int:
         "experiment_variant": variant,
         "policy_family": "bo",
         "acquisition": str(args.acquisition),
-        "cost_aware": bool(args.cost_aware),
+        "cost_aware": bool(effective_cost_aware),
         "cost_scaling_factor": float(args.cost_scaling_factor),
+        "eval_budget_fraction": float(args.eval_budget_fraction),
         "n_init": int(n_init_value),
-        "n_init_rule": "dim_plus_1_default" if args.n_init is None else "user_set",
-        "n_steps": int(args.n_steps),
+        "n_init_rule": "major_category_levels_default" if args.n_init is None else "user_set",
+        "n_steps": int(n_steps_value),
+        "n_steps_rule": str(n_steps_rule),
         "nominal_total_configs": int(sim["nominal_total_configs"]),
         "extend_to_natural_stop": bool(args.extend_to_natural_stop),
         "pbgi_stop_cum_eval": None if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),

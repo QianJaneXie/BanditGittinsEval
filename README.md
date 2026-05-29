@@ -139,27 +139,41 @@ python scripts/simulate_simple_regret.py \
   --algorithms ucb gittins
 ```
 
-## BayesOpt PBGI baseline
+## BayesOpt baseline
 
-BayesOpt PBGI is run separately from the bandit simulators because it consumes
+BayesOpt baselines are run separately from the bandit simulators because they consume
 `data/bo_inputs/*.npz`: each row is a complete configuration, and evaluating one
 candidate reveals its aggregate `Y` and consumes the full-evaluation `cost`.
 
 The runner is `scripts/run_bo_baseline.py`. It uses BoTorch `MixedSingleTaskGP`
 with all `X` columns treated as categorical dimensions, and then scores remaining
-candidates with `StableGittinsIndex`. The default random initialization is
-`dim + 1`, but for MMLU we use `--n-init 6` (`2 * (dim + 1)`) because `dim=2`
-and three initial points is too small for a stable GP fit over 1500 candidates.
+candidates with the selected acquisition (`pbgi`, `logei`, or `logeipc`).
 
-### GSM8K BayesOpt PBGI
+The default random initialization uses the number of levels in the **major
+categorical dimension**: `model_id` for GSM8K/PIQA (`11` models) and `prompt_idx`
+for MMLU (`100` prompts). Pass `--n-init` to override this default.
+
+The nominal evaluation budget matches the bandit simulators: by default
+`--eval-budget-fraction 0.10`, so the runner evaluates
+`floor(0.10 × n_configs)` configurations in total, counting initialization and
+BO-selected points together. Equivalently,
+
+`n_steps = max(0, floor(eval_budget_fraction × n_configs) - n_init)`.
+
+With `--extend-to-natural-stop`, the run still records curves to at least this
+nominal budget, then continues until the acquisition's natural stop is observed
+(or all configurations are evaluated). Pass `--n-steps` to override the computed
+BO step count.
+
+### GSM8K BayesOpt
 
 Unit-cost run:
 
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
+  --acquisition logei \
   --seed 0 \
-  --n-steps 7 \
   --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
@@ -169,26 +183,24 @@ Cost-aware run:
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
-  --cost-aware \
+  --acquisition logeipc \
   --seed 0 \
-  --n-steps 7 \
   --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
-Here `n_init` defaults to `5` because GSM8K has four categorical input
-dimensions, so `5 + 7 = 12` configurations, approximately 10% of 122 configs.
+Here `n_init` defaults to `11` and `n_steps` defaults to `1`, so the nominal
+budget is `11 + 1 = 12` configurations, approximately 10% of 122 configs.
 
-### MMLU Abstract Algebra BayesOpt PBGI
+### MMLU Abstract Algebra BayesOpt
 
 Unit-cost run:
 
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
+  --acquisition logei \
   --seed 0 \
-  --n-init 6 \
-  --n-steps 144 \
   --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
@@ -198,36 +210,50 @@ Cost-aware run:
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
-  --cost-aware \
+  --acquisition logeipc \
   --seed 0 \
-  --n-init 6 \
-  --n-steps 144 \
   --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
-Here `6 + 144 = 150` configurations, exactly 10% of 1500 MMLU configurations.
+Here `n_init` defaults to `100` and `n_steps` defaults to `50`, so the nominal
+budget is `100 + 50 = 150` configurations, exactly 10% of 1500 MMLU
+configurations.
 
-### Combined bandit/PBGI plots
+### Combined bandit/BO plots
 
 Use `scripts/plot_bandit_bo_comparison.py` to combine a bandit trace from
-`scripts/simulate_simple_regret.py` with a BayesOpt PBGI trace. The legend labels
-are `bandit UCB-E`, `bandit Gittins`, and `BayesOpt PBGI`; if available, the plot
-also marks `bandit Gittins stop` and `BayesOpt PBGI stop`.
+`scripts/simulate_simple_regret.py` with BayesOpt traces. The legend labels
+are `bandit UCB-E`, `bandit Gittins`, `BayesOpt LogEI`, and `BayesOpt LogEIPC`;
+if available, the plot also marks both Gittins stopping rules and BO natural stops.
 
 MMLU examples:
 
 ```bash
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
-  --pbgi-trace outputs/bo_baselines/mmlu/pbgi/abstract_algebra_bo_inputs__runseed0__pbgi__ninit6__nsteps144__extendstop_traces.npz \
+  --bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50__extendstop_traces.npz \
+  --bo-label "BayesOpt LogEI" \
+  --bo-stop-label "BayesOpt LogEI stop" \
+  --bo-color C2 --bo-stop-color C2 \
+  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo2-label "BayesOpt LogEIPC" \
+  --bo2-stop-label "BayesOpt LogEIPC stop" \
+  --bo2-color purple --bo2-stop-color purple \
   --out outputs/figures/mmlu_abstract_algebra_unit_costs_bandit_bo_regret_vs_evals.png \
   --title "MMLU abstract algebra unit-cost: simple regret vs cumulative examples" \
   --x-axis evals
 
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
-  --pbgi-trace outputs/bo_baselines/mmlu/pbgi_cost_aware/abstract_algebra_bo_inputs__runseed0__pbgi_cost_aware__ninit6__nsteps144__extendstop_traces.npz \
+  --bo-trace outputs/bo_baselines/mmlu/logei_cost_aware/abstract_algebra_bo_inputs__runseed0__logei_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo-label "BayesOpt LogEI" \
+  --bo-stop-label "BayesOpt LogEI stop" \
+  --bo-color C2 --bo-stop-color C2 \
+  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo2-label "BayesOpt LogEIPC" \
+  --bo2-stop-label "BayesOpt LogEIPC stop" \
+  --bo2-color purple --bo2-stop-color purple \
   --out outputs/figures/mmlu_abstract_algebra_cost_aware_bandit_bo_regret_vs_full_cost.png \
   --title "MMLU abstract algebra cost-aware: simple regret vs cumulative cost" \
   --x-axis original_cost

@@ -364,15 +364,23 @@ def main() -> int:
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         stop_holder: list[int | None] = [None]
         recommendation_aware_stop_holder: list[int | None] = [None]
+        cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
+        prev_arm: int | None = None
 
-        tr = simulate_simple_regret(
-            ground_truth=ground_truth,
-            step=gittins_index_exploration,
-            step_kwargs={
-                "prior_mean": float(args.gittins_prior_mean),
-                "prior_variance": float(args.gittins_prior_variance),
-                "obs_noise_variance": float(tau_sq),
-                "cost_per_transition": torch.tensor(
+        def gittins_step(
+            obs: torch.Tensor,
+            sim_cum_eval: int,
+            natural_stop_cum_eval_holder: list[int | None] | None = None,
+            recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+        ):
+            nonlocal prev_arm
+            recompute = None if prev_arm is None else [prev_arm]
+            out = gittins_index_exploration(
+                obs,
+                prior_mean=float(args.gittins_prior_mean),
+                prior_variance=float(args.gittins_prior_variance),
+                obs_noise_variance=float(tau_sq),
+                cost_per_transition=torch.tensor(
                     per_arm_original_cost.numpy(), dtype=torch.float64
                 ),
                 cost_scaling_factor=float(args.cost_scaling_factor),
@@ -384,7 +392,17 @@ def main() -> int:
                 batch_observation_model=True,
                 roots_lookup_table=roots_torch,
                 allow_early_stop=False,
-                **kwargs,
+                sim_cum_eval=int(sim_cum_eval),
+                natural_stop_cum_eval_holder=(
+                    stop_holder
+                    if natural_stop_cum_eval_holder is None
+                    else natural_stop_cum_eval_holder
+                ),
+                recommendation_aware_stop_cum_eval_holder=(
+                    recommendation_aware_stop_holder
+                    if recommendation_aware_stop_cum_eval_holder is None
+                    else recommendation_aware_stop_cum_eval_holder
+                ),
             )
             batch = out[0] if isinstance(out, tuple) else out
             if batch is not None:
