@@ -1274,8 +1274,6 @@ def main() -> int:
                 ),
             }
         )
-        run.log({"regret_vs_evals": wandb.Image(str(fig_eval_path))})
-        run.log({"regret_vs_cost": wandb.Image(str(fig_cost_path))})
 
         artifact = wandb.Artifact(
             name=f"simple-regret-{run.id}",
@@ -1284,8 +1282,6 @@ def main() -> int:
         )
         artifact.add_file(str(trace_path))
         artifact.add_file(str(meta_path))
-        artifact.add_file(str(fig_eval_path))
-        artifact.add_file(str(fig_cost_path))
         run.log_artifact(artifact)
         run.finish()
 
