@@ -217,36 +217,26 @@ cumulative cost reaches 10% of `sum(cost)`.
 
 Use `scripts/plot_bandit_bo_comparison.py` to combine a bandit trace from
 `scripts/simulate_simple_regret.py` with BayesOpt traces. The legend labels
-are `bandit UCB-E`, `bandit Gittins`, `BayesOpt LogEI`, and `BayesOpt LogEIPC`;
-if available, the plot also marks both Gittins stopping rules and BO natural stops.
+are `bandit UCB-E`, `bandit Gittins`, `BayesOpt Gittins` (PBGI), and either
+`BayesOpt LogEI` (unit-cost) or `BayesOpt LogEIPC` (cost-aware).
 
 MMLU examples:
 
 ```bash
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
-  --bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50_traces.npz \
-  --bo-label "BayesOpt LogEI" \
-  --bo-stop-label "BayesOpt LogEI stop" \
-  --bo-color C2 --bo-stop-color C2 \
-  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
-  --bo2-label "BayesOpt LogEIPC" \
-  --bo2-stop-label "BayesOpt LogEIPC stop" \
-  --bo2-color purple --bo2-stop-color purple \
+  --pbgi-trace outputs/bo_baselines/mmlu/pbgi/abstract_algebra_bo_inputs__runseed0__pbgi__ninit100__nsteps50_traces.npz \
+  --log-bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50_traces.npz \
+  --log-bo-label "BayesOpt LogEI" \
   --out outputs/figures/mmlu_abstract_algebra_unit_costs_bandit_bo_regret_vs_evals.png \
   --title "MMLU abstract algebra unit-cost: simple regret vs cumulative examples" \
   --x-axis evals
 
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
-  --bo-trace outputs/bo_baselines/mmlu/logei_cost_aware/abstract_algebra_bo_inputs__runseed0__logei_cost_aware__ninit100__nsteps50_traces.npz \
-  --bo-label "BayesOpt LogEI" \
-  --bo-stop-label "BayesOpt LogEI stop" \
-  --bo-color C2 --bo-stop-color C2 \
-  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
-  --bo2-label "BayesOpt LogEIPC" \
-  --bo2-stop-label "BayesOpt LogEIPC stop" \
-  --bo2-color purple --bo2-stop-color purple \
+  --pbgi-trace outputs/bo_baselines/mmlu/pbgi_cost_aware/abstract_algebra_bo_inputs__runseed0__pbgi_cost_aware__ninit100__nsteps50_traces.npz \
+  --log-bo-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
+  --log-bo-label "BayesOpt LogEIPC" --log-bo-color purple \
   --out outputs/figures/mmlu_abstract_algebra_cost_aware_bandit_bo_regret_vs_full_cost.png \
   --title "MMLU abstract algebra cost-aware: simple regret vs cumulative cost" \
   --x-axis original_cost

@@ -91,9 +91,12 @@ def resolve_bo_budget(
     budget_original_cost: float | None = None
     if cost_aware:
         budget_original_cost = float(eval_budget_fraction) * float(total_brute_force_original_cost)
-        n_steps_eff = max(0, int(n_configs) - n_init_eff)
-        n_steps_rule = "cost_budget_cap_all_remaining"
-        nominal_total = int(n_configs)
+        nominal_total = min(
+            int(n_configs),
+            max(1, int(np.floor(float(eval_budget_fraction) * int(n_configs)))),
+        )
+        n_steps_eff = max(0, nominal_total - n_init_eff)
+        n_steps_rule = "cost_budget_fraction_config_label"
     elif n_steps is None:
         nominal_total = min(
             int(n_configs),
@@ -369,6 +372,12 @@ def run_bo(
         iter_score_s.append(float(score_s))
 
     for arm in init:
+        arm_cost = float(data.cost[int(arm)].item())
+        if (
+            budget_original_cost is not None
+            and total_cost + arm_cost > float(budget_original_cost)
+        ):
+            break
         record(int(arm), float("nan"), "random_init", 0.0, 0.0)
 
     within_cost_budget = (
@@ -421,6 +430,12 @@ def run_bo(
                 stop_cum_original_cost = float(total_cost)
                 stop_index_value = best_score
         arm = int(remaining_idx[best_pos].item())
+        arm_cost = float(data.cost[arm].item())
+        if (
+            budget_original_cost is not None
+            and total_cost + arm_cost > float(budget_original_cost)
+        ):
+            break
         record(arm, best_score, str(args.acquisition), fit_s, score_s)
         within_cost_budget = (
             budget_original_cost is None or total_cost < float(budget_original_cost)
