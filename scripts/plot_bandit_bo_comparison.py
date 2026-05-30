@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Plot bandit and BayesOpt simple-regret curves from trace files.
 
-BayesOpt curves include only post-initialization evaluations (selection_phase
-is not ``random_init``). The x-axis remains cumulative evals or cost from the
-start of the run, so each BO curve begins where acquisition-driven evaluation starts.
+BayesOpt curves start at the end of random initialization (last init point plus
+all acquisition-driven evaluations). The x-axis remains cumulative evals or cost
+from the start of the run.
 """
 
 from __future__ import annotations
@@ -69,7 +69,13 @@ def _bo_post_init_xy(z: np.lib.npyio.NpzFile, *, x_key: str) -> tuple[np.ndarray
         return x, y
     if not bool(mask.any()):
         return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
-    return x[mask], y[mask]
+    first_bo = int(np.flatnonzero(mask)[0])
+    start = first_bo
+    if first_bo > 0:
+        phase = np.asarray(z["selection_phase"]).astype(str)
+        if phase[first_bo - 1] == "random_init":
+            start = first_bo - 1
+    return x[start:], y[start:]
 
 
 def _plot_bo_with_stop(

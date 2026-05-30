@@ -219,8 +219,8 @@ Use `scripts/plot_bandit_bo_comparison.py` to combine a bandit trace from
 `scripts/simulate_simple_regret.py` with BayesOpt traces. The legend labels
 are `bandit UCB-E`, `bandit Gittins`, `BayesOpt PBGI`, and either
 `BayesOpt LogEI` (unit-cost) or `BayesOpt LogEIPC` (cost-aware). BayesOpt
-curves omit random initialization and begin at the first acquisition-driven
-evaluation (x-axis is still cumulative budget from the start of the run).
+curves begin at the end of random initialization (last init point through
+acquisition-driven evaluations; x-axis is still cumulative budget from run start).
 
 MMLU examples:
 
