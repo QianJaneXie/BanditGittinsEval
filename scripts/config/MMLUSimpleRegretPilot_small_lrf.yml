@@ -62,6 +62,7 @@ parameters:
   experiment_variant:
     values:
     - lrf_B32
+    - lrf_cost_B32
   eval_budget_fraction:
     value: 0.1
   cost_vector:

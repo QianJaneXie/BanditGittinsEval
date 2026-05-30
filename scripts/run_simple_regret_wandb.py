@@ -4,10 +4,10 @@
 One W&B run = one concrete experiment configuration.
 
 Supported experiment variants:
-- ucb_B{B}
-- lrf_B{B}
+- ucb_B{B} / ucb_cost_B{B}  (unit-cost vs 10% eval budget / cost budget vs 10% total cost)
+- lrf_B{B} / lrf_cost_B{B}
 - gittins_unit_B{B}_scale{S}_{default|dataset}
-- gittins_aware_B{B}_scale{S}_{default|dataset}
+- gittins_cost_B{B}_scale{S}_{default|dataset}
 
 This runner is designed for the current lightweight code path:
 - UCB / LRF are run directly from banditeval.bandits.
@@ -111,6 +111,37 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
     """Parse compact variant labels into concrete runner parameters."""
     v = raw.strip()
 
+    m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(
+            raw=v,
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+
+    # Backward-compatible alias for earlier sweep YAMLs.
+    m = re.fullmatch(r"(ucb|lrf)_aware_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(
+            raw=v,
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+
     m = re.fullmatch(r"(ucb|lrf)_B(\d+)", v)
     if m:
         policy = m.group(1)
@@ -119,7 +150,7 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
             raw=v,
             policy_variant=policy,
             policy_family=policy,
-            cost_mode="baseline",
+            cost_mode="unit",
             batch_size=b,
             gittins_batch_size=b,
             cost_scaling_factor=1e-4,
@@ -127,11 +158,13 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
         )
 
     m = re.fullmatch(
-        r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)",
+        r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)",
         v,
     )
     if m:
         cost_mode = m.group(1)
+        if cost_mode == "aware":
+            cost_mode = "cost"
         b = int(m.group(2))
         scale = float(m.group(3))
         prior_type = m.group(4)
@@ -147,18 +180,59 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
         )
 
     # Backward-compatible simple labels from the earlier pilot workflow.
-    if v in {"ucb", "lrf", "gittins_unit", "gittins_aware"}:
+    if v in {"ucb", "lrf", "gittins_unit", "gittins_cost", "gittins_aware"}:
         if v == "ucb":
-            return VariantConfig(v, "ucb", "ucb", "baseline", 20, 20, 1e-4, "default")
+            return VariantConfig(v, "ucb", "ucb", "unit", 20, 20, 1e-4, "default")
         if v == "lrf":
-            return VariantConfig(v, "lrf", "lrf", "baseline", 20, 20, 1e-4, "default")
-        cost_mode = "unit" if v == "gittins_unit" else "aware"
-        return VariantConfig(v, v, "gittins", cost_mode, 20, 20, 1e-4, "default")
+            return VariantConfig(v, "lrf", "lrf", "unit", 20, 20, 1e-4, "default")
+        cost_mode = "unit" if v == "gittins_unit" else "cost"
+        policy_variant = "gittins_unit" if v == "gittins_unit" else "gittins_cost"
+        return VariantConfig(v, policy_variant, "gittins", cost_mode, 20, 20, 1e-4, "default")
 
     raise ValueError(
         f"Unsupported experiment variant: {raw!r}. Examples: "
-        "ucb_B20, lrf_B20, gittins_unit_B20_scale1e-4_default, "
-        "gittins_aware_B20_scale1e-4_dataset"
+        "ucb_B20, ucb_cost_B20, lrf_B20, lrf_cost_B20, "
+        "gittins_unit_B20_scale1e-4_default, gittins_cost_B20_scale1e-4_dataset"
+    )
+
+
+@dataclass(frozen=True)
+class ExperimentBudget:
+    budget_mode: str
+    max_evaluations: int
+    max_original_cost: float | None
+    budget_evals: int
+    budget_original_cost: float | None
+    total_brute_force_original_cost: float
+
+
+def resolve_experiment_budget(
+    *,
+    n_cells: int,
+    n_examples: int,
+    cost_per_arm: torch.Tensor,
+    eval_budget_fraction: float,
+    cost_mode: str,
+) -> ExperimentBudget:
+    total_brute_force_original_cost = float(n_examples * cost_per_arm.sum().item())
+    budget_evals = int(max(1, round(float(eval_budget_fraction) * int(n_cells))))
+    if cost_mode in {"cost", "aware"}:
+        budget_original_cost = float(eval_budget_fraction) * total_brute_force_original_cost
+        return ExperimentBudget(
+            budget_mode="cost",
+            max_evaluations=int(n_cells),
+            max_original_cost=budget_original_cost,
+            budget_evals=budget_evals,
+            budget_original_cost=budget_original_cost,
+            total_brute_force_original_cost=total_brute_force_original_cost,
+        )
+    return ExperimentBudget(
+        budget_mode="evals",
+        max_evaluations=budget_evals,
+        max_original_cost=None,
+        budget_evals=budget_evals,
+        budget_original_cost=None,
+        total_brute_force_original_cost=total_brute_force_original_cost,
     )
 
 
@@ -451,8 +525,7 @@ def simulate_timed(
     log_step_metrics: bool,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
-    min_evaluations_before_natural_stop: int = 0,
-    should_stop_after_step: Callable[[int], bool] | None = None,
+    max_original_cost: float | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
 
@@ -573,11 +646,7 @@ def simulate_timed(
                 }
             )
 
-        if (
-            should_stop_after_step is not None
-            and evaluated >= int(min_evaluations_before_natural_stop)
-            and should_stop_after_step(int(evaluated))
-        ):
+        if max_original_cost is not None and total_cost >= float(max_original_cost):
             break
 
     return {
@@ -651,16 +720,6 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Disable per-step W&B history logging.",
     )
-    p.add_argument(
-        "--extend-gittins-to-natural-stop",
-        "--extend_gittins_to_natural_stop",
-        action="store_true",
-        help=(
-            "Gittins only: run until index-induced natural stop (up to full matrix), "
-            "not only until --eval-budget-fraction."
-        ),
-    )
-
     p.add_argument("--wandb-entity", "--wandb_entity", default=None)
     p.add_argument("--wandb-project", "--wandb_project", default="GittinsBanditEval")
     p.add_argument("--wandb-group", "--wandb_group", default=None)
@@ -690,12 +749,29 @@ def main() -> int:
     ground_truth = torch.tensor(gt_np, dtype=torch.float32)
     n_arms, n_examples = int(ground_truth.shape[0]), int(ground_truth.shape[1])
     n_cells = int(ground_truth.numel())
-    max_evaluations = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
 
     if args.cost_vector is not None:
         actual_cost_per_arm = load_cost_vector(args.cost_vector, n_arms)
     else:
         actual_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
+
+    budget = resolve_experiment_budget(
+        n_cells=n_cells,
+        n_examples=n_examples,
+        cost_per_arm=actual_cost_per_arm,
+        eval_budget_fraction=float(args.eval_budget_fraction),
+        cost_mode=variant.cost_mode,
+    )
+    max_evaluations = int(budget.max_evaluations)
+    max_original_cost = budget.max_original_cost
+    cost_aware_run = variant.cost_mode in {"cost", "aware"}
+
+    if cost_aware_run and args.cost_vector is None:
+        print(
+            f"{variant.raw} requires --cost-vector for cost-aware budgeting.",
+            file=sys.stderr,
+        )
+        return 1
 
     size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
     mmlu_task_prior_buckets = (
@@ -742,7 +818,12 @@ def main() -> int:
                 "n_arms": n_arms,
                 "n_examples": n_examples,
                 "n_cells": n_cells,
-                "budget_max_evals": max_evaluations,
+                "budget_mode": budget.budget_mode,
+                "budget_max_evals": budget.budget_evals,
+                "budget_original_cost": budget.budget_original_cost,
+                "total_brute_force_original_cost": budget.total_brute_force_original_cost,
+                "cost_aware_run": cost_aware_run,
+                "sim_max_evaluations": max_evaluations,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
                 "prior_bucket": prior_bucket,
@@ -831,9 +912,9 @@ def main() -> int:
         )
         tau_sq_cell = float(tau_sq_batch) * float(B)
 
-        if variant.cost_mode == "aware":
+        if variant.cost_mode in {"cost", "aware"}:
             if args.cost_vector is None:
-                print("gittins_aware requires --cost-vector", file=sys.stderr)
+                print("gittins_cost requires --cost-vector", file=sys.stderr)
                 return 1
             decision_cost_per_arm = actual_cost_per_arm.clone()
         elif variant.cost_mode == "unit":
@@ -931,39 +1012,19 @@ def main() -> int:
     else:
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")
 
-    sim_max_evaluations = (
-        int(n_cells)
-        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
-        else max_evaluations
-    )
-    stop_after_step = (
-        (lambda evaluated: natural_stop_holder[0] is not None)
-        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
-        else None
-    )
-
     sim = simulate_timed(
         ground_truth=ground_truth,
         step_fn=step_fn,
         seed=int(args.run_seed),
-        max_evaluations=sim_max_evaluations,
+        max_evaluations=max_evaluations,
         original_cost_per_arm=actual_cost_per_arm,
         recommend_fn=recommend_fn,
         run=run,
         log_step_metrics=bool(args.log_step_metrics),
         natural_stop_cum_eval_holder=natural_stop_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
-        min_evaluations_before_natural_stop=max_evaluations,
-        should_stop_after_step=stop_after_step,
+        max_original_cost=max_original_cost,
     )
-    if (
-        bool(args.extend_gittins_to_natural_stop)
-        and variant.policy_family == "gittins"
-        and natural_stop_holder[0] is None
-        and sim["x"]
-        and int(sim["x"][-1]) >= int(n_cells)
-    ):
-        natural_stop_holder[0] = int(n_cells)
 
     np.savez(
         trace_path,
@@ -979,11 +1040,17 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
-        extend_gittins_to_natural_stop=np.asarray(
-            bool(args.extend_gittins_to_natural_stop), dtype=np.bool_
+        cost_aware=np.asarray(bool(cost_aware_run), dtype=np.bool_),
+        budget_mode=np.asarray(budget.budget_mode, dtype="<U16"),
+        budget_evals=np.asarray(int(budget.budget_evals), dtype=np.int32),
+        budget_original_cost=np.asarray(
+            -1.0 if budget.budget_original_cost is None else float(budget.budget_original_cost),
+            dtype=np.float64,
         ),
-        gittins_run_max_evals=np.asarray(int(sim_max_evaluations), dtype=np.int32),
-        budget_evals=np.asarray(int(max_evaluations), dtype=np.int32),
+        total_brute_force_original_cost=np.asarray(
+            float(budget.total_brute_force_original_cost), dtype=np.float64
+        ),
+        sim_max_evaluations=np.asarray(int(max_evaluations), dtype=np.int32),
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
         prior_bucket="" if prior_bucket is None else prior_bucket,
@@ -1072,9 +1139,12 @@ def main() -> int:
         "n_arms": n_arms,
         "n_examples": n_examples,
         "n_cells": n_cells,
-        "budget_max_evals": max_evaluations,
-        "gittins_run_max_evals": int(sim_max_evaluations),
-        "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
+        "budget_mode": budget.budget_mode,
+        "budget_max_evals": budget.budget_evals,
+        "budget_original_cost": budget.budget_original_cost,
+        "total_brute_force_original_cost": budget.total_brute_force_original_cost,
+        "cost_aware_run": cost_aware_run,
+        "sim_max_evaluations": max_evaluations,
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),

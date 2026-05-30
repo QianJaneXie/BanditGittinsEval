@@ -230,9 +230,25 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
             prior_type="default",
         )
         return out
-    m = re.fullmatch(r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
+    m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        out.update(
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+        return out
+    m = re.fullmatch(r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
         cost_mode = m.group(1)
+        if cost_mode == "aware":
+            cost_mode = "cost"
         b = int(m.group(2))
         out.update(
             policy_variant=f"gittins_{cost_mode}",
