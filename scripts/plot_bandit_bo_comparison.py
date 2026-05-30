@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Plot bandit and BayesOpt simple-regret curves from trace files."""
+"""Plot bandit and BayesOpt simple-regret curves from trace files.
+
+BayesOpt curves include only post-initialization evaluations (selection_phase
+is not ``random_init``). The x-axis remains cumulative evals or cost from the
+start of the run, so each BO curve begins where acquisition-driven evaluation starts.
+"""
 
 from __future__ import annotations
 
@@ -49,6 +54,24 @@ def _plot_stop(
     plt.axvline(x, color=color, linestyle=linestyle, alpha=0.8, linewidth=1.2, label=label)
 
 
+def _bo_post_init_mask(z: np.lib.npyio.NpzFile) -> np.ndarray | None:
+    if "selection_phase" not in z.files:
+        return None
+    phase = np.asarray(z["selection_phase"]).astype(str)
+    return phase != "random_init"
+
+
+def _bo_post_init_xy(z: np.lib.npyio.NpzFile, *, x_key: str) -> tuple[np.ndarray, np.ndarray]:
+    x = np.asarray(z[x_key], dtype=np.float64)
+    y = np.asarray(z["regret"], dtype=np.float64)
+    mask = _bo_post_init_mask(z)
+    if mask is None:
+        return x, y
+    if not bool(mask.any()):
+        return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
+    return x[mask], y[mask]
+
+
 def _plot_bo_with_stop(
     z: np.lib.npyio.NpzFile,
     *,
@@ -59,8 +82,12 @@ def _plot_bo_with_stop(
     stop_label: str,
     stop_color: str,
 ) -> None:
-    _plot_curve(z, x_key=x_key, y_key="regret", label=label, color=curve_color)
-    _plot_stop(_scalar(z, stop_key), label=stop_label, color=stop_color)
+    x, y = _bo_post_init_xy(z, x_key=x_key)
+    if x.size and y.size:
+        plt.plot(x, y, linewidth=1.7, label=label, color=curve_color)
+    stop_x = _scalar(z, stop_key)
+    if x.size and stop_x >= 0 and stop_x >= float(x[0]):
+        _plot_stop(stop_x, label=stop_label, color=stop_color)
 
 
 def main() -> int:
