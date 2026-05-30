@@ -67,90 +67,42 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bandit-trace", type=Path, required=True)
     p.add_argument(
-        "--bo-trace",
         "--pbgi-trace",
-        dest="bo_trace",
+        "--pbgi_trace",
         type=Path,
         required=True,
-        help="Trace npz from scripts/run_bo_baseline.py (PBGI, LogEI, LogEIPC, etc.).",
+        help="PBGI trace from scripts/run_bo_baseline.py.",
     )
     p.add_argument(
-        "--bo-label",
+        "--pbgi-label",
         type=str,
-        default="BayesOpt",
-        help="Legend label for the BO curve.",
+        default="BayesOpt PBGI",
+        help="Legend label for the PBGI curve.",
     )
     p.add_argument(
-        "--bo-stop-key-evals",
-        type=str,
-        default="pbgi_stop_cum_eval",
-        help="Trace key for BO natural stop when x-axis is evals.",
-    )
-    p.add_argument(
-        "--bo-stop-key-cost",
-        type=str,
-        default="pbgi_stop_cum_original_cost",
-        help="Trace key for BO natural stop when x-axis is original_cost.",
-    )
-    p.add_argument(
-        "--bo-stop-label",
-        type=str,
-        default="BayesOpt stop",
-        help="Legend label for BO natural stop marker.",
-    )
-    p.add_argument(
-        "--bo-stop-color",
-        type=str,
-        default="C2",
-        help="Matplotlib color for BO stop marker.",
-    )
-    p.add_argument(
-        "--bo-color",
-        type=str,
-        default=None,
-        help="Optional matplotlib color for the BO curve.",
-    )
-    p.add_argument(
-        "--bo2-trace",
+        "--log-bo-trace",
+        "--log_bo_trace",
         type=Path,
         default=None,
-        help="Optional second BO trace to overlay in the same figure.",
+        help="LogEI trace (unit-cost plots) or LogEIPC trace (cost-aware plots).",
     )
     p.add_argument(
-        "--bo2-label",
+        "--log-bo-label",
         type=str,
-        default="BayesOpt 2",
-        help="Legend label for the second BO curve.",
+        default="BayesOpt Log",
+        help="Legend label for the LogEI / LogEIPC curve.",
     )
     p.add_argument(
-        "--bo2-stop-key-evals",
+        "--pbgi-color",
         type=str,
-        default="pbgi_stop_cum_eval",
-        help="Trace key for second BO natural stop when x-axis is evals.",
+        default="C2",
+        help="Matplotlib color for the PBGI curve and natural-stop marker.",
     )
     p.add_argument(
-        "--bo2-stop-key-cost",
-        type=str,
-        default="pbgi_stop_cum_original_cost",
-        help="Trace key for second BO natural stop when x-axis is original_cost.",
-    )
-    p.add_argument(
-        "--bo2-stop-label",
-        type=str,
-        default="BayesOpt 2 stop",
-        help="Legend label for second BO natural stop marker.",
-    )
-    p.add_argument(
-        "--bo2-stop-color",
+        "--log-bo-color",
         type=str,
         default="C3",
-        help="Matplotlib color for second BO stop marker.",
-    )
-    p.add_argument(
-        "--bo2-color",
-        type=str,
-        default=None,
-        help="Optional matplotlib color for the second BO curve.",
+        help="Matplotlib color for the LogEI / LogEIPC curve and natural-stop marker.",
     )
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--title", type=str, required=True)
@@ -163,50 +115,48 @@ def main() -> int:
     args = p.parse_args()
 
     bandit = np.load(args.bandit_trace)
-    bo = np.load(args.bo_trace)
-    bo2 = np.load(args.bo2_trace) if args.bo2_trace is not None else None
+    pbgi = np.load(args.pbgi_trace)
+    log_bo = np.load(args.log_bo_trace) if args.log_bo_trace is not None else None
 
     if args.x_axis == "evals":
         ucb_x = "ucb_x"
         gittins_x = "gittins_x"
         bo_x = "x"
+        bo_stop_key = "pbgi_stop_cum_eval"
         gittins_stop_key = "gittins_stop_cum_eval"
         gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_eval"
-        bo_stop_key = str(args.bo_stop_key_evals)
-        bo2_stop_key = str(args.bo2_stop_key_evals)
         xlabel = "Cumulative examples evaluated"
     else:
         ucb_x = "ucb_x_original_cost"
         gittins_x = "gittins_x_original_cost"
         bo_x = "x_original_cost"
+        bo_stop_key = "pbgi_stop_cum_original_cost"
         gittins_stop_key = "gittins_stop_cum_original_cost"
         gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_original_cost"
-        bo_stop_key = str(args.bo_stop_key_cost)
-        bo2_stop_key = str(args.bo2_stop_key_cost)
         xlabel = "Cumulative full-evaluation cost"
 
     plt.figure(figsize=(8, 5))
     _plot_curve(bandit, x_key=ucb_x, y_key="ucb_regret", label="bandit UCB-E")
     _plot_curve(bandit, x_key=gittins_x, y_key="gittins_regret", label="bandit Gittins")
+    if log_bo is not None:
+        _plot_bo_with_stop(
+            log_bo,
+            x_key=bo_x,
+            stop_key=bo_stop_key,
+            label=str(args.log_bo_label),
+            curve_color=args.log_bo_color,
+            stop_label=f"{args.log_bo_label} stop",
+            stop_color=str(args.log_bo_color),
+        )
     _plot_bo_with_stop(
-        bo,
+        pbgi,
         x_key=bo_x,
         stop_key=bo_stop_key,
-        label=str(args.bo_label),
-        curve_color=args.bo_color,
-        stop_label=str(args.bo_stop_label),
-        stop_color=str(args.bo_stop_color),
+        label=str(args.pbgi_label),
+        curve_color=args.pbgi_color,
+        stop_label=f"{args.pbgi_label} stop",
+        stop_color=str(args.pbgi_color),
     )
-    if bo2 is not None:
-        _plot_bo_with_stop(
-            bo2,
-            x_key=bo_x,
-            stop_key=bo2_stop_key,
-            label=str(args.bo2_label),
-            curve_color=args.bo2_color,
-            stop_label=str(args.bo2_stop_label),
-            stop_color=str(args.bo2_stop_color),
-        )
 
     _plot_stop(
         _scalar(bandit, gittins_stop_key),
