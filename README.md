@@ -76,10 +76,10 @@ baselines. Both UCB-E and Gittins use post-reveal recommendations: UCB-E
 recommends by empirical mean after the newly revealed batch, and Gittins
 recommends by posterior mean after the newly revealed batch.
 
-Use `--extend-gittins-to-natural-stop` when generating comparison traces. This
-records the first Gittins natural stopping time and still runs the Gittins curve
-to at least the nominal 10% budget, so the curve and stop marker can appear on
-the same plot.
+Gittins natural stopping times are recorded in the trace (`gittins_stop_*` and
+`gittins_recommendation_aware_stop_*`) while UCB-E and Gittins both run to the
+nominal budget: 10% of matrix cells without `--cost-vector`, or 10% of total
+full-evaluation cost with `--cost-vector`.
 
 GSM8K unit-cost bandit baselines:
 
@@ -91,7 +91,6 @@ python scripts/simulate_simple_regret.py \
   --eval-budget-fraction 0.10 \
   --batch-size 16 \
   --gittins-batch-size 16 \
-  --extend-gittins-to-natural-stop \
   --algorithms ucb gittins
 ```
 
@@ -106,7 +105,6 @@ python scripts/simulate_simple_regret.py \
   --batch-size 16 \
   --gittins-batch-size 16 \
   --cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
-  --extend-gittins-to-natural-stop \
   --algorithms ucb gittins
 ```
 
@@ -120,7 +118,6 @@ python scripts/simulate_simple_regret.py \
   --eval-budget-fraction 0.10 \
   --batch-size 16 \
   --gittins-batch-size 16 \
-  --extend-gittins-to-natural-stop \
   --algorithms ucb gittins
 ```
 
@@ -135,7 +132,6 @@ python scripts/simulate_simple_regret.py \
   --batch-size 16 \
   --gittins-batch-size 16 \
   --cost-vector data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json \
-  --extend-gittins-to-natural-stop \
   --algorithms ucb gittins
 ```
 
@@ -160,10 +156,10 @@ BO-selected points together. Equivalently,
 
 `n_steps = max(0, floor(eval_budget_fraction × n_configs) - n_init)`.
 
-With `--extend-to-natural-stop`, the run still records curves to at least this
-nominal budget, then continues until the acquisition's natural stop is observed
-(or all configurations are evaluated). Pass `--n-steps` to override the computed
-BO step count.
+Acquisition natural stops are recorded in the trace (`pbgi_stop_*`) while the run
+continues to the nominal budget: 10% of configurations for unit-cost runs, or 10%
+of `sum(cost)` for cost-aware runs (`--cost-aware` or `logeipc`). Pass
+`--n-steps` to override the unit-cost BO step count.
 
 ### GSM8K BayesOpt
 
@@ -174,7 +170,6 @@ KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
   --acquisition logei \
   --seed 0 \
-  --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
@@ -185,12 +180,12 @@ KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
   --acquisition logeipc \
   --seed 0 \
-  --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
-Here `n_init` defaults to `11` and `n_steps` defaults to `1`, so the nominal
-budget is `11 + 1 = 12` configurations, approximately 10% of 122 configs.
+Here `n_init` defaults to `11`. Unit-cost `n_steps` defaults to `1` (`11 + 1 = 12`
+configurations, approximately 10% of 122 configs). Cost-aware runs stop once
+cumulative cost reaches 10% of `sum(cost)`.
 
 ### MMLU Abstract Algebra BayesOpt
 
@@ -201,7 +196,6 @@ KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
   --acquisition logei \
   --seed 0 \
-  --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
@@ -212,13 +206,12 @@ KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
   --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
   --acquisition logeipc \
   --seed 0 \
-  --extend-to-natural-stop \
   --out-dir outputs/bo_baselines
 ```
 
-Here `n_init` defaults to `100` and `n_steps` defaults to `50`, so the nominal
-budget is `100 + 50 = 150` configurations, exactly 10% of 1500 MMLU
-configurations.
+Here `n_init` defaults to `100`. Unit-cost `n_steps` defaults to `50` (`150`
+configurations, 10% of 1500 MMLU configurations). Cost-aware runs stop once
+cumulative cost reaches 10% of `sum(cost)`.
 
 ### Combined bandit/BO plots
 
@@ -232,11 +225,11 @@ MMLU examples:
 ```bash
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
-  --bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50__extendstop_traces.npz \
+  --bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50_traces.npz \
   --bo-label "BayesOpt LogEI" \
   --bo-stop-label "BayesOpt LogEI stop" \
   --bo-color C2 --bo-stop-color C2 \
-  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
   --bo2-label "BayesOpt LogEIPC" \
   --bo2-stop-label "BayesOpt LogEIPC stop" \
   --bo2-color purple --bo2-stop-color purple \
@@ -246,11 +239,11 @@ python scripts/plot_bandit_bo_comparison.py \
 
 python scripts/plot_bandit_bo_comparison.py \
   --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
-  --bo-trace outputs/bo_baselines/mmlu/logei_cost_aware/abstract_algebra_bo_inputs__runseed0__logei_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo-trace outputs/bo_baselines/mmlu/logei_cost_aware/abstract_algebra_bo_inputs__runseed0__logei_cost_aware__ninit100__nsteps50_traces.npz \
   --bo-label "BayesOpt LogEI" \
   --bo-stop-label "BayesOpt LogEI stop" \
   --bo-color C2 --bo-stop-color C2 \
-  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50__extendstop_traces.npz \
+  --bo2-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
   --bo2-label "BayesOpt LogEIPC" \
   --bo2-stop-label "BayesOpt LogEIPC stop" \
   --bo2-color purple --bo2-stop-color purple \

@@ -84,9 +84,17 @@ def resolve_bo_budget(
     n_init: int,
     n_steps: int | None,
     eval_budget_fraction: float,
-) -> tuple[int, int, int, str]:
+    cost_aware: bool,
+    total_brute_force_original_cost: float,
+) -> tuple[int, int, int, str, float | None]:
     n_init_eff = min(max(int(n_init), 1), int(n_configs))
-    if n_steps is None:
+    budget_original_cost: float | None = None
+    if cost_aware:
+        budget_original_cost = float(eval_budget_fraction) * float(total_brute_force_original_cost)
+        n_steps_eff = max(0, int(n_configs) - n_init_eff)
+        n_steps_rule = "cost_budget_cap_all_remaining"
+        nominal_total = int(n_configs)
+    elif n_steps is None:
         nominal_total = min(
             int(n_configs),
             max(1, int(np.floor(float(eval_budget_fraction) * int(n_configs)))),
@@ -97,7 +105,7 @@ def resolve_bo_budget(
         n_steps_eff = min(max(int(n_steps), 0), int(n_configs) - n_init_eff)
         n_steps_rule = "user_set"
         nominal_total = min(int(n_configs), n_init_eff + n_steps_eff)
-    return n_init_eff, n_steps_eff, nominal_total, n_steps_rule
+    return n_init_eff, n_steps_eff, nominal_total, n_steps_rule, budget_original_cost
 
 
 def parse_args() -> argparse.Namespace:
@@ -137,8 +145,9 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.10,
         help=(
-            "Nominal fraction of all configurations to evaluate, counting random "
-            "initialization and BO-selected points together."
+            "Fraction of the full-evaluation budget. Unit-cost runs stop after this "
+            "fraction of configurations (init + BO). Cost-aware runs stop after "
+            "cumulative cost reaches this fraction of sum(cost)."
         ),
     )
     p.add_argument(
@@ -158,15 +167,6 @@ def parse_args() -> argparse.Namespace:
         help="Cost scale used by PBGI, matching the bandit Gittins default.",
     )
     p.add_argument("--observation-noise", "--observation_noise", type=float, default=1e-6)
-    p.add_argument(
-        "--extend-to-natural-stop",
-        "--extend_to_natural_stop",
-        action="store_true",
-        help=(
-            "Run past the nominal eval-budget until the acquisition natural stop is "
-            "observed, capped by evaluating all configurations."
-        ),
-    )
     p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "bo_baselines")
     p.add_argument("--dtype", choices=["float64", "float32"], default="float64")
     return p.parse_args()
@@ -340,10 +340,14 @@ def run_bo(
 
     mu_star = float(data.Y[:, 0].max().item())
     total_cost = 0.0
-    nominal_total_configs = min(n_configs, n_init + n_steps)
-    max_bo_steps = (n_configs - n_init) if bool(args.extend_to_natural_stop) else n_steps
     log_lambda = float(np.log(float(args.cost_scaling_factor)))
     effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
+    total_brute_force_original_cost = float(data.cost.sum().item())
+    budget_original_cost: float | None = None
+    if effective_cost_aware:
+        budget_original_cost = float(args.eval_budget_fraction) * total_brute_force_original_cost
+    nominal_total_configs = min(n_configs, n_init + n_steps)
+    max_bo_steps = int(n_configs - n_init) if budget_original_cost is not None else int(n_steps)
 
     def record(arm: int, acq_value: float, phase: str, fit_s: float, score_s: float) -> None:
         nonlocal total_cost
@@ -367,7 +371,12 @@ def run_bo(
     for arm in init:
         record(int(arm), float("nan"), "random_init", 0.0, 0.0)
 
+    within_cost_budget = (
+        budget_original_cost is None or total_cost < float(budget_original_cost)
+    )
     for _ in range(max_bo_steps):
+        if not within_cost_budget:
+            break
         if not remaining:
             break
         train_idx = torch.tensor(selected, dtype=torch.long)
@@ -411,14 +420,11 @@ def run_bo(
                 stop_cum_eval = int(len(selected) * data.n_examples)
                 stop_cum_original_cost = float(total_cost)
                 stop_index_value = best_score
-        if (
-            bool(args.extend_to_natural_stop)
-            and len(selected) >= nominal_total_configs
-            and stop_cum_eval is not None
-        ):
-            break
         arm = int(remaining_idx[best_pos].item())
         record(arm, best_score, str(args.acquisition), fit_s, score_s)
+        within_cost_budget = (
+            budget_original_cost is None or total_cost < float(budget_original_cost)
+        )
 
     return {
         "x": x,
@@ -436,6 +442,9 @@ def run_bo(
         "stop_cum_original_cost": stop_cum_original_cost,
         "stop_index_value": stop_index_value,
         "nominal_total_configs": nominal_total_configs,
+        "cost_aware": bool(effective_cost_aware),
+        "total_brute_force_original_cost": total_brute_force_original_cost,
+        "budget_original_cost": budget_original_cost,
     }
 
 
@@ -447,13 +456,18 @@ def main() -> int:
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
     requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
-    n_init_value, n_steps_value, nominal_total_value, n_steps_rule = resolve_bo_budget(
-        n_configs=int(data.X.shape[0]),
-        n_init=int(requested_n_init),
-        n_steps=args.n_steps,
-        eval_budget_fraction=float(args.eval_budget_fraction),
-    )
     effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
+    total_brute_force_original_cost = float(data.cost.sum().item())
+    n_init_value, n_steps_value, nominal_total_value, n_steps_rule, budget_original_cost = (
+        resolve_bo_budget(
+            n_configs=int(data.X.shape[0]),
+            n_init=int(requested_n_init),
+            n_steps=args.n_steps,
+            eval_budget_fraction=float(args.eval_budget_fraction),
+            cost_aware=bool(effective_cost_aware),
+            total_brute_force_original_cost=total_brute_force_original_cost,
+        )
+    )
     variant = str(args.acquisition)
     if effective_cost_aware:
         variant = f"{variant}_cost_aware"
@@ -465,7 +479,6 @@ def main() -> int:
         / (
             f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
             f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{n_steps_value}"
-            f"{'__extendstop' if args.extend_to_natural_stop else ''}"
         )
     )
     trace_path = out_base.with_name(out_base.name + "_traces.npz")
@@ -494,7 +507,15 @@ def main() -> int:
         n_steps=int(n_steps_value),
         n_steps_rule=str(n_steps_rule),
         nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
-        extend_to_natural_stop=bool(args.extend_to_natural_stop),
+        total_brute_force_original_cost=np.asarray(
+            float(sim["total_brute_force_original_cost"]), dtype=np.float64
+        ),
+        budget_original_cost=np.asarray(
+            -1.0
+            if sim["budget_original_cost"] is None
+            else float(sim["budget_original_cost"]),
+            dtype=np.float64,
+        ),
         pbgi_stop_cum_eval=np.asarray(
             -1 if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
             dtype=np.int32,
@@ -549,7 +570,10 @@ def main() -> int:
         "n_steps": int(n_steps_value),
         "n_steps_rule": str(n_steps_rule),
         "nominal_total_configs": int(sim["nominal_total_configs"]),
-        "extend_to_natural_stop": bool(args.extend_to_natural_stop),
+        "total_brute_force_original_cost": float(sim["total_brute_force_original_cost"]),
+        "budget_original_cost": (
+            None if sim["budget_original_cost"] is None else float(sim["budget_original_cost"])
+        ),
         "pbgi_stop_cum_eval": None if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
         "pbgi_stop_cum_original_cost": (
             None if sim["stop_cum_original_cost"] is None else float(sim["stop_cum_original_cost"])
