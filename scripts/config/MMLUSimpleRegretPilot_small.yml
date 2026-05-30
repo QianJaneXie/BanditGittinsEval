@@ -48,12 +48,24 @@ parameters:
 
   experiment_variant:
     values:
+      - ucb_B1
+      - ucb_B2
       - ucb_B4
-      - lrf_B4
       - ucb_B8
-      - lrf_B8
       - ucb_B16
-      - lrf_B16
+      - ucb_B32
+      - gittins_unit_B1_scale1e-5_default
+      - gittins_unit_B1_scale1e-5_dataset
+      - gittins_unit_B1_scale1e-4_default
+      - gittins_unit_B1_scale1e-4_dataset
+      - gittins_unit_B1_scale1e-3_default
+      - gittins_unit_B1_scale1e-3_dataset
+      - gittins_unit_B2_scale1e-5_default
+      - gittins_unit_B2_scale1e-5_dataset
+      - gittins_unit_B2_scale1e-4_default
+      - gittins_unit_B2_scale1e-4_dataset
+      - gittins_unit_B2_scale1e-3_default
+      - gittins_unit_B2_scale1e-3_dataset
       - gittins_unit_B4_scale1e-5_default
       - gittins_unit_B4_scale1e-5_dataset
       - gittins_unit_B4_scale1e-4_default
@@ -72,6 +84,24 @@ parameters:
       - gittins_unit_B16_scale1e-4_dataset
       - gittins_unit_B16_scale1e-3_default
       - gittins_unit_B16_scale1e-3_dataset
+      - gittins_unit_B32_scale1e-5_default
+      - gittins_unit_B32_scale1e-5_dataset
+      - gittins_unit_B32_scale1e-4_default
+      - gittins_unit_B32_scale1e-4_dataset
+      - gittins_unit_B32_scale1e-3_default
+      - gittins_unit_B32_scale1e-3_dataset
+      - gittins_aware_B1_scale1e-5_default
+      - gittins_aware_B1_scale1e-5_dataset
+      - gittins_aware_B1_scale1e-4_default
+      - gittins_aware_B1_scale1e-4_dataset
+      - gittins_aware_B1_scale1e-3_default
+      - gittins_aware_B1_scale1e-3_dataset
+      - gittins_aware_B2_scale1e-5_default
+      - gittins_aware_B2_scale1e-5_dataset
+      - gittins_aware_B2_scale1e-4_default
+      - gittins_aware_B2_scale1e-4_dataset
+      - gittins_aware_B2_scale1e-3_default
+      - gittins_aware_B2_scale1e-3_dataset
       - gittins_aware_B4_scale1e-5_default
       - gittins_aware_B4_scale1e-5_dataset
       - gittins_aware_B4_scale1e-4_default
@@ -90,6 +120,12 @@ parameters:
       - gittins_aware_B16_scale1e-4_dataset
       - gittins_aware_B16_scale1e-3_default
       - gittins_aware_B16_scale1e-3_dataset
+      - gittins_aware_B32_scale1e-5_default
+      - gittins_aware_B32_scale1e-5_dataset
+      - gittins_aware_B32_scale1e-4_default
+      - gittins_aware_B32_scale1e-4_dataset
+      - gittins_aware_B32_scale1e-3_default
+      - gittins_aware_B32_scale1e-3_dataset
 
   eval_budget_fraction:
     value: 0.1
