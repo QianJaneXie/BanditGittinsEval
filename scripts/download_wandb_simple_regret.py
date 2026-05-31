@@ -78,6 +78,8 @@ HISTORY_KEYS = [
     "iter_total_s",
     "batch_cells",
     "step_idx",
+    "gittins_index_pulled",
+    "posterior_mean_pulled",
 ]
 
 BASE_COLUMNS = [

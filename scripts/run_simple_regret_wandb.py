@@ -65,7 +65,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
-from gittins_policy import gittins_index_exploration  # noqa: E402
+from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 
 
@@ -526,6 +526,7 @@ def simulate_timed(
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
     max_original_cost: float | None = None,
+    post_pull_fn: Callable[[torch.Tensor, int, int], dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
 
@@ -550,6 +551,11 @@ def simulate_timed(
     pulled_cols_json: list[str] = []
     n_pulled_arms: list[int] = []
     n_pulled_cols: list[int] = []
+    # Gittins-only diagnostics (full vectors in trace npz; scalars also logged to W&B).
+    gittins_index_pulled: list[float] = []
+    posterior_mean_pulled: list[float] = []
+    gittins_scores_post_pull: list[np.ndarray] = []
+    posterior_mean_post_pull: list[np.ndarray] = []
 
     evaluated = 0
     total_cost = 0.0
@@ -562,21 +568,6 @@ def simulate_timed(
         ts0 = time.perf_counter()
         out = step_fn(obs, evaluated)
         ts1 = time.perf_counter()
-
-        if (
-            natural_stop_cum_original_cost is None
-            and natural_stop_cum_eval_holder is not None
-            and len(natural_stop_cum_eval_holder) == 1
-            and natural_stop_cum_eval_holder[0] is not None
-        ):
-            natural_stop_cum_original_cost = float(total_cost)
-        if (
-            recommendation_aware_stop_cum_original_cost is None
-            and recommendation_aware_stop_cum_eval_holder is not None
-            and len(recommendation_aware_stop_cum_eval_holder) == 1
-            and recommendation_aware_stop_cum_eval_holder[0] is not None
-        ):
-            recommendation_aware_stop_cum_original_cost = float(total_cost)
 
         if out is None:
             break
@@ -592,15 +583,43 @@ def simulate_timed(
         if n_batch <= 0:
             break
 
+        pulled_arm = int(row_idx[0].item())
+
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
+        total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
 
-        pulled_arm = int(row_idx[0].item())
+        gittins_diag: dict[str, Any] | None = None
+        if post_pull_fn is not None:
+            gittins_diag = post_pull_fn(obs, pulled_arm, int(evaluated))
+        if (
+            natural_stop_cum_original_cost is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+            and int(natural_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            natural_stop_cum_original_cost = float(total_cost)
+        if (
+            recommendation_aware_stop_cum_original_cost is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+            and int(recommendation_aware_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            recommendation_aware_stop_cum_original_cost = float(total_cost)
+
+        if gittins_diag is not None:
+            scores_post = np.asarray(gittins_diag["gittins_scores_post_pull"], dtype=np.float32)
+            mus_post = np.asarray(gittins_diag["posterior_mean_post_pull"], dtype=np.float32)
+            gittins_scores_post_pull.append(scores_post)
+            posterior_mean_post_pull.append(mus_post)
+            gittins_index_pulled.append(float(scores_post[pulled_arm]))
+            posterior_mean_pulled.append(float(mus_post[pulled_arm]))
         pulled_rows = [int(x) for x in row_idx.reshape(-1).tolist()]
         pulled_cols = [int(x) for x in col_idx.reshape(-1).tolist()]
         unique_pulled_arms = sorted(set(pulled_rows))
         unique_pulled_cols = sorted(set(pulled_cols))
-        total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
 
         arm, mus = recommend_fn(obs, aux)
         simple_regret = mu_star - float(true_means[arm].item())
@@ -626,8 +645,7 @@ def simulate_timed(
         n_pulled_cols.append(int(len(unique_pulled_cols)))
 
         if run is not None and log_step_metrics:
-            run.log(
-                {
+            log_payload: dict[str, Any] = {
                     "cum_eval": int(evaluated),
                     "cum_original_cost": float(total_cost),
                     "simple_regret": float(simple_regret),
@@ -643,8 +661,11 @@ def simulate_timed(
                     "iter_total_s": total_time,
                     "batch_cells": n_batch,
                     "step_idx": step_idx,
-                }
-            )
+            }
+            if gittins_diag is not None:
+                log_payload["gittins_index_pulled"] = float(gittins_index_pulled[-1])
+                log_payload["posterior_mean_pulled"] = float(posterior_mean_pulled[-1])
+            run.log(log_payload)
 
         if max_original_cost is not None and total_cost >= float(max_original_cost):
             break
@@ -666,6 +687,10 @@ def simulate_timed(
         "n_pulled_cols": n_pulled_cols,
         "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
         "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
+        "gittins_index_pulled": gittins_index_pulled,
+        "posterior_mean_pulled": posterior_mean_pulled,
+        "gittins_scores_post_pull": gittins_scores_post_pull,
+        "posterior_mean_post_pull": posterior_mean_post_pull,
     }
 
 
@@ -840,6 +865,8 @@ def main() -> int:
         run.define_metric("pulled_arm", step_metric="cum_eval")
         run.define_metric("n_pulled_arms", step_metric="cum_eval")
         run.define_metric("n_pulled_cols", step_metric="cum_eval")
+        run.define_metric("gittins_index_pulled", step_metric="cum_eval")
+        run.define_metric("posterior_mean_pulled", step_metric="cum_eval")
 
     out_base = (
         args.out_dir
@@ -864,6 +891,7 @@ def main() -> int:
     extra_peak_memory_gb: float | None = None
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
+    post_pull_fn: Callable[[torch.Tensor, int, int], dict[str, Any] | None] | None = None
 
     if variant.policy_family == "ucb":
         def step_fn(obs: torch.Tensor, sim_cum_eval: int):
@@ -983,9 +1011,6 @@ def main() -> int:
                 recompute_arms=recompute,
                 use_batch_mean_gittins_dp=False,
                 allow_early_stop=False,
-                sim_cum_eval=int(sim_cum_eval),
-                natural_stop_cum_eval_holder=natural_stop_holder,
-                recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
                 roots_lookup_table=roots_torch,
                 batch_observation_model=True,
             )
@@ -996,6 +1021,34 @@ def main() -> int:
             if batch is not None:
                 prev_arm = int(batch[0, 0].item())
             return out
+
+        gittins_post_pull_kw = dict(
+            prior_mean=float(prior_mean),
+            prior_variance=float(prior_variance),
+            obs_noise_variance=float(tau_sq_batch),
+            cost_per_transition=decision_cost_per_arm,
+            cost_scaling_factor=float(variant.cost_scaling_factor),
+            n_gittins_grid_points=int(args.gittins_grid_points),
+            batch_size=B,
+            use_batch_mean_gittins_dp=False,
+            roots_lookup_table=roots_torch,
+            batch_observation_model=True,
+            natural_stop_cum_eval_holder=natural_stop_holder,
+            recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+        )
+
+        def post_pull_fn(obs: torch.Tensor, pulled_arm: int, cum_eval: int) -> dict[str, Any]:
+            mus_post, scores_post = gittins_post_pull_update(
+                obs,
+                cached_scores=cached_scores,
+                recompute_arms=[int(pulled_arm)],
+                sim_cum_eval=int(cum_eval),
+                **gittins_post_pull_kw,
+            )
+            return {
+                "gittins_scores_post_pull": scores_post.detach().cpu().numpy().copy(),
+                "posterior_mean_post_pull": mus_post.detach().cpu().numpy().copy(),
+            }
 
         def recommend_fn(obs: torch.Tensor, aux: Any):
             mus = posterior_means(
@@ -1024,6 +1077,7 @@ def main() -> int:
         natural_stop_cum_eval_holder=natural_stop_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
         max_original_cost=max_original_cost,
+        post_pull_fn=post_pull_fn,
     )
 
     np.savez(
@@ -1094,6 +1148,14 @@ def main() -> int:
         pulled_cols_json=np.asarray(sim["pulled_cols_json"], dtype="<U4096"),
         n_pulled_arms=np.asarray(sim["n_pulled_arms"], dtype=np.int32),
         n_pulled_cols=np.asarray(sim["n_pulled_cols"], dtype=np.int32),
+        gittins_index_pulled=np.asarray(sim["gittins_index_pulled"], dtype=np.float32),
+        posterior_mean_pulled=np.asarray(sim["posterior_mean_pulled"], dtype=np.float32),
+        gittins_scores_post_pull=np.stack(sim["gittins_scores_post_pull"], axis=0)
+        if sim["gittins_scores_post_pull"]
+        else np.zeros((0, n_arms), dtype=np.float32),
+        posterior_mean_post_pull=np.stack(sim["posterior_mean_post_pull"], axis=0)
+        if sim["posterior_mean_post_pull"]
+        else np.zeros((0, n_arms), dtype=np.float32),
         git_commit=np.asarray(provenance["git_commit"] or "", dtype="<U64"),
         git_dirty=np.asarray(False if provenance["git_dirty"] is None else provenance["git_dirty"], dtype=np.bool_),
         matrix_sha256=np.asarray(provenance["matrix_sha256"] or "", dtype="<U64"),
