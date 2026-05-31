@@ -287,6 +287,70 @@ def observed_incumbent(selected: list[int], Y: torch.Tensor) -> tuple[int, float
     return arm, float(Y[arm, 0].item())
 
 
+def bo_should_stop_post_pull(
+    *,
+    acquisition: str,
+    max_remaining_acq: float,
+    best_observed: float,
+    log_lambda: float,
+) -> bool:
+    """Stopping rules using acquisition values after the latest eval is in the training set."""
+    if acquisition in {"logei", "logeipc"}:
+        return bool(max_remaining_acq < log_lambda)
+    if acquisition == "pbgi":
+        return bool(max_remaining_acq < best_observed)
+    raise ValueError(f"Unsupported acquisition: {acquisition}")
+
+
+def evaluate_bo_stopping_post_pull(
+    *,
+    acquisition: str,
+    data: BoData,
+    selected: list[int],
+    remaining: set[int],
+    observation_noise: float,
+    cost_aware: bool,
+    cost_scaling_factor: float,
+    log_lambda: float,
+) -> tuple[bool, float | None, float]:
+    """Refit on ``selected``, score remaining candidates, return (should_stop, stop_index, best_observed)."""
+    if not remaining:
+        train_idx = torch.tensor(selected, dtype=torch.long)
+        best_observed = float(data.Y[train_idx].max().item())
+        return False, None, best_observed
+
+    train_idx = torch.tensor(selected, dtype=torch.long)
+    train_X = data.X[train_idx]
+    train_Y = data.Y[train_idx]
+    best_observed = float(train_Y.max().item())
+    model = fit_mixed_gp(
+        train_X,
+        train_Y,
+        observation_noise=float(observation_noise),
+        cat_dims=data.cat_dims,
+    )
+    remaining_idx = torch.tensor(sorted(remaining), dtype=torch.long)
+    scores = score_candidates(
+        acquisition=acquisition,
+        model=model,
+        best_f=best_observed,
+        candidate_X=data.X[remaining_idx],
+        candidate_cost=data.cost[remaining_idx],
+        cost_aware=bool(cost_aware),
+        cost_scaling_factor=float(cost_scaling_factor),
+    )
+    if not torch.isfinite(scores).any():
+        return False, None, best_observed
+    max_remaining_acq = float(scores.max().item())
+    should_stop = bo_should_stop_post_pull(
+        acquisition=acquisition,
+        max_remaining_acq=max_remaining_acq,
+        best_observed=best_observed,
+        log_lambda=log_lambda,
+    )
+    return should_stop, max_remaining_acq, best_observed
+
+
 def save_line_plot(
     path: Path,
     *,
@@ -418,17 +482,6 @@ def run_bo(
             raise RuntimeError("No finite acquisition scores were produced.")
         best_pos = int(torch.argmax(scores).item())
         best_score = float(scores[best_pos].item())
-        best_observed = float(train_Y.max().item())
-        if stop_cum_eval is None:
-            should_stop = False
-            if str(args.acquisition) in {"logei", "logeipc"}:
-                should_stop = bool(best_score < log_lambda)
-            elif str(args.acquisition) == "pbgi":
-                should_stop = bool(best_score < best_observed)
-            if should_stop:
-                stop_cum_eval = int(len(selected) * data.n_examples)
-                stop_cum_original_cost = float(total_cost)
-                stop_index_value = best_score
         arm = int(remaining_idx[best_pos].item())
         arm_cost = float(data.cost[arm].item())
         if (
@@ -437,6 +490,23 @@ def run_bo(
         ):
             break
         record(arm, best_score, str(args.acquisition), fit_s, score_s)
+
+        if stop_cum_eval is None:
+            should_stop, stop_acq, _ = evaluate_bo_stopping_post_pull(
+                acquisition=str(args.acquisition),
+                data=data,
+                selected=selected,
+                remaining=remaining,
+                observation_noise=float(args.observation_noise),
+                cost_aware=bool(effective_cost_aware),
+                cost_scaling_factor=float(args.cost_scaling_factor),
+                log_lambda=log_lambda,
+            )
+            if should_stop and stop_acq is not None:
+                stop_cum_eval = int(len(selected) * data.n_examples)
+                stop_cum_original_cost = float(total_cost)
+                stop_index_value = float(stop_acq)
+
         within_cost_budget = (
             budget_original_cost is None or total_cost < float(budget_original_cost)
         )

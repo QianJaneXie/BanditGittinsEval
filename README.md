@@ -76,10 +76,10 @@ baselines. Both UCB-E and Gittins use post-reveal recommendations: UCB-E
 recommends by empirical mean after the newly revealed batch, and Gittins
 recommends by posterior mean after the newly revealed batch.
 
-Gittins natural stopping times are recorded in the trace (`gittins_stop_*` and
-`gittins_recommendation_aware_stop_*`) while UCB-E and Gittins both run to the
-nominal budget: 10% of matrix cells without `--cost-vector`, or 10% of total
-full-evaluation cost with `--cost-vector`.
+Gittins nominal stopping times (`gittins_stop_*`, `gittins_recommendation_aware_stop_*`)
+are recorded **after each batch is revealed** (post-pull Γ and posterior means).
+UCB-E and Gittins both run to the nominal budget: 10% of matrix cells without
+`--cost-vector`, or 10% of total full-evaluation cost with `--cost-vector`.
 
 GSM8K unit-cost bandit baselines:
 
@@ -156,10 +156,11 @@ BO-selected points together. Equivalently,
 
 `n_steps = max(0, floor(eval_budget_fraction × n_configs) - n_init)`.
 
-Acquisition natural stops are recorded in the trace (`pbgi_stop_*`) while the run
-continues to the nominal budget: 10% of configurations for unit-cost runs, or 10%
-of `sum(cost)` for cost-aware runs (`--cost-aware` or `logeipc`). Pass
-`--n-steps` to override the unit-cost BO step count.
+Acquisition natural stops (`pbgi_stop_*`, and the analogous LogEI/LogEIPC checks)
+are recorded **after each configuration is evaluated**: the GP is refit on the
+updated training set and remaining candidates are rescored. The run still
+continues to the nominal budget (10% of configurations unit-cost, or 10% of
+`sum(cost)` cost-aware). Pass `--n-steps` to override the unit-cost BO step count.
 
 ### GSM8K BayesOpt
 

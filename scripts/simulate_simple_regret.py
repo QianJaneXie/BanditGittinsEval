@@ -25,7 +25,7 @@ if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
-from gittins_policy import gittins_index_exploration  # noqa: E402
+from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 
 
@@ -83,6 +83,7 @@ def simulate_simple_regret(
     pass_sim_cum_eval: bool = False,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    post_pull_fn: Callable[[torch.Tensor, int, int], None] | None = None,
 ) -> Trace:
     torch.manual_seed(int(seed))
     obs = torch.full_like(ground_truth, float("nan"))
@@ -105,31 +106,14 @@ def simulate_simple_regret(
         call_kw = dict(step_kwargs)
         if pass_sim_cum_eval:
             call_kw["sim_cum_eval"] = int(evaluated)
-        if natural_stop_cum_eval_holder is not None:
-            call_kw["natural_stop_cum_eval_holder"] = natural_stop_cum_eval_holder
-        if recommendation_aware_stop_cum_eval_holder is not None:
-            call_kw["recommendation_aware_stop_cum_eval_holder"] = (
-                recommendation_aware_stop_cum_eval_holder
-            )
+        if post_pull_fn is None:
+            if natural_stop_cum_eval_holder is not None:
+                call_kw["natural_stop_cum_eval_holder"] = natural_stop_cum_eval_holder
+            if recommendation_aware_stop_cum_eval_holder is not None:
+                call_kw["recommendation_aware_stop_cum_eval_holder"] = (
+                    recommendation_aware_stop_cum_eval_holder
+                )
         out = step(obs, **call_kw)
-        if (
-            stop_cum_eval is None
-            and natural_stop_cum_eval_holder is not None
-            and len(natural_stop_cum_eval_holder) == 1
-            and natural_stop_cum_eval_holder[0] is not None
-        ):
-            stop_cum_eval = int(natural_stop_cum_eval_holder[0])
-            stop_cum_original_cost = float(total_original_cost)
-        if (
-            recommendation_aware_stop_cum_eval is None
-            and recommendation_aware_stop_cum_eval_holder is not None
-            and len(recommendation_aware_stop_cum_eval_holder) == 1
-            and recommendation_aware_stop_cum_eval_holder[0] is not None
-        ):
-            recommendation_aware_stop_cum_eval = int(
-                recommendation_aware_stop_cum_eval_holder[0]
-            )
-            recommendation_aware_stop_cum_original_cost = float(total_original_cost)
         if out is None:
             break
         if isinstance(out, tuple):
@@ -146,6 +130,29 @@ def simulate_simple_regret(
         pulled_arm = int(row_idx[0].item())
         unit_cost = float(per_arm_original_cost[pulled_arm].item())
         total_original_cost += unit_cost * float(n_batch)
+
+        if post_pull_fn is not None:
+            post_pull_fn(obs, pulled_arm, int(evaluated))
+        if (
+            stop_cum_eval is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+            and int(natural_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            stop_cum_eval = int(natural_stop_cum_eval_holder[0])
+            stop_cum_original_cost = float(total_original_cost)
+        if (
+            recommendation_aware_stop_cum_eval is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+            and int(recommendation_aware_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            recommendation_aware_stop_cum_eval = int(
+                recommendation_aware_stop_cum_eval_holder[0]
+            )
+            recommendation_aware_stop_cum_original_cost = float(total_original_cost)
 
         if recommend is not None:
             mus = recommend(obs, mus)
@@ -380,12 +387,7 @@ def main() -> int:
         cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         prev_arm: int | None = None
 
-        def gittins_step(
-            obs: torch.Tensor,
-            sim_cum_eval: int,
-            natural_stop_cum_eval_holder: list[int | None] | None = None,
-            recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
-        ):
+        def gittins_step(obs: torch.Tensor, **_kwargs):
             nonlocal prev_arm
             recompute = None if prev_arm is None else [prev_arm]
             out = gittins_index_exploration(
@@ -405,22 +407,37 @@ def main() -> int:
                 batch_observation_model=True,
                 roots_lookup_table=roots_torch,
                 allow_early_stop=False,
-                sim_cum_eval=int(sim_cum_eval),
-                natural_stop_cum_eval_holder=(
-                    stop_holder
-                    if natural_stop_cum_eval_holder is None
-                    else natural_stop_cum_eval_holder
-                ),
-                recommendation_aware_stop_cum_eval_holder=(
-                    recommendation_aware_stop_holder
-                    if recommendation_aware_stop_cum_eval_holder is None
-                    else recommendation_aware_stop_cum_eval_holder
-                ),
             )
             batch = out[0] if isinstance(out, tuple) else out
             if batch is not None:
                 prev_arm = int(batch[0, 0].item())
             return out
+
+        gittins_post_pull_kw = dict(
+            prior_mean=float(args.gittins_prior_mean),
+            prior_variance=float(args.gittins_prior_variance),
+            obs_noise_variance=float(tau_sq),
+            cost_per_transition=torch.tensor(
+                per_arm_original_cost.numpy(), dtype=torch.float64
+            ),
+            cost_scaling_factor=float(args.cost_scaling_factor),
+            n_gittins_grid_points=int(2**10 + 1),
+            batch_size=int(B),
+            use_batch_mean_gittins_dp=False,
+            roots_lookup_table=roots_torch,
+            batch_observation_model=True,
+            natural_stop_cum_eval_holder=stop_holder,
+            recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+        )
+
+        def gittins_post_pull(obs: torch.Tensor, pulled_arm: int, cum_eval: int) -> None:
+            gittins_post_pull_update(
+                obs,
+                cached_scores=cached_scores,
+                recompute_arms=[int(pulled_arm)],
+                sim_cum_eval=int(cum_eval),
+                **gittins_post_pull_kw,
+            )
 
         tr = simulate_simple_regret(
             ground_truth=ground_truth,
@@ -436,9 +453,10 @@ def main() -> int:
                 prior_variance=float(args.gittins_prior_variance),
                 tau_sq_cell=float(tau_sq_cell),
             ),
-            pass_sim_cum_eval=True,
+            pass_sim_cum_eval=False,
             natural_stop_cum_eval_holder=stop_holder,
             recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+            post_pull_fn=gittins_post_pull,
         )
         out.update(
             gittins_x=np.asarray(tr.x, dtype=np.int32),
