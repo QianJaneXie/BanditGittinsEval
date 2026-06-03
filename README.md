@@ -35,8 +35,8 @@ python scripts/simulate_simple_regret.py \
   --out outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
   --seed 0 \
   --eval-budget-fraction 0.10 \
-  --batch-size 32 \
-  --gittins-batch-size 32 \
+  --batch-size 16 \
+  --gittins-batch-size 16 \
   --gittins-prior-mean 0.2 \
   --gittins-prior-variance 0.01
 ```
@@ -48,7 +48,7 @@ Notes:
   - omit `--cost-vector` to use a homogeneous cost vector of all ones (so cumulative cost equals cumulative evaluations), or
   - pass `--cost-vector <.json/.npy>` for heterogeneous costs (e.g. pricing).
 - By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
-- Set `--gittins-prior-mean` / `--gittins-prior-variance` to match your dataset/prior assumptions (e.g. GSM8K often uses \(\mathcal{N}(0.2, 0.01)\)).
+- Set `--gittins-prior-mean` / `--gittins-prior-variance` to match your dataset/prior assumptions. GSM8K uses \(\mathcal{N}(0.2, 0.01)\); MMLU subjects use bucket priors from the W&B sweeps (e.g. abstract algebra: \(\mathcal{N}(0.4, 0.02)\); see `docs/mmlu_prior_buckets.md`).
 - To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
 
 Plot from the saved traces:
@@ -81,6 +81,11 @@ are recorded **after each batch is revealed** (post-pull Γ and posterior means)
 UCB-E and Gittins both run to the nominal budget: 10% of matrix cells without
 `--cost-vector`, or 10% of total full-evaluation cost with `--cost-vector`.
 
+Comparison-figure settings: GSM8K uses batch size **16** and Gittins prior
+\(\mathcal{N}(0.2, 0.01)\) (W&B `gittins_*_dataset`). MMLU abstract algebra uses
+batch size **4** and Gittins prior \(\mathcal{N}(0.4, 0.02)\) (W&B low bucket;
+`gittins_*_dataset`).
+
 GSM8K unit-cost bandit baselines:
 
 ```bash
@@ -91,6 +96,8 @@ python scripts/simulate_simple_regret.py \
   --eval-budget-fraction 0.10 \
   --batch-size 16 \
   --gittins-batch-size 16 \
+  --gittins-prior-mean 0.2 \
+  --gittins-prior-variance 0.01 \
   --algorithms ucb gittins
 ```
 
@@ -104,11 +111,16 @@ python scripts/simulate_simple_regret.py \
   --eval-budget-fraction 0.10 \
   --batch-size 16 \
   --gittins-batch-size 16 \
+  --gittins-prior-mean 0.2 \
+  --gittins-prior-variance 0.01 \
   --cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
   --algorithms ucb gittins
 ```
 
 MMLU abstract algebra unit-cost bandit baselines:
+
+(`abstract_algebra` is in the MMLU **low** bucket; W&B `gittins_*_dataset` uses
+\(\mathcal{N}(0.4, 0.02)\).)
 
 ```bash
 python scripts/simulate_simple_regret.py \
@@ -116,8 +128,10 @@ python scripts/simulate_simple_regret.py \
   --out outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
   --seed 0 \
   --eval-budget-fraction 0.10 \
-  --batch-size 16 \
-  --gittins-batch-size 16 \
+  --batch-size 4 \
+  --gittins-batch-size 4 \
+  --gittins-prior-mean 0.4 \
+  --gittins-prior-variance 0.02 \
   --algorithms ucb gittins
 ```
 
@@ -129,8 +143,10 @@ python scripts/simulate_simple_regret.py \
   --out outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
   --seed 0 \
   --eval-budget-fraction 0.10 \
-  --batch-size 16 \
-  --gittins-batch-size 16 \
+  --batch-size 4 \
+  --gittins-batch-size 4 \
+  --gittins-prior-mean 0.4 \
+  --gittins-prior-variance 0.02 \
   --cost-vector data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json \
   --algorithms ucb gittins
 ```

@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
@@ -67,6 +68,7 @@ if str(SRC_DIR) not in sys.path:
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 
 
 DEFAULT_PRIOR_MEAN = 0.5
@@ -354,31 +356,6 @@ def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
     if arr.shape != (n_arms,):
         raise ValueError(f"cost vector shape must be ({n_arms},), got {arr.shape}")
     return torch.tensor(arr, dtype=torch.float64)
-
-
-def empirical_incumbent(obs: torch.Tensor) -> tuple[int, torch.Tensor]:
-    mus = torch.nanmean(obs, dim=1)
-    scores = torch.where(torch.isnan(mus), torch.full_like(mus, -float("inf")), mus)
-    if not torch.isfinite(scores).any():
-        return 0, mus
-    return int(torch.argmax(scores).item()), mus
-
-
-def posterior_means(
-    obs: torch.Tensor,
-    *,
-    prior_mean: float,
-    prior_variance: float,
-    tau_sq_cell: float,
-) -> torch.Tensor:
-    counts = (~obs.isnan()).sum(dim=1).to(torch.float64)
-    obs_sum = torch.nan_to_num(obs, nan=0.0).sum(dim=1).to(torch.float64)
-    v0 = float(prior_variance)
-    prec = 1.0 / v0 + counts / float(tau_sq_cell)
-    v_t = 1.0 / prec
-    mus = v_t * (float(prior_mean) / v0 + obs_sum / float(tau_sq_cell))
-    mus[counts == 0] = float(prior_mean)
-    return mus.to(torch.float32)
 
 
 def sha256_file(path: Path | None) -> str | None:
@@ -902,8 +879,7 @@ def main() -> int:
                 return_mus=False,
             )
 
-        def recommend_fn(obs: torch.Tensor, aux: Any):
-            return empirical_incumbent(obs)
+        recommend_fn = empirical_incumbent
 
     elif variant.policy_family == "lrf":
         if upper_confidence_bound_exploration_low_rank_factorization is None:
@@ -928,8 +904,7 @@ def main() -> int:
                 device=str(args.lrf_device),
             )
 
-        def recommend_fn(obs: torch.Tensor, aux: Any):
-            return empirical_incumbent(obs)
+        recommend_fn = empirical_incumbent
 
     elif variant.policy_family == "gittins":
         B = int(variant.gittins_batch_size)
@@ -1050,17 +1025,12 @@ def main() -> int:
                 "posterior_mean_post_pull": mus_post.detach().cpu().numpy().copy(),
             }
 
-        def recommend_fn(obs: torch.Tensor, aux: Any):
-            mus = posterior_means(
-                obs,
-                prior_mean=float(prior_mean),
-                prior_variance=float(prior_variance),
-                tau_sq_cell=float(tau_sq_cell),
-            )
-            scores = torch.where(torch.isnan(mus), torch.full_like(mus, -float("inf")), mus)
-            if not torch.isfinite(scores).any():
-                return 0, mus
-            return int(torch.argmax(scores).item()), mus
+        recommend_fn = partial(
+            posterior_incumbent,
+            prior_mean=float(prior_mean),
+            prior_variance=float(prior_variance),
+            tau_sq_cell=float(tau_sq_cell),
+        )
 
     else:
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")

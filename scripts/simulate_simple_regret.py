@@ -12,6 +12,7 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Any, Callable
 
@@ -27,6 +28,7 @@ if str(_repo_root / "src") not in sys.path:
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -42,34 +44,6 @@ class Trace:
     recommendation_aware_stop_cum_original_cost: float | None = None
 
 
-def _recommend_from_means(mus: torch.Tensor) -> int:
-    """Argmax, treating NaN as -inf (UCB-E mus may be NaN for unobserved arms)."""
-    mus = mus.detach()
-    scores = torch.where(
-        torch.isnan(mus), torch.full_like(mus, -float("inf")), mus.to(torch.float32)
-    )
-    if not torch.isfinite(scores).any():
-        return 0
-    return int(torch.argmax(scores).item())
-
-
-def _posterior_means(
-    obs: torch.Tensor,
-    *,
-    prior_mean: float,
-    prior_variance: float,
-    tau_sq_cell: float,
-) -> torch.Tensor:
-    counts = (~obs.isnan()).sum(dim=1).to(torch.float64)
-    obs_sum = torch.nan_to_num(obs, nan=0.0).sum(dim=1).to(torch.float64)
-    v0 = float(prior_variance)
-    prec = 1.0 / v0 + counts / float(tau_sq_cell)
-    v_t = 1.0 / prec
-    mus = v_t * (float(prior_mean) / v0 + obs_sum / float(tau_sq_cell))
-    mus[counts == 0] = float(prior_mean)
-    return mus.to(torch.float32)
-
-
 def simulate_simple_regret(
     *,
     ground_truth: torch.Tensor,
@@ -79,7 +53,7 @@ def simulate_simple_regret(
     max_evaluations: int,
     per_arm_original_cost: torch.Tensor,
     max_original_cost: float | None = None,
-    recommend: Callable[[torch.Tensor, Any], torch.Tensor] | None = None,
+    recommend_fn: Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]] | None = None,
     pass_sim_cum_eval: bool = False,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
@@ -117,9 +91,9 @@ def simulate_simple_regret(
         if out is None:
             break
         if isinstance(out, tuple):
-            batch, mus = out
+            batch, aux = out
         else:
-            batch, mus = out, None
+            batch, aux = out, None
         if batch is None:
             break
         row_idx, col_idx = batch
@@ -154,11 +128,10 @@ def simulate_simple_regret(
             )
             recommendation_aware_stop_cum_original_cost = float(total_original_cost)
 
-        if recommend is not None:
-            mus = recommend(obs, mus)
-        elif mus is None:
-            mus = torch.nanmean(obs, dim=1)
-        arm = _recommend_from_means(mus)
+        if recommend_fn is None:
+            arm, mus = empirical_incumbent(obs)
+        else:
+            arm, mus = recommend_fn(obs, aux)
         simple_regret = mu_star - float(true_means[arm].item())
 
         regrets.append(float(simple_regret))
@@ -332,13 +305,13 @@ def main() -> int:
             step_kwargs={
                 "a": float(args.ucb_a),
                 "batch_size": int(args.batch_size),
-                "return_mus": True,
+                "return_mus": False,
             },
             seed=int(args.seed),
             max_evaluations=max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
             max_original_cost=max_original_cost,
-            recommend=lambda obs, aux: torch.nanmean(obs, dim=1),
+            recommend_fn=empirical_incumbent,
         )
         out.update(
             ucb_x=np.asarray(tr.x, dtype=np.int32),
@@ -400,7 +373,7 @@ def main() -> int:
                 ),
                 cost_scaling_factor=float(args.cost_scaling_factor),
                 batch_size=int(B),
-                return_mus=True,
+                return_mus=False,
                 cached_scores=cached_scores,
                 recompute_arms=recompute,
                 use_batch_mean_gittins_dp=False,
@@ -447,8 +420,8 @@ def main() -> int:
             max_evaluations=max_evaluations,
             per_arm_original_cost=per_arm_original_cost,
             max_original_cost=max_original_cost,
-            recommend=lambda obs, aux: _posterior_means(
-                obs,
+            recommend_fn=partial(
+                posterior_incumbent,
                 prior_mean=float(args.gittins_prior_mean),
                 prior_variance=float(args.gittins_prior_variance),
                 tau_sq_cell=float(tau_sq_cell),
