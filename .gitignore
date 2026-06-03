@@ -191,3 +191,5 @@ slurm_logs/
 wandb/
 
 .mplconfig/
+
+gittinsbandit_env/

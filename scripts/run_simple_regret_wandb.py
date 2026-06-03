@@ -4,10 +4,10 @@
 One W&B run = one concrete experiment configuration.
 
 Supported experiment variants:
-- ucb_B{B}
-- lrf_B{B}
+- ucb_B{B} / ucb_cost_B{B}  (unit-cost vs 10% eval budget / cost budget vs 10% total cost)
+- lrf_B{B} / lrf_cost_B{B}
 - gittins_unit_B{B}_scale{S}_{default|dataset}
-- gittins_aware_B{B}_scale{S}_{default|dataset}
+- gittins_cost_B{B}_scale{S}_{default|dataset}
 
 This runner is designed for the current lightweight code path:
 - UCB / LRF are run directly from banditeval.bandits.
@@ -65,7 +65,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
-from gittins_policy import gittins_index_exploration  # noqa: E402
+from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 
 
@@ -111,6 +111,37 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
     """Parse compact variant labels into concrete runner parameters."""
     v = raw.strip()
 
+    m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(
+            raw=v,
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+
+    # Backward-compatible alias for earlier sweep YAMLs.
+    m = re.fullmatch(r"(ucb|lrf)_aware_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(
+            raw=v,
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+
     m = re.fullmatch(r"(ucb|lrf)_B(\d+)", v)
     if m:
         policy = m.group(1)
@@ -119,7 +150,7 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
             raw=v,
             policy_variant=policy,
             policy_family=policy,
-            cost_mode="baseline",
+            cost_mode="unit",
             batch_size=b,
             gittins_batch_size=b,
             cost_scaling_factor=1e-4,
@@ -127,11 +158,13 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
         )
 
     m = re.fullmatch(
-        r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)",
+        r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)",
         v,
     )
     if m:
         cost_mode = m.group(1)
+        if cost_mode == "aware":
+            cost_mode = "cost"
         b = int(m.group(2))
         scale = float(m.group(3))
         prior_type = m.group(4)
@@ -147,18 +180,59 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
         )
 
     # Backward-compatible simple labels from the earlier pilot workflow.
-    if v in {"ucb", "lrf", "gittins_unit", "gittins_aware"}:
+    if v in {"ucb", "lrf", "gittins_unit", "gittins_cost", "gittins_aware"}:
         if v == "ucb":
-            return VariantConfig(v, "ucb", "ucb", "baseline", 20, 20, 1e-4, "default")
+            return VariantConfig(v, "ucb", "ucb", "unit", 20, 20, 1e-4, "default")
         if v == "lrf":
-            return VariantConfig(v, "lrf", "lrf", "baseline", 20, 20, 1e-4, "default")
-        cost_mode = "unit" if v == "gittins_unit" else "aware"
-        return VariantConfig(v, v, "gittins", cost_mode, 20, 20, 1e-4, "default")
+            return VariantConfig(v, "lrf", "lrf", "unit", 20, 20, 1e-4, "default")
+        cost_mode = "unit" if v == "gittins_unit" else "cost"
+        policy_variant = "gittins_unit" if v == "gittins_unit" else "gittins_cost"
+        return VariantConfig(v, policy_variant, "gittins", cost_mode, 20, 20, 1e-4, "default")
 
     raise ValueError(
         f"Unsupported experiment variant: {raw!r}. Examples: "
-        "ucb_B20, lrf_B20, gittins_unit_B20_scale1e-4_default, "
-        "gittins_aware_B20_scale1e-4_dataset"
+        "ucb_B20, ucb_cost_B20, lrf_B20, lrf_cost_B20, "
+        "gittins_unit_B20_scale1e-4_default, gittins_cost_B20_scale1e-4_dataset"
+    )
+
+
+@dataclass(frozen=True)
+class ExperimentBudget:
+    budget_mode: str
+    max_evaluations: int
+    max_original_cost: float | None
+    budget_evals: int
+    budget_original_cost: float | None
+    total_brute_force_original_cost: float
+
+
+def resolve_experiment_budget(
+    *,
+    n_cells: int,
+    n_examples: int,
+    cost_per_arm: torch.Tensor,
+    eval_budget_fraction: float,
+    cost_mode: str,
+) -> ExperimentBudget:
+    total_brute_force_original_cost = float(n_examples * cost_per_arm.sum().item())
+    budget_evals = int(max(1, round(float(eval_budget_fraction) * int(n_cells))))
+    if cost_mode in {"cost", "aware"}:
+        budget_original_cost = float(eval_budget_fraction) * total_brute_force_original_cost
+        return ExperimentBudget(
+            budget_mode="cost",
+            max_evaluations=int(n_cells),
+            max_original_cost=budget_original_cost,
+            budget_evals=budget_evals,
+            budget_original_cost=budget_original_cost,
+            total_brute_force_original_cost=total_brute_force_original_cost,
+        )
+    return ExperimentBudget(
+        budget_mode="evals",
+        max_evaluations=budget_evals,
+        max_original_cost=None,
+        budget_evals=budget_evals,
+        budget_original_cost=None,
+        total_brute_force_original_cost=total_brute_force_original_cost,
     )
 
 
@@ -451,8 +525,8 @@ def simulate_timed(
     log_step_metrics: bool,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
-    min_evaluations_before_natural_stop: int = 0,
-    should_stop_after_step: Callable[[int], bool] | None = None,
+    max_original_cost: float | None = None,
+    post_pull_fn: Callable[[torch.Tensor, int, int], dict[str, Any] | None] | None = None,
 ) -> dict[str, Any]:
     torch.manual_seed(int(seed))
 
@@ -477,6 +551,11 @@ def simulate_timed(
     pulled_cols_json: list[str] = []
     n_pulled_arms: list[int] = []
     n_pulled_cols: list[int] = []
+    # Gittins-only diagnostics (full vectors in trace npz; scalars also logged to W&B).
+    gittins_index_pulled: list[float] = []
+    posterior_mean_pulled: list[float] = []
+    gittins_scores_post_pull: list[np.ndarray] = []
+    posterior_mean_post_pull: list[np.ndarray] = []
 
     evaluated = 0
     total_cost = 0.0
@@ -489,21 +568,6 @@ def simulate_timed(
         ts0 = time.perf_counter()
         out = step_fn(obs, evaluated)
         ts1 = time.perf_counter()
-
-        if (
-            natural_stop_cum_original_cost is None
-            and natural_stop_cum_eval_holder is not None
-            and len(natural_stop_cum_eval_holder) == 1
-            and natural_stop_cum_eval_holder[0] is not None
-        ):
-            natural_stop_cum_original_cost = float(total_cost)
-        if (
-            recommendation_aware_stop_cum_original_cost is None
-            and recommendation_aware_stop_cum_eval_holder is not None
-            and len(recommendation_aware_stop_cum_eval_holder) == 1
-            and recommendation_aware_stop_cum_eval_holder[0] is not None
-        ):
-            recommendation_aware_stop_cum_original_cost = float(total_cost)
 
         if out is None:
             break
@@ -519,15 +583,43 @@ def simulate_timed(
         if n_batch <= 0:
             break
 
+        pulled_arm = int(row_idx[0].item())
+
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
+        total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
 
-        pulled_arm = int(row_idx[0].item())
+        gittins_diag: dict[str, Any] | None = None
+        if post_pull_fn is not None:
+            gittins_diag = post_pull_fn(obs, pulled_arm, int(evaluated))
+        if (
+            natural_stop_cum_original_cost is None
+            and natural_stop_cum_eval_holder is not None
+            and len(natural_stop_cum_eval_holder) == 1
+            and natural_stop_cum_eval_holder[0] is not None
+            and int(natural_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            natural_stop_cum_original_cost = float(total_cost)
+        if (
+            recommendation_aware_stop_cum_original_cost is None
+            and recommendation_aware_stop_cum_eval_holder is not None
+            and len(recommendation_aware_stop_cum_eval_holder) == 1
+            and recommendation_aware_stop_cum_eval_holder[0] is not None
+            and int(recommendation_aware_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            recommendation_aware_stop_cum_original_cost = float(total_cost)
+
+        if gittins_diag is not None:
+            scores_post = np.asarray(gittins_diag["gittins_scores_post_pull"], dtype=np.float32)
+            mus_post = np.asarray(gittins_diag["posterior_mean_post_pull"], dtype=np.float32)
+            gittins_scores_post_pull.append(scores_post)
+            posterior_mean_post_pull.append(mus_post)
+            gittins_index_pulled.append(float(scores_post[pulled_arm]))
+            posterior_mean_pulled.append(float(mus_post[pulled_arm]))
         pulled_rows = [int(x) for x in row_idx.reshape(-1).tolist()]
         pulled_cols = [int(x) for x in col_idx.reshape(-1).tolist()]
         unique_pulled_arms = sorted(set(pulled_rows))
         unique_pulled_cols = sorted(set(pulled_cols))
-        total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
 
         arm, mus = recommend_fn(obs, aux)
         simple_regret = mu_star - float(true_means[arm].item())
@@ -553,8 +645,7 @@ def simulate_timed(
         n_pulled_cols.append(int(len(unique_pulled_cols)))
 
         if run is not None and log_step_metrics:
-            run.log(
-                {
+            log_payload: dict[str, Any] = {
                     "cum_eval": int(evaluated),
                     "cum_original_cost": float(total_cost),
                     "simple_regret": float(simple_regret),
@@ -570,14 +661,13 @@ def simulate_timed(
                     "iter_total_s": total_time,
                     "batch_cells": n_batch,
                     "step_idx": step_idx,
-                }
-            )
+            }
+            if gittins_diag is not None:
+                log_payload["gittins_index_pulled"] = float(gittins_index_pulled[-1])
+                log_payload["posterior_mean_pulled"] = float(posterior_mean_pulled[-1])
+            run.log(log_payload)
 
-        if (
-            should_stop_after_step is not None
-            and evaluated >= int(min_evaluations_before_natural_stop)
-            and should_stop_after_step(int(evaluated))
-        ):
+        if max_original_cost is not None and total_cost >= float(max_original_cost):
             break
 
     return {
@@ -597,6 +687,10 @@ def simulate_timed(
         "n_pulled_cols": n_pulled_cols,
         "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
         "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
+        "gittins_index_pulled": gittins_index_pulled,
+        "posterior_mean_pulled": posterior_mean_pulled,
+        "gittins_scores_post_pull": gittins_scores_post_pull,
+        "posterior_mean_post_pull": posterior_mean_post_pull,
     }
 
 
@@ -651,16 +745,6 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="Disable per-step W&B history logging.",
     )
-    p.add_argument(
-        "--extend-gittins-to-natural-stop",
-        "--extend_gittins_to_natural_stop",
-        action="store_true",
-        help=(
-            "Gittins only: run until index-induced natural stop (up to full matrix), "
-            "not only until --eval-budget-fraction."
-        ),
-    )
-
     p.add_argument("--wandb-entity", "--wandb_entity", default=None)
     p.add_argument("--wandb-project", "--wandb_project", default="GittinsBanditEval")
     p.add_argument("--wandb-group", "--wandb_group", default=None)
@@ -690,12 +774,29 @@ def main() -> int:
     ground_truth = torch.tensor(gt_np, dtype=torch.float32)
     n_arms, n_examples = int(ground_truth.shape[0]), int(ground_truth.shape[1])
     n_cells = int(ground_truth.numel())
-    max_evaluations = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
 
     if args.cost_vector is not None:
         actual_cost_per_arm = load_cost_vector(args.cost_vector, n_arms)
     else:
         actual_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
+
+    budget = resolve_experiment_budget(
+        n_cells=n_cells,
+        n_examples=n_examples,
+        cost_per_arm=actual_cost_per_arm,
+        eval_budget_fraction=float(args.eval_budget_fraction),
+        cost_mode=variant.cost_mode,
+    )
+    max_evaluations = int(budget.max_evaluations)
+    max_original_cost = budget.max_original_cost
+    cost_aware_run = variant.cost_mode in {"cost", "aware"}
+
+    if cost_aware_run and args.cost_vector is None:
+        print(
+            f"{variant.raw} requires --cost-vector for cost-aware budgeting.",
+            file=sys.stderr,
+        )
+        return 1
 
     size_bucket = mmlu_size_bucket(n_examples) if dataset_tag == "mmlu" else None
     mmlu_task_prior_buckets = (
@@ -742,7 +843,12 @@ def main() -> int:
                 "n_arms": n_arms,
                 "n_examples": n_examples,
                 "n_cells": n_cells,
-                "budget_max_evals": max_evaluations,
+                "budget_mode": budget.budget_mode,
+                "budget_max_evals": budget.budget_evals,
+                "budget_original_cost": budget.budget_original_cost,
+                "total_brute_force_original_cost": budget.total_brute_force_original_cost,
+                "cost_aware_run": cost_aware_run,
+                "sim_max_evaluations": max_evaluations,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
                 "prior_bucket": prior_bucket,
@@ -759,6 +865,8 @@ def main() -> int:
         run.define_metric("pulled_arm", step_metric="cum_eval")
         run.define_metric("n_pulled_arms", step_metric="cum_eval")
         run.define_metric("n_pulled_cols", step_metric="cum_eval")
+        run.define_metric("gittins_index_pulled", step_metric="cum_eval")
+        run.define_metric("posterior_mean_pulled", step_metric="cum_eval")
 
     out_base = (
         args.out_dir
@@ -783,6 +891,7 @@ def main() -> int:
     extra_peak_memory_gb: float | None = None
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
+    post_pull_fn: Callable[[torch.Tensor, int, int], dict[str, Any] | None] | None = None
 
     if variant.policy_family == "ucb":
         def step_fn(obs: torch.Tensor, sim_cum_eval: int):
@@ -831,9 +940,9 @@ def main() -> int:
         )
         tau_sq_cell = float(tau_sq_batch) * float(B)
 
-        if variant.cost_mode == "aware":
+        if variant.cost_mode in {"cost", "aware"}:
             if args.cost_vector is None:
-                print("gittins_aware requires --cost-vector", file=sys.stderr)
+                print("gittins_cost requires --cost-vector", file=sys.stderr)
                 return 1
             decision_cost_per_arm = actual_cost_per_arm.clone()
         elif variant.cost_mode == "unit":
@@ -902,9 +1011,6 @@ def main() -> int:
                 recompute_arms=recompute,
                 use_batch_mean_gittins_dp=False,
                 allow_early_stop=False,
-                sim_cum_eval=int(sim_cum_eval),
-                natural_stop_cum_eval_holder=natural_stop_holder,
-                recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
                 roots_lookup_table=roots_torch,
                 batch_observation_model=True,
             )
@@ -915,6 +1021,34 @@ def main() -> int:
             if batch is not None:
                 prev_arm = int(batch[0, 0].item())
             return out
+
+        gittins_post_pull_kw = dict(
+            prior_mean=float(prior_mean),
+            prior_variance=float(prior_variance),
+            obs_noise_variance=float(tau_sq_batch),
+            cost_per_transition=decision_cost_per_arm,
+            cost_scaling_factor=float(variant.cost_scaling_factor),
+            n_gittins_grid_points=int(args.gittins_grid_points),
+            batch_size=B,
+            use_batch_mean_gittins_dp=False,
+            roots_lookup_table=roots_torch,
+            batch_observation_model=True,
+            natural_stop_cum_eval_holder=natural_stop_holder,
+            recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+        )
+
+        def post_pull_fn(obs: torch.Tensor, pulled_arm: int, cum_eval: int) -> dict[str, Any]:
+            mus_post, scores_post = gittins_post_pull_update(
+                obs,
+                cached_scores=cached_scores,
+                recompute_arms=[int(pulled_arm)],
+                sim_cum_eval=int(cum_eval),
+                **gittins_post_pull_kw,
+            )
+            return {
+                "gittins_scores_post_pull": scores_post.detach().cpu().numpy().copy(),
+                "posterior_mean_post_pull": mus_post.detach().cpu().numpy().copy(),
+            }
 
         def recommend_fn(obs: torch.Tensor, aux: Any):
             mus = posterior_means(
@@ -931,39 +1065,20 @@ def main() -> int:
     else:
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")
 
-    sim_max_evaluations = (
-        int(n_cells)
-        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
-        else max_evaluations
-    )
-    stop_after_step = (
-        (lambda evaluated: natural_stop_holder[0] is not None)
-        if bool(args.extend_gittins_to_natural_stop) and variant.policy_family == "gittins"
-        else None
-    )
-
     sim = simulate_timed(
         ground_truth=ground_truth,
         step_fn=step_fn,
         seed=int(args.run_seed),
-        max_evaluations=sim_max_evaluations,
+        max_evaluations=max_evaluations,
         original_cost_per_arm=actual_cost_per_arm,
         recommend_fn=recommend_fn,
         run=run,
         log_step_metrics=bool(args.log_step_metrics),
         natural_stop_cum_eval_holder=natural_stop_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
-        min_evaluations_before_natural_stop=max_evaluations,
-        should_stop_after_step=stop_after_step,
+        max_original_cost=max_original_cost,
+        post_pull_fn=post_pull_fn,
     )
-    if (
-        bool(args.extend_gittins_to_natural_stop)
-        and variant.policy_family == "gittins"
-        and natural_stop_holder[0] is None
-        and sim["x"]
-        and int(sim["x"][-1]) >= int(n_cells)
-    ):
-        natural_stop_holder[0] = int(n_cells)
 
     np.savez(
         trace_path,
@@ -979,11 +1094,17 @@ def main() -> int:
         gittins_batch_size=int(variant.gittins_batch_size),
         cost_scaling_factor=float(variant.cost_scaling_factor),
         prior_type=variant.prior_type,
-        extend_gittins_to_natural_stop=np.asarray(
-            bool(args.extend_gittins_to_natural_stop), dtype=np.bool_
+        cost_aware=np.asarray(bool(cost_aware_run), dtype=np.bool_),
+        budget_mode=np.asarray(budget.budget_mode, dtype="<U16"),
+        budget_evals=np.asarray(int(budget.budget_evals), dtype=np.int32),
+        budget_original_cost=np.asarray(
+            -1.0 if budget.budget_original_cost is None else float(budget.budget_original_cost),
+            dtype=np.float64,
         ),
-        gittins_run_max_evals=np.asarray(int(sim_max_evaluations), dtype=np.int32),
-        budget_evals=np.asarray(int(max_evaluations), dtype=np.int32),
+        total_brute_force_original_cost=np.asarray(
+            float(budget.total_brute_force_original_cost), dtype=np.float64
+        ),
+        sim_max_evaluations=np.asarray(int(max_evaluations), dtype=np.int32),
         prior_mean=np.asarray(prior_mean, dtype=np.float32),
         prior_variance=np.asarray(prior_variance, dtype=np.float32),
         prior_bucket="" if prior_bucket is None else prior_bucket,
@@ -1027,6 +1148,14 @@ def main() -> int:
         pulled_cols_json=np.asarray(sim["pulled_cols_json"], dtype="<U4096"),
         n_pulled_arms=np.asarray(sim["n_pulled_arms"], dtype=np.int32),
         n_pulled_cols=np.asarray(sim["n_pulled_cols"], dtype=np.int32),
+        gittins_index_pulled=np.asarray(sim["gittins_index_pulled"], dtype=np.float32),
+        posterior_mean_pulled=np.asarray(sim["posterior_mean_pulled"], dtype=np.float32),
+        gittins_scores_post_pull=np.stack(sim["gittins_scores_post_pull"], axis=0)
+        if sim["gittins_scores_post_pull"]
+        else np.zeros((0, n_arms), dtype=np.float32),
+        posterior_mean_post_pull=np.stack(sim["posterior_mean_post_pull"], axis=0)
+        if sim["posterior_mean_post_pull"]
+        else np.zeros((0, n_arms), dtype=np.float32),
         git_commit=np.asarray(provenance["git_commit"] or "", dtype="<U64"),
         git_dirty=np.asarray(False if provenance["git_dirty"] is None else provenance["git_dirty"], dtype=np.bool_),
         matrix_sha256=np.asarray(provenance["matrix_sha256"] or "", dtype="<U64"),
@@ -1072,9 +1201,12 @@ def main() -> int:
         "n_arms": n_arms,
         "n_examples": n_examples,
         "n_cells": n_cells,
-        "budget_max_evals": max_evaluations,
-        "gittins_run_max_evals": int(sim_max_evaluations),
-        "extend_gittins_to_natural_stop": bool(args.extend_gittins_to_natural_stop),
+        "budget_mode": budget.budget_mode,
+        "budget_max_evals": budget.budget_evals,
+        "budget_original_cost": budget.budget_original_cost,
+        "total_brute_force_original_cost": budget.total_brute_force_original_cost,
+        "cost_aware_run": cost_aware_run,
+        "sim_max_evaluations": max_evaluations,
         "eval_budget_fraction": float(args.eval_budget_fraction),
         "prior_mean_resolved": float(prior_mean),
         "prior_variance_resolved": float(prior_variance),
@@ -1204,8 +1336,6 @@ def main() -> int:
                 ),
             }
         )
-        run.log({"regret_vs_evals": wandb.Image(str(fig_eval_path))})
-        run.log({"regret_vs_cost": wandb.Image(str(fig_cost_path))})
 
         artifact = wandb.Artifact(
             name=f"simple-regret-{run.id}",
@@ -1214,8 +1344,6 @@ def main() -> int:
         )
         artifact.add_file(str(trace_path))
         artifact.add_file(str(meta_path))
-        artifact.add_file(str(fig_eval_path))
-        artifact.add_file(str(fig_cost_path))
         run.log_artifact(artifact)
         run.finish()
 
