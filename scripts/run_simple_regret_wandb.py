@@ -472,7 +472,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
-    p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "wandb_simple_regret")
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
     p.add_argument("--no-log-step-metrics", "--no_log_step_metrics", dest="log_step_metrics", action="store_false")
     p.add_argument("--wandb-entity", "--wandb_entity", default=None)
@@ -601,34 +600,10 @@ def main() -> int:
             run.finish(exit_code=1)
         return 1
 
-    trace_path = (
-        args.out_dir
-        / dataset_tag
-        / safe_token(variant.raw)
-        / f"{args.matrix.stem}__runseed{args.run_seed}__{safe_token(variant.raw)}_traces.npz"
-    )
-    trace_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(
-        trace_path,
-        experiment_variant=variant.raw,
-        run_seed=int(args.run_seed),
-        x=np.asarray(result["x"], dtype=np.int32),
-        x_original_cost=np.asarray(result["x_original_cost"], dtype=np.float64),
-        regret=np.asarray(result["regret"], dtype=np.float32),
-        recommended_arm=np.asarray(result["recommended_arm"], dtype=np.int32),
-        recommended_mean=np.asarray(result["recommended_mean"], dtype=np.float32),
-        pulled_arm=np.asarray(result["pulled_arm"], dtype=np.int32),
-        gittins_index_pulled=np.asarray(result["gittins_index_pulled"], dtype=np.float32),
-        posterior_mean_pulled=np.asarray(result["posterior_mean_pulled"], dtype=np.float32),
-        prior_mean=np.asarray(prior_mean, dtype=np.float32),
-        prior_variance=np.asarray(prior_variance, dtype=np.float32),
-    )
-
     total_wall_time_s = float(time.perf_counter() - wall_t0)
     final_simple_regret = float(result["regret"][-1]) if result["regret"] else None
     best_seen_regret = float(min(result["regret"])) if result["regret"] else None
 
-    print(f"Wrote trace: {trace_path}")
     print(f"final_simple_regret={final_simple_regret}")
 
     if run is not None:
