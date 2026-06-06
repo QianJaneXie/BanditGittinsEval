@@ -167,12 +167,12 @@ def variant_names(batch_size: int, scale: str, cost_mode: str) -> dict[str, str]
             "ucb": f"ucb_B{b}",
             "lrf": f"lrf_B{b}",
         }
-    if cost_mode == "aware":
+    if cost_mode in {"aware", "cost"}:
         return {
-            "gittins_data": f"gittins_aware_B{b}_scale{scale}_dataset",
-            "gittins_default": f"gittins_aware_B{b}_scale{scale}_default",
-            "ucb": f"ucb_B{b}",
-            "lrf": f"lrf_B{b}",
+            "gittins_data": f"gittins_cost_B{b}_scale{scale}_dataset",
+            "gittins_default": f"gittins_cost_B{b}_scale{scale}_default",
+            "ucb": f"ucb_cost_B{b}",
+            "lrf": f"lrf_cost_B{b}",
         }
     raise ValueError(cost_mode)
 
