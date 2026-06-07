@@ -395,7 +395,7 @@ def run_bo(
     regret: list[float] = []
     recommended_arm: list[int] = []
     recommended_mean: list[float] = []
-    selected_arm: list[int] = []
+    pulled_arm: list[int] = []
     observed_y: list[float] = []
     acquisition_value: list[float] = []
     selection_phase: list[str] = []
@@ -428,7 +428,7 @@ def run_bo(
         regret.append(float(mu_star - float(data.Y[rec_arm, 0].item())))
         recommended_arm.append(int(rec_arm))
         recommended_mean.append(float(rec_value))
-        selected_arm.append(int(arm))
+        pulled_arm.append(int(arm))
         observed_y.append(float(data.Y[arm, 0].item()))
         acquisition_value.append(float(acq_value))
         selection_phase.append(phase)
@@ -517,7 +517,7 @@ def run_bo(
         "regret": regret,
         "recommended_arm": recommended_arm,
         "recommended_mean": recommended_mean,
-        "selected_arm": selected_arm,
+        "pulled_arm": pulled_arm,
         "observed_y": observed_y,
         "acquisition_value": acquisition_value,
         "selection_phase": selection_phase,
@@ -623,7 +623,7 @@ def main() -> int:
         regret=np.asarray(sim["regret"], dtype=np.float32),
         recommended_arm=np.asarray(sim["recommended_arm"], dtype=np.int32),
         recommended_mean=np.asarray(sim["recommended_mean"], dtype=np.float32),
-        selected_arm=np.asarray(sim["selected_arm"], dtype=np.int32),
+        pulled_arm=np.asarray(sim["pulled_arm"], dtype=np.int32),
         observed_y=np.asarray(sim["observed_y"], dtype=np.float32),
         acquisition_value=np.asarray(sim["acquisition_value"], dtype=np.float64),
         selection_phase=np.asarray(sim["selection_phase"], dtype="<U32"),
@@ -637,7 +637,7 @@ def main() -> int:
         "best_seen_regret": float(min(sim["regret"])) if sim["regret"] else None,
         "final_cum_eval": int(sim["x"][-1]) if sim["x"] else None,
         "final_cum_original_cost": float(sim["x_original_cost"][-1]) if sim["x_original_cost"] else None,
-        "num_evaluated_configs": len(sim["selected_arm"]),
+        "num_evaluated_configs": len(sim["pulled_arm"]),
     }
     meta = {
         "bo_inputs": str(args.bo_inputs),
