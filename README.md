@@ -118,9 +118,58 @@ Combine bandit and BayesOpt traces with `plot_bandit_bo_comparison.py` (pass `--
 | `plot_bandit_bo_comparison.py` | Overlay bandit + BO curves |
 | `convert_matrix_to_bo_inputs.py` | Build BO input files from a matrix |
 | `run_simple_regret_wandb.py` | W&B sweep launcher (UCB-E, UCB-E-LRF, Gittins) |
-| `download_wandb_simple_regret.py` | Pull W&B sweep results |
-| `plot_wandb_simple_regret_curves.py` | Plot downloaded W&B curves |
+| `run_bo_baseline_wandb.py` | W&B sweep launcher (BayesOpt baselines) |
+| `download_wandb_simple_regret.py` | Pull bandit W&B sweep results |
+| `download_wandb_bo_baseline.py` | Pull BayesOpt W&B sweep results |
+| `plot_wandb_simple_regret_curves.py` | Plot downloaded W&B curves (merge bandit + BO histories) |
 
 ## BayesOpt baseline
 
-BayesOpt runs on configuration-level inputs (`data/bo_inputs/*.npz`), not matrix cells. Each row is a full configuration; evaluating one candidate reveals its aggregate score and consumes the stored cost. Budget defaults to 10% of configurations (unit cost) or 10% of total cost (cost-aware). See **Examples** above for GSM8K and MMLU commands.
+BayesOpt runs on configuration-level inputs (`data/bo_inputs/*.npz`), not matrix cells. Each row is a full configuration (arm); evaluating one candidate reveals its aggregate score and consumes the stored cost.
+
+**Budget.** Defaults to `eval_budget_fraction` (10% in the example sweeps) of configurations (unit cost) or total cost (cost-aware). Remaining budget after initialization goes to acquisition-driven BO steps.
+
+**Random initialization.** Unless `--n-init` is set, the number of initial arms is
+
+\[
+n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.4 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
+\]
+
+where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
+
+At the default 10% budget:
+
+| Dataset | \(d\) | \(n_{\mathrm{configs}}\) | Default \(n_{\mathrm{init}}\) | BO steps after init |
+|---------|------|---------------------------|-------------------------------|---------------------|
+| GSM8K | 11 models | 122 | 5 | 7 |
+| PIQA | 11 models | 103 | 4 | 6 |
+| MMLU | 100 prompts | 1500 | 60 | 90 |
+
+Override with `--n-init`. See **Examples** above for GSM8K and MMLU commands.
+
+### W&B download and aggregate plots (bandit + BO)
+
+Use separate download pipelines, then merge when plotting:
+
+```bash
+# Bandit sweep
+python scripts/download_wandb_simple_regret.py \
+  --entity <entity> --project GittinsBanditEval --sweep-id <bandit_sweep> \
+  --dataset gsm8k --raw-dir outputs/wandb_downloads/gsm8k_bandit
+
+# BO sweep
+python scripts/download_wandb_bo_baseline.py \
+  --entity <entity> --project GittinsBanditEval --sweep-id <bo_sweep> \
+  --dataset gsm8k --raw-dir outputs/wandb_downloads/gsm8k_bo \
+  --expected-grid-yaml scripts/config/GSM8KBOBaselineSweep.yml
+
+# Combined aggregate plot (unit-cost example)
+python scripts/plot_wandb_simple_regret_curves.py \
+  --history-csv outputs/wandb_downloads/gsm8k_bandit/runs_history.csv.gz \
+  --history-csv outputs/wandb_downloads/gsm8k_bo/runs_history.csv.gz \
+  --dataset gsm8k --benchmark-key gsm8k_seed1 \
+  --bo-phase post_init --x-axis cum_eval \
+  --out-dir outputs/figures/wandb
+```
+
+`benchmark_key` links bandit and BO runs (`gsm8k_seed1`, `mmlu_abstract_algebra`, …). Use `--bo-phase post_init` to drop BO random-init steps (matching `plot_bandit_bo_comparison.py`).

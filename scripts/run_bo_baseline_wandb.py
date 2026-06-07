@@ -234,6 +234,18 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def method_label_from_variant(variant: str, acquisition: str) -> str:
+    acq = str(acquisition).lower()
+    cost_mode = "cost" if ("cost" in str(variant) or acq == "logeipc") else "unit"
+    labels = {
+        ("pbgi", "unit"): "BO PBGI",
+        ("pbgi", "cost"): "BO PBGI (cost)",
+        ("logei", "unit"): "BO LogEI",
+        ("logeipc", "cost"): "BO LogEIPC",
+    }
+    return labels.get((acq, cost_mode), f"BO {variant}")
+
+
 def resolve_bo_variant(args: argparse.Namespace) -> tuple[str, bool, str, str]:
     """Resolve acquisition, cost-awareness, compact variant name, and cost mode."""
     raw = None if args.experiment_variant is None else str(args.experiment_variant).strip()
@@ -476,6 +488,7 @@ def run_bo_experiment(
     observed_y: list[float] = []
     acquisition_value: list[float] = []
     selection_phase: list[str] = []
+    step_idx: list[int] = []
     iter_fit_s: list[float] = []
     iter_score_s: list[float] = []
     iter_total_s: list[float] = []
@@ -516,6 +529,7 @@ def run_bo_experiment(
         observed_y.append(float(data.Y[arm, 0].item()))
         acquisition_value.append(float(acq_value))
         selection_phase.append(phase)
+        step_idx.append(int(len(selected)))
         iter_fit_s.append(float(fit_s))
         iter_score_s.append(float(score_s))
         iter_total = float(fit_s) + float(score_s) + float(time.perf_counter() - step_t0)
@@ -534,6 +548,7 @@ def run_bo_experiment(
                     "observed_y": float(data.Y[arm, 0].item()),
                     "acquisition_value": float(acq_value),
                     "selection_phase": phase,
+                    "step_idx": int(len(selected)),
                     "iter_fit_s": float(fit_s),
                     "iter_score_s": float(score_s),
                     "iter_total_s": iter_total,
@@ -620,6 +635,7 @@ def run_bo_experiment(
         "observed_y": observed_y,
         "acquisition_value": acquisition_value,
         "selection_phase": selection_phase,
+        "step_idx": step_idx,
         "iter_fit_s": iter_fit_s,
         "iter_score_s": iter_score_s,
         "iter_total_s": iter_total_s,
@@ -687,6 +703,7 @@ def main() -> int:
 
     policy_variant = variant
     policy_family = "bo"
+    method_label = method_label_from_variant(variant, acquisition)
 
     matrix_seed = str(data.matrix_seed) if str(data.matrix_seed) else None
     metadata_matrix_path = data.metadata.get("matrix_path")
@@ -740,6 +757,7 @@ def main() -> int:
                 "cost_mode": cost_mode,
                 "policy_variant": policy_variant,
                 "policy_family": policy_family,
+                "method_label": method_label,
                 "experiment_variant": variant,
                 "mmlu_task": mmlu_task,
                 "mmlu_size_bucket": size_bucket,
