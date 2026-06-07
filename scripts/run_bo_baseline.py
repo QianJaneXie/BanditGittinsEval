@@ -48,7 +48,7 @@ class BoData:
     matrix_seed: str
     n_examples: int
     cat_dims: list[int]
-    default_n_init: int
+    dominant_dim: int
     metadata: dict[str, Any]
 
 
@@ -56,26 +56,47 @@ def safe_token(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(s))
 
 
-MAJOR_CATEGORY_COL_BY_DATASET: dict[str, int] = {
+DOMINANT_DIM_COL_BY_DATASET: dict[str, int] = {
     "gsm8k": 0,  # model_id
     "piqa": 0,  # model_id
     "mmlu": 1,  # prompt_idx
 }
+INIT_BUDGET_FRACTION = 0.4
 
 
-def major_category_n_init(X_np: np.ndarray, dataset: str) -> int:
+def dominant_dimension_count(X_np: np.ndarray, dataset: str) -> int:
     ds = str(dataset).lower()
-    if ds not in MAJOR_CATEGORY_COL_BY_DATASET:
+    if ds not in DOMINANT_DIM_COL_BY_DATASET:
         raise ValueError(
-            "Unsupported dataset for major-category n_init default: "
-            f"{dataset!r}. Supported: {sorted(MAJOR_CATEGORY_COL_BY_DATASET)}"
+            "Unsupported dataset for dominant-dimension n_init default: "
+            f"{dataset!r}. Supported: {sorted(DOMINANT_DIM_COL_BY_DATASET)}"
         )
-    col = MAJOR_CATEGORY_COL_BY_DATASET[ds]
+    col = DOMINANT_DIM_COL_BY_DATASET[ds]
     if X_np.ndim != 2 or col >= X_np.shape[1]:
         raise ValueError(
-            f"Cannot infer major-category n_init from X shape {X_np.shape} for dataset {dataset!r}"
+            f"Cannot infer dominant dimension from X shape {X_np.shape} for dataset {dataset!r}"
         )
     return int(len(np.unique(X_np[:, col])))
+
+
+def n_init_budget_cap(*, n_configs: int, eval_budget_fraction: float) -> int:
+    return max(
+        1,
+        int(
+            np.round(
+                INIT_BUDGET_FRACTION * float(eval_budget_fraction) * int(n_configs)
+            )
+        ),
+    )
+
+
+def default_bo_n_init(
+    *,
+    dominant_dim: int,
+    n_configs: int,
+    eval_budget_fraction: float,
+) -> int:
+    return min(int(dominant_dim), n_init_budget_cap(n_configs=n_configs, eval_budget_fraction=eval_budget_fraction))
 
 
 def resolve_bo_budget(
@@ -127,9 +148,9 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help=(
-            "Number of random initial configurations. Defaults to the number of "
-            "levels in the major categorical dimension (model_id for GSM8K/PIQA, "
-            "prompt_idx for MMLU)."
+            "Number of random initial configurations. Defaults to "
+            "min(dominant dimension, 40% of eval_budget_fraction * n_configs). "
+            "Dominant dimension is model_id for GSM8K/PIQA and prompt_idx for MMLU."
         ),
     )
     p.add_argument(
@@ -221,7 +242,7 @@ def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
         matrix_seed=matrix_seed,
         n_examples=n_examples,
         cat_dims=cat_dims,
-        default_n_init=major_category_n_init(X_np, dataset),
+        dominant_dim=dominant_dimension_count(X_np, dataset),
         metadata=metadata,
     )
 
@@ -540,12 +561,26 @@ def main() -> int:
     torch.manual_seed(int(args.seed))
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
-    requested_n_init = data.default_n_init if args.n_init is None else int(args.n_init)
+    n_configs = int(data.X.shape[0])
+    n_init_budget_cap_value = n_init_budget_cap(
+        n_configs=n_configs,
+        eval_budget_fraction=float(args.eval_budget_fraction),
+    )
+    if args.n_init is None:
+        requested_n_init = default_bo_n_init(
+            dominant_dim=int(data.dominant_dim),
+            n_configs=n_configs,
+            eval_budget_fraction=float(args.eval_budget_fraction),
+        )
+        n_init_rule = "dominant_dim_budget_cap_default"
+    else:
+        requested_n_init = int(args.n_init)
+        n_init_rule = "user_set"
     effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
     total_brute_force_original_cost = float(data.cost.sum().item())
     n_init_value, n_steps_value, nominal_total_value, n_steps_rule, budget_original_cost = (
         resolve_bo_budget(
-            n_configs=int(data.X.shape[0]),
+            n_configs=n_configs,
             n_init=int(requested_n_init),
             n_steps=args.n_steps,
             eval_budget_fraction=float(args.eval_budget_fraction),
@@ -588,7 +623,7 @@ def main() -> int:
         cost_scaling_factor=float(args.cost_scaling_factor),
         eval_budget_fraction=np.asarray(float(args.eval_budget_fraction), dtype=np.float64),
         n_init=int(n_init_value),
-        n_init_rule="major_category_levels_default" if args.n_init is None else "user_set",
+        n_init_rule=n_init_rule,
         n_steps=int(n_steps_value),
         n_steps_rule=str(n_steps_rule),
         nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
@@ -650,8 +685,11 @@ def main() -> int:
         "cost_aware": bool(effective_cost_aware),
         "cost_scaling_factor": float(args.cost_scaling_factor),
         "eval_budget_fraction": float(args.eval_budget_fraction),
+        "dominant_dim": int(data.dominant_dim),
+        "init_budget_fraction": float(INIT_BUDGET_FRACTION),
+        "n_init_budget_cap": int(n_init_budget_cap_value),
         "n_init": int(n_init_value),
-        "n_init_rule": "major_category_levels_default" if args.n_init is None else "user_set",
+        "n_init_rule": n_init_rule,
         "n_steps": int(n_steps_value),
         "n_steps_rule": str(n_steps_rule),
         "nominal_total_configs": int(sim["nominal_total_configs"]),
