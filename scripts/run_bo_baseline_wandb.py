@@ -451,7 +451,6 @@ def run_bo_experiment(
     recommended_arm: list[int] = []
     recommended_mean: list[float] = []
     pulled_arm: list[int] = []
-    selected_arm: list[int] = []
     selected_config_arm_id: list[int] = []
     observed_y: list[float] = []
     acquisition_value: list[float] = []
@@ -492,7 +491,6 @@ def run_bo_experiment(
         recommended_arm.append(int(rec_arm))
         recommended_mean.append(float(rec_value))
         pulled_arm.append(int(arm))
-        selected_arm.append(int(arm))
         selected_config_arm_id.append(config_arm_id)
         observed_y.append(float(data.Y[arm, 0].item()))
         acquisition_value.append(float(acq_value))
@@ -511,7 +509,6 @@ def run_bo_experiment(
                     "recommended_arm": int(rec_arm),
                     "recommended_mean": float(rec_value),
                     "pulled_arm": int(arm),
-                    "selected_arm": int(arm),
                     "selected_config_arm_id": config_arm_id,
                     "observed_y": float(data.Y[arm, 0].item()),
                     "acquisition_value": float(acq_value),
@@ -598,7 +595,6 @@ def run_bo_experiment(
         "recommended_arm": recommended_arm,
         "recommended_mean": recommended_mean,
         "pulled_arm": pulled_arm,
-        "selected_arm": selected_arm,
         "selected_config_arm_id": selected_config_arm_id,
         "observed_y": observed_y,
         "acquisition_value": acquisition_value,
@@ -737,7 +733,7 @@ def main() -> int:
     best_seen_regret = float(min(result["regret"])) if result["regret"] else None
     final_cum_eval = int(result["x"][-1]) if result["x"] else None
     final_cum_original_cost = float(result["x_original_cost"][-1]) if result["x_original_cost"] else None
-    num_evaluated_configs = len(result["selected_arm"])
+    num_evaluated_configs = len(result["pulled_arm"])
     total_fit_s = float(np.sum(result["iter_fit_s"])) if result["iter_fit_s"] else 0.0
     total_score_s = float(np.sum(result["iter_score_s"])) if result["iter_score_s"] else 0.0
     total_iter_logged_s = float(np.sum(result["iter_total_s"])) if result["iter_total_s"] else 0.0
