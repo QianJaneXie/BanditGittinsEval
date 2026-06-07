@@ -1,5 +1,5 @@
 program: scripts/run_bo_baseline_wandb.py
-name: MMLUBOBaselinePilot_large
+name: GSM8KBOBaselineSweep
 method: grid
 command:
 - ${env}
@@ -12,14 +12,14 @@ metric:
   goal: minimize
 parameters:
   dataset_tag:
-    value: mmlu
+    value: gsm8k
   bo_inputs:
     values:
-    - data/bo_inputs/mmlu/high_school_psychology_bo_inputs.npz
-    - data/bo_inputs/mmlu/professional_psychology_bo_inputs.npz
-    - data/bo_inputs/mmlu/miscellaneous_bo_inputs.npz
-    - data/bo_inputs/mmlu/moral_scenarios_bo_inputs.npz
-    - data/bo_inputs/mmlu/professional_law_bo_inputs.npz
+    - data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz
+    - data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed2_bo_inputs.npz
+    - data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed3_bo_inputs.npz
+    - data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed4_bo_inputs.npz
+    - data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed5_bo_inputs.npz
   run_seed:
     values:
     - 0
@@ -59,6 +59,6 @@ parameters:
   wandb_project:
     value: GittinsBanditEval
   wandb_group:
-    value: mmlu_bo_baseline_pilot_large
+    value: gsm8k_bo_baseline_sweep
   wandb_mode:
     value: online

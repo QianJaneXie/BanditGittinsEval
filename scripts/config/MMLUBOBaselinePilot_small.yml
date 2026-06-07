@@ -6,12 +6,13 @@ command:
 - /scratch/yh6415/conda_envs/gittins/bin/python
 - ${program}
 - --log-step-metrics
-- --wandb-save-files
 - ${args}
 metric:
   name: final_simple_regret
   goal: minimize
 parameters:
+  dataset_tag:
+    value: mmlu
   bo_inputs:
     values:
     - data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz
@@ -60,25 +61,21 @@ parameters:
     - 19
   experiment_variant:
     values:
-    - bo_pbgi
-    - bo_logei
-    - bo_pbgi_cost
-    - bo_logeipc_cost
+    - pbgi_unit
+    - pbgi_cost
+    - logei_unit
+    - logeipc_cost
   eval_budget_fraction:
     value: 0.1
   cost_scaling_factor:
-    value: 1e-4
+    value: 0.0001
   observation_noise:
-    value: 1e-6
+    value: 1.0e-06
   dtype:
     value: float64
-  out_dir:
-    value: outputs/bo_baselines_wandb
-  wandb_entity:
-    value: EfficientLLMEval
   wandb_project:
     value: GittinsBanditEval
   wandb_group:
-    value: mmlu_bo_baseline_small
+    value: mmlu_bo_baseline_pilot_small
   wandb_mode:
     value: online
