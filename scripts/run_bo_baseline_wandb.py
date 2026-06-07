@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Run discrete Bayesian optimization baselines on converted BO inputs.
+"""W&B runner for discrete BO baseline simple-regret experiments.
+
+One W&B run = one concrete BO baseline configuration.
 
 The input is a ``*_bo_inputs.npz`` file from ``convert_matrix_to_bo_inputs.py``.
 Rows are complete configurations, not matrix cells: evaluating one candidate reveals
@@ -18,23 +20,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-_repo_root = Path(__file__).resolve().parents[1]
-os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
-
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import wandb
 from botorch.acquisition import LogExpectedImprovement
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import MixedSingleTaskGP
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.mlls import ExactMarginalLogLikelihood
 
-if str(_repo_root / "src") not in sys.path:
-    sys.path.insert(0, str(_repo_root / "src"))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+os.environ.setdefault("MPLCONFIGDIR", str(REPO_ROOT / ".mplconfig"))
+SRC_DIR = REPO_ROOT / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
-from stable_pbgi import StableGittinsIndex  # noqa: E402
 from log_ei_puc import LogExpectedImprovementWithCost  # noqa: E402
+from stable_pbgi import StableGittinsIndex  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -135,13 +137,27 @@ def resolve_bo_budget(
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bo-inputs", "--bo_inputs", dest="bo_inputs", type=Path, required=True)
+    p.add_argument("--dataset-tag", "--dataset_tag", dest="dataset_tag", default=None)
     p.add_argument(
         "--acquisition",
         choices=["pbgi", "logei", "logeipc"],
         default="pbgi",
         help="Acquisition used after the random initialization design.",
     )
-    p.add_argument("--seed", "--run-seed", "--run_seed", dest="seed", type=int, default=0)
+    p.add_argument(
+        "--experiment-variant",
+        "--experiment_variant",
+        "--policy-variant",
+        "--policy_variant",
+        dest="experiment_variant",
+        default=None,
+        help=(
+            "Optional compact BO variant name. Supported forms include pbgi, logei, "
+            "logeipc, pbgi_unit, pbgi_cost, and pbgi_cost_aware. If omitted, the "
+            "variant is derived from --acquisition and --cost-aware."
+        ),
+    )
+    p.add_argument("--seed", "--run-seed", "--run_seed", dest="run_seed", type=int, default=0)
     p.add_argument(
         "--n-init",
         "--n_init",
@@ -180,7 +196,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help=(
             "Use costs in acquisition ranking. For PBGI and LogEIPC this passes cost_X "
-            "to the acquisition."
+            "to the acquisition. LogEIPC is treated as cost-aware even without this flag."
         ),
     )
     p.add_argument(
@@ -191,9 +207,81 @@ def parse_args() -> argparse.Namespace:
         help="Cost scale used by PBGI, matching the bandit Gittins default.",
     )
     p.add_argument("--observation-noise", "--observation_noise", type=float, default=1e-6)
-    p.add_argument("--out-dir", "--out_dir", type=Path, default=Path("outputs") / "bo_baselines")
     p.add_argument("--dtype", choices=["float64", "float32"], default="float64")
+    p.add_argument(
+        "--log-step-metrics",
+        "--log_step_metrics",
+        dest="log_step_metrics",
+        action="store_true",
+        default=True,
+    )
+    p.add_argument(
+        "--no-log-step-metrics",
+        "--no_log_step_metrics",
+        dest="log_step_metrics",
+        action="store_false",
+    )
+    p.add_argument("--wandb-entity", "--wandb_entity", default=None)
+    p.add_argument("--wandb-project", "--wandb_project", default="GittinsBanditEval")
+    p.add_argument("--wandb-group", "--wandb_group", default=None)
+    p.add_argument("--wandb-name", "--wandb_name", default=None)
+    p.add_argument(
+        "--wandb-mode",
+        "--wandb_mode",
+        choices=["online", "offline", "disabled"],
+        default="online",
+    )
     return p.parse_args()
+
+
+def method_label_from_variant(variant: str, acquisition: str) -> str:
+    acq = str(acquisition).lower()
+    cost_mode = "cost" if ("cost" in str(variant) or acq == "logeipc") else "unit"
+    labels = {
+        ("pbgi", "unit"): "BO PBGI",
+        ("pbgi", "cost"): "BO PBGI (cost)",
+        ("logei", "unit"): "BO LogEI",
+        ("logeipc", "cost"): "BO LogEIPC",
+    }
+    return labels.get((acq, cost_mode), f"BO {variant}")
+
+
+def resolve_bo_variant(args: argparse.Namespace) -> tuple[str, bool, str, str]:
+    """Resolve acquisition, cost-awareness, compact variant name, and cost mode."""
+    raw = None if args.experiment_variant is None else str(args.experiment_variant).strip()
+    if not raw:
+        acquisition = str(args.acquisition)
+        effective_cost_aware = bool(args.cost_aware) or acquisition == "logeipc"
+        cost_mode = "cost" if effective_cost_aware else "unit"
+        variant = f"{acquisition}_cost_aware" if effective_cost_aware else acquisition
+        return acquisition, effective_cost_aware, variant, cost_mode
+
+    v = raw
+    cost_aware_from_variant: bool | None = None
+    acquisition = v
+    if v.endswith("_cost_aware"):
+        acquisition = v[: -len("_cost_aware")]
+        cost_aware_from_variant = True
+    elif v.endswith("_cost"):
+        acquisition = v[: -len("_cost")]
+        cost_aware_from_variant = True
+    elif v.endswith("_unit"):
+        acquisition = v[: -len("_unit")]
+        cost_aware_from_variant = False
+
+    if acquisition not in {"pbgi", "logei", "logeipc"}:
+        raise ValueError(f"Unsupported BO experiment variant: {raw!r}")
+
+    effective_cost_aware = (
+        bool(cost_aware_from_variant)
+        if cost_aware_from_variant is not None
+        else (bool(args.cost_aware) or acquisition == "logeipc")
+    )
+    cost_mode = "cost" if effective_cost_aware else "unit"
+    variant = v
+    args.acquisition = acquisition
+    args.cost_aware = bool(effective_cost_aware)
+    return acquisition, bool(effective_cost_aware), variant, cost_mode
 
 
 def load_bo_inputs(path: Path, *, dtype: torch.dtype) -> BoData:
@@ -334,7 +422,7 @@ def evaluate_bo_stopping_post_pull(
     cost_scaling_factor: float,
     log_lambda: float,
 ) -> tuple[bool, float | None, float]:
-    """Refit on ``selected``, score remaining candidates, return (should_stop, stop_index, best_observed)."""
+    """Refit on ``selected``, score remaining candidates, return stop flag and value."""
     if not remaining:
         train_idx = torch.tensor(selected, dtype=torch.long)
         best_observed = float(data.Y[train_idx].max().item())
@@ -372,37 +460,16 @@ def evaluate_bo_stopping_post_pull(
     return should_stop, max_remaining_acq, best_observed
 
 
-def save_line_plot(
-    path: Path,
+def run_bo_experiment(
     *,
-    x: list[float] | list[int],
-    y: list[float],
-    xlabel: str,
-    title: str,
-    label: str,
-) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    plt.figure(figsize=(8, 5))
-    if x and y:
-        plt.plot(x, y, linewidth=1.7, label=label)
-    plt.xlabel(xlabel)
-    plt.ylabel("Simple regret")
-    plt.title(title)
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(path, dpi=150)
-    plt.close()
-
-
-def run_bo(
     args: argparse.Namespace,
     data: BoData,
-    *,
     n_init: int,
     n_steps: int,
+    run: wandb.sdk.wandb_run.Run | None,
+    log_step_metrics: bool,
 ) -> dict[str, Any]:
-    rng = np.random.default_rng(int(args.seed))
+    rng = np.random.default_rng(int(args.run_seed))
     n_configs = int(data.X.shape[0])
     n_init = min(max(int(n_init), 1), n_configs)
     n_steps = min(max(int(n_steps), 0), n_configs - n_init)
@@ -417,11 +484,14 @@ def run_bo(
     recommended_arm: list[int] = []
     recommended_mean: list[float] = []
     pulled_arm: list[int] = []
+    selected_config_arm_id: list[int] = []
     observed_y: list[float] = []
     acquisition_value: list[float] = []
     selection_phase: list[str] = []
+    step_idx: list[int] = []
     iter_fit_s: list[float] = []
     iter_score_s: list[float] = []
+    iter_total_s: list[float] = []
     stop_cum_eval: int | None = None
     stop_cum_original_cost: float | None = None
     stop_index_value: float | None = None
@@ -439,40 +509,67 @@ def run_bo(
 
     def record(arm: int, acq_value: float, phase: str, fit_s: float, score_s: float) -> None:
         nonlocal total_cost
+        step_t0 = time.perf_counter()
         selected.append(int(arm))
         remaining.remove(int(arm))
         total_cost += float(data.cost[arm].item())
 
         rec_arm, rec_value = observed_incumbent(selected, data.Y)
-        x.append(int(len(selected) * data.n_examples))
+        cum_eval = int(len(selected) * data.n_examples)
+        simple_regret = float(mu_star - float(data.Y[rec_arm, 0].item()))
+        config_arm_id = int(data.arm_ids[int(arm)])
+
+        x.append(cum_eval)
         x_original_cost.append(float(total_cost))
-        regret.append(float(mu_star - float(data.Y[rec_arm, 0].item())))
+        regret.append(simple_regret)
         recommended_arm.append(int(rec_arm))
         recommended_mean.append(float(rec_value))
         pulled_arm.append(int(arm))
+        selected_config_arm_id.append(config_arm_id)
         observed_y.append(float(data.Y[arm, 0].item()))
         acquisition_value.append(float(acq_value))
         selection_phase.append(phase)
+        step_idx.append(int(len(selected)))
         iter_fit_s.append(float(fit_s))
         iter_score_s.append(float(score_s))
+        iter_total = float(fit_s) + float(score_s) + float(time.perf_counter() - step_t0)
+        iter_total_s.append(iter_total)
+
+        if run is not None and log_step_metrics:
+            run.log(
+                {
+                    "cum_eval": cum_eval,
+                    "cum_original_cost": float(total_cost),
+                    "simple_regret": simple_regret,
+                    "recommended_arm": int(rec_arm),
+                    "recommended_mean": float(rec_value),
+                    "pulled_arm": int(arm),
+                    "selected_config_arm_id": config_arm_id,
+                    "observed_y": float(data.Y[arm, 0].item()),
+                    "acquisition_value": float(acq_value),
+                    "selection_phase": phase,
+                    "step_idx": int(len(selected)),
+                    "iter_fit_s": float(fit_s),
+                    "iter_score_s": float(score_s),
+                    "iter_total_s": iter_total,
+                }
+            )
 
     for arm in init:
         arm_cost = float(data.cost[int(arm)].item())
-        if (
-            budget_original_cost is not None
-            and total_cost + arm_cost > float(budget_original_cost)
-        ):
+        if budget_original_cost is not None and total_cost + arm_cost > float(budget_original_cost):
             break
         record(int(arm), float("nan"), "random_init", 0.0, 0.0)
 
-    within_cost_budget = (
-        budget_original_cost is None or total_cost < float(budget_original_cost)
-    )
+    within_cost_budget = budget_original_cost is None or total_cost < float(budget_original_cost)
     for _ in range(max_bo_steps):
         if not within_cost_budget:
             break
         if not remaining:
             break
+        if not selected:
+            break
+
         train_idx = torch.tensor(selected, dtype=torch.long)
         train_X = data.X[train_idx]
         train_Y = data.Y[train_idx]
@@ -505,10 +602,7 @@ def run_bo(
         best_score = float(scores[best_pos].item())
         arm = int(remaining_idx[best_pos].item())
         arm_cost = float(data.cost[arm].item())
-        if (
-            budget_original_cost is not None
-            and total_cost + arm_cost > float(budget_original_cost)
-        ):
+        if budget_original_cost is not None and total_cost + arm_cost > float(budget_original_cost):
             break
         record(arm, best_score, str(args.acquisition), fit_s, score_s)
 
@@ -528,9 +622,7 @@ def run_bo(
                 stop_cum_original_cost = float(total_cost)
                 stop_index_value = float(stop_acq)
 
-        within_cost_budget = (
-            budget_original_cost is None or total_cost < float(budget_original_cost)
-        )
+        within_cost_budget = budget_original_cost is None or total_cost < float(budget_original_cost)
 
     return {
         "x": x,
@@ -539,11 +631,14 @@ def run_bo(
         "recommended_arm": recommended_arm,
         "recommended_mean": recommended_mean,
         "pulled_arm": pulled_arm,
+        "selected_config_arm_id": selected_config_arm_id,
         "observed_y": observed_y,
         "acquisition_value": acquisition_value,
         "selection_phase": selection_phase,
+        "step_idx": step_idx,
         "iter_fit_s": iter_fit_s,
         "iter_score_s": iter_score_s,
+        "iter_total_s": iter_total_s,
         "stop_cum_eval": stop_cum_eval,
         "stop_cum_original_cost": stop_cum_original_cost,
         "stop_index_value": stop_index_value,
@@ -555,12 +650,30 @@ def run_bo(
 
 
 def main() -> int:
+    wall_t0 = time.perf_counter()
     args = parse_args()
     dtype = torch.float64 if args.dtype == "float64" else torch.float32
     torch.set_default_dtype(dtype)
-    torch.manual_seed(int(args.seed))
+    torch.manual_seed(int(args.run_seed))
+
+    if not args.bo_inputs.is_file():
+        print(f"BO inputs not found: {args.bo_inputs}", file=sys.stderr)
+        return 1
 
     data = load_bo_inputs(args.bo_inputs, dtype=dtype)
+    dataset_tag = safe_token((args.dataset_tag or data.dataset).lower())
+    if data.dataset and dataset_tag != safe_token(str(data.dataset).lower()):
+        print(
+            f"Warning: --dataset-tag={dataset_tag!r} differs from BO input dataset={data.dataset!r}.",
+            file=sys.stderr,
+        )
+
+    try:
+        acquisition, effective_cost_aware, variant, cost_mode = resolve_bo_variant(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
     n_configs = int(data.X.shape[0])
     n_init_budget_cap_value = n_init_budget_cap(
         n_configs=n_configs,
@@ -576,7 +689,6 @@ def main() -> int:
     else:
         requested_n_init = int(args.n_init)
         n_init_rule = "user_set"
-    effective_cost_aware = bool(args.cost_aware) or str(args.acquisition) == "logeipc"
     total_brute_force_original_cost = float(data.cost.sum().item())
     n_init_value, n_steps_value, nominal_total_value, n_steps_rule, budget_original_cost = (
         resolve_bo_budget(
@@ -588,154 +700,148 @@ def main() -> int:
             total_brute_force_original_cost=total_brute_force_original_cost,
         )
     )
-    variant = str(args.acquisition)
-    if effective_cost_aware:
-        variant = f"{variant}_cost_aware"
 
-    out_base = (
-        args.out_dir
-        / safe_token(data.dataset or "unknown")
-        / safe_token(variant)
-        / (
-            f"{Path(args.bo_inputs).stem}__runseed{args.seed}"
-            f"__{safe_token(variant)}__ninit{n_init_value}__nsteps{n_steps_value}"
+    policy_variant = variant
+    policy_family = "bo"
+    method_label = method_label_from_variant(variant, acquisition)
+
+    matrix_seed = str(data.matrix_seed) if str(data.matrix_seed) else None
+    metadata_matrix_path = data.metadata.get("matrix_path")
+    mmlu_task = None
+    if dataset_tag == "mmlu":
+        if metadata_matrix_path:
+            mmlu_task = Path(str(metadata_matrix_path)).stem
+        else:
+            stem = Path(args.bo_inputs).stem
+            mmlu_task = stem.removesuffix("_bo_inputs").removesuffix("_bo")
+    size_bucket = None
+    if dataset_tag == "mmlu":
+        size_bucket = "small" if data.n_examples <= 150 else "medium" if data.n_examples <= 400 else "large"
+
+    matrix_seed_label = (
+        f"task{safe_token(mmlu_task)}"
+        if dataset_tag == "mmlu" and mmlu_task
+        else f"seed{matrix_seed}" if matrix_seed else "seedNA"
+    )
+    run_name = args.wandb_name or f"{dataset_tag}_{matrix_seed_label}_{variant}_runseed{args.run_seed}"
+    group = args.wandb_group or f"{dataset_tag}_bo_baseline_sweep"
+
+    run: wandb.sdk.wandb_run.Run | None = None
+    if args.wandb_mode != "disabled":
+        run = wandb.init(
+            entity=args.wandb_entity,
+            project=args.wandb_project,
+            group=group,
+            name=run_name,
+            job_type="bo_baseline",
+            mode=args.wandb_mode,
+            config={
+                **vars(args),
+                "dataset_tag_resolved": dataset_tag,
+                "matrix_seed": matrix_seed,
+                "n_examples": int(data.n_examples),
+                "n_configs": int(data.X.shape[0]),
+                "n_features": int(data.X.shape[1]),
+                "cat_dims": list(map(int, data.cat_dims)),
+                "dominant_dim": int(data.dominant_dim),
+                "init_budget_fraction": float(INIT_BUDGET_FRACTION),
+                "n_init_budget_cap": int(n_init_budget_cap_value),
+                "n_init": int(n_init_value),
+                "n_init_rule": n_init_rule,
+                "n_steps": int(n_steps_value),
+                "n_steps_rule": str(n_steps_rule),
+                "nominal_total_configs": int(nominal_total_value),
+                "total_brute_force_original_cost": total_brute_force_original_cost,
+                "budget_original_cost": budget_original_cost,
+                "cost_aware_run": bool(effective_cost_aware),
+                "cost_mode": cost_mode,
+                "policy_variant": policy_variant,
+                "policy_family": policy_family,
+                "method_label": method_label,
+                "experiment_variant": variant,
+                "mmlu_task": mmlu_task,
+                "mmlu_size_bucket": size_bucket,
+            },
         )
-    )
-    trace_path = out_base.with_name(out_base.name + "_traces.npz")
-    meta_path = out_base.with_name(out_base.name + "_meta.json")
-    fig_eval_path = out_base.with_name(out_base.name + "_regret_vs_evals.png")
-    fig_cost_path = out_base.with_name(out_base.name + "_regret_vs_cost.png")
-    trace_path.parent.mkdir(parents=True, exist_ok=True)
+        run.define_metric("cum_eval")
+        run.define_metric("simple_regret", step_metric="cum_eval")
+        run.define_metric("cum_original_cost")
 
-    sim = run_bo(args, data, n_init=n_init_value, n_steps=n_steps_value)
+    try:
+        result = run_bo_experiment(
+            args=args,
+            data=data,
+            n_init=n_init_value,
+            n_steps=n_steps_value,
+            run=run,
+            log_step_metrics=bool(args.log_step_metrics),
+        )
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        if run is not None:
+            run.finish(exit_code=1)
+        return 1
 
-    np.savez(
-        trace_path,
-        bo_inputs=str(args.bo_inputs),
-        dataset_tag=data.dataset,
-        matrix_seed=data.matrix_seed,
-        run_seed=int(args.seed),
-        experiment_variant=variant,
-        policy_variant=variant,
-        policy_family="bo",
-        acquisition=str(args.acquisition),
-        cost_aware=bool(effective_cost_aware),
-        cost_scaling_factor=float(args.cost_scaling_factor),
-        eval_budget_fraction=np.asarray(float(args.eval_budget_fraction), dtype=np.float64),
-        n_init=int(n_init_value),
-        n_init_rule=n_init_rule,
-        n_steps=int(n_steps_value),
-        n_steps_rule=str(n_steps_rule),
-        nominal_total_configs=np.asarray(sim["nominal_total_configs"], dtype=np.int32),
-        total_brute_force_original_cost=np.asarray(
-            float(sim["total_brute_force_original_cost"]), dtype=np.float64
-        ),
-        budget_original_cost=np.asarray(
-            -1.0
-            if sim["budget_original_cost"] is None
-            else float(sim["budget_original_cost"]),
-            dtype=np.float64,
-        ),
-        pbgi_stop_cum_eval=np.asarray(
-            -1 if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
-            dtype=np.int32,
-        ),
-        pbgi_stop_cum_original_cost=np.asarray(
-            -1.0
-            if sim["stop_cum_original_cost"] is None
-            else float(sim["stop_cum_original_cost"]),
-            dtype=np.float64,
-        ),
-        pbgi_stop_index_value=np.asarray(
-            np.nan if sim["stop_index_value"] is None else float(sim["stop_index_value"]),
-            dtype=np.float64,
-        ),
-        n_examples=int(data.n_examples),
-        n_configs=int(data.X.shape[0]),
-        cat_dims=np.asarray(data.cat_dims, dtype=np.int32),
-        x=np.asarray(sim["x"], dtype=np.int32),
-        x_original_cost=np.asarray(sim["x_original_cost"], dtype=np.float64),
-        regret=np.asarray(sim["regret"], dtype=np.float32),
-        recommended_arm=np.asarray(sim["recommended_arm"], dtype=np.int32),
-        recommended_mean=np.asarray(sim["recommended_mean"], dtype=np.float32),
-        pulled_arm=np.asarray(sim["pulled_arm"], dtype=np.int32),
-        observed_y=np.asarray(sim["observed_y"], dtype=np.float32),
-        acquisition_value=np.asarray(sim["acquisition_value"], dtype=np.float64),
-        selection_phase=np.asarray(sim["selection_phase"], dtype="<U32"),
-        iter_fit_s=np.asarray(sim["iter_fit_s"], dtype=np.float64),
-        iter_score_s=np.asarray(sim["iter_score_s"], dtype=np.float64),
-        cost_per_arm_original=np.asarray(data.cost.numpy(), dtype=np.float64),
-    )
+    total_wall_time_s = float(time.perf_counter() - wall_t0)
+    final_simple_regret = float(result["regret"][-1]) if result["regret"] else None
+    best_seen_regret = float(min(result["regret"])) if result["regret"] else None
+    final_cum_eval = int(result["x"][-1]) if result["x"] else None
+    final_cum_original_cost = float(result["x_original_cost"][-1]) if result["x_original_cost"] else None
+    num_evaluated_configs = len(result["pulled_arm"])
+    total_fit_s = float(np.sum(result["iter_fit_s"])) if result["iter_fit_s"] else 0.0
+    total_score_s = float(np.sum(result["iter_score_s"])) if result["iter_score_s"] else 0.0
+    total_iter_logged_s = float(np.sum(result["iter_total_s"])) if result["iter_total_s"] else 0.0
 
-    final = {
-        "final_simple_regret": float(sim["regret"][-1]) if sim["regret"] else None,
-        "best_seen_regret": float(min(sim["regret"])) if sim["regret"] else None,
-        "final_cum_eval": int(sim["x"][-1]) if sim["x"] else None,
-        "final_cum_original_cost": float(sim["x_original_cost"][-1]) if sim["x_original_cost"] else None,
-        "num_evaluated_configs": len(sim["pulled_arm"]),
-    }
-    meta = {
-        "bo_inputs": str(args.bo_inputs),
-        "dataset_tag": data.dataset,
-        "matrix_seed": data.matrix_seed,
-        "run_seed": int(args.seed),
-        "experiment_variant": variant,
-        "policy_family": "bo",
-        "acquisition": str(args.acquisition),
-        "cost_aware": bool(effective_cost_aware),
-        "cost_scaling_factor": float(args.cost_scaling_factor),
-        "eval_budget_fraction": float(args.eval_budget_fraction),
-        "dominant_dim": int(data.dominant_dim),
-        "init_budget_fraction": float(INIT_BUDGET_FRACTION),
-        "n_init_budget_cap": int(n_init_budget_cap_value),
-        "n_init": int(n_init_value),
-        "n_init_rule": n_init_rule,
-        "n_steps": int(n_steps_value),
-        "n_steps_rule": str(n_steps_rule),
-        "nominal_total_configs": int(sim["nominal_total_configs"]),
-        "total_brute_force_original_cost": float(sim["total_brute_force_original_cost"]),
-        "budget_original_cost": (
-            None if sim["budget_original_cost"] is None else float(sim["budget_original_cost"])
-        ),
-        "pbgi_stop_cum_eval": None if sim["stop_cum_eval"] is None else int(sim["stop_cum_eval"]),
-        "pbgi_stop_cum_original_cost": (
-            None if sim["stop_cum_original_cost"] is None else float(sim["stop_cum_original_cost"])
-        ),
-        "pbgi_stop_index_value": (
-            None if sim["stop_index_value"] is None else float(sim["stop_index_value"])
-        ),
-        "n_examples": int(data.n_examples),
-        "n_configs": int(data.X.shape[0]),
-        "trace": str(trace_path),
-        "figure_eval": str(fig_eval_path),
-        "figure_cost": str(fig_cost_path),
-        "final": final,
-    }
-    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    print(f"final_simple_regret={final_simple_regret}")
 
-    title = f"{variant} - {Path(args.bo_inputs).name}\nrun_seed={args.seed}"
-    save_line_plot(
-        fig_eval_path,
-        x=sim["x"],
-        y=sim["regret"],
-        xlabel="Cumulative examples evaluated",
-        title=title,
-        label=variant,
-    )
-    save_line_plot(
-        fig_cost_path,
-        x=sim["x_original_cost"],
-        y=sim["regret"],
-        xlabel="Cumulative full-evaluation cost",
-        title=title,
-        label=variant,
-    )
+    if run is not None:
+        run.summary.update(
+            {
+                "final_simple_regret": final_simple_regret,
+                "best_seen_regret": best_seen_regret,
+                "final_cum_eval": final_cum_eval,
+                "final_cum_original_cost": final_cum_original_cost,
+                "num_evaluated_configs": int(num_evaluated_configs),
+                "num_batches": int(num_evaluated_configs),
+                "total_wall_time_s": total_wall_time_s,
+                "total_fit_s": total_fit_s,
+                "total_score_s": total_score_s,
+                "total_iter_logged_s": total_iter_logged_s,
+                "matrix_seed": matrix_seed,
+                "run_seed": int(args.run_seed),
+                "experiment_variant": variant,
+                "policy_variant": policy_variant,
+                "policy_family": policy_family,
+                "acquisition": str(acquisition),
+                "cost_mode": cost_mode,
+                "cost_aware_run": bool(effective_cost_aware),
+                "cost_scaling_factor": float(args.cost_scaling_factor),
+                "eval_budget_fraction": float(args.eval_budget_fraction),
+                "dominant_dim": int(data.dominant_dim),
+                "init_budget_fraction": float(INIT_BUDGET_FRACTION),
+                "n_init_budget_cap": int(n_init_budget_cap_value),
+                "n_init": int(n_init_value),
+                "n_init_rule": n_init_rule,
+                "n_steps": int(n_steps_value),
+                "n_steps_rule": str(n_steps_rule),
+                "nominal_total_configs": int(result["nominal_total_configs"]),
+                "total_brute_force_original_cost": float(result["total_brute_force_original_cost"]),
+                "budget_original_cost": result["budget_original_cost"],
+                "n_examples": int(data.n_examples),
+                "n_configs": int(data.X.shape[0]),
+                "mmlu_task": mmlu_task,
+                "mmlu_size_bucket": size_bucket,
+                "bo_stop_cum_eval": result["stop_cum_eval"],
+                "bo_stop_cum_original_cost": result["stop_cum_original_cost"],
+                "bo_stop_index_value": result["stop_index_value"],
+                # Backward-compatible aliases with the original run_bo_baseline.py trace keys.
+                "pbgi_stop_cum_eval": result["stop_cum_eval"],
+                "pbgi_stop_cum_original_cost": result["stop_cum_original_cost"],
+                "pbgi_stop_index_value": result["stop_index_value"],
+            }
+        )
+        run.finish()
 
-    print(f"Wrote trace: {trace_path}")
-    print(f"Wrote meta: {meta_path}")
-    print(f"Wrote figure: {fig_eval_path}")
-    print(f"Wrote cost figure: {fig_cost_path}")
-    print(f"final_simple_regret={final['final_simple_regret']}")
     return 0
 
 

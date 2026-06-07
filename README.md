@@ -2,368 +2,174 @@
 
 Exploration policies on a fixed accuracy matrix (rows = models, columns = i.i.d. samples), with simple-regret curves and optional per-arm rollout plots.
 
-## Setup
+Works with any `(n_models, n_examples)` accuracy matrix under `data/`. Full experiment sweeps (many GSM8K/PIQA/MMLU matrices, seeds, and hyperparameters) are launched via `run_simple_regret_wandb.py` and YAML configs in `scripts/config/`.
 
-From the repository root, install the project (editable install exposes modules under `src/`):
+## Setup
 
 ```bash
 pip install -e .
 # or: uv sync && uv run python ...
 ```
 
-Dependencies include `banditeval`, `torch`, `matplotlib`, and `jax` (see `pyproject.toml`).
+See `pyproject.toml` for dependencies (`banditeval`, `torch`, `matplotlib`, `jax`, …).
 
-## Simple regret (recommended workflow): simulate + plot
+## Workflow
 
-For most experiments, it’s easier to **separate simulation from plotting**:
+Simulate bandit exploration, then plot — keep these steps separate:
 
-- `scripts/simulate_simple_regret.py`: runs exploration and writes a `.npz` bundle (no plotting).
-- `scripts/plot_simple_regret_results.py`: loads that `.npz` and generates the figure.
+```bash
+python scripts/simulate_simple_regret.py --matrix <matrix.npy> --out <traces.npz> [options]
+python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure.png> [--x-axis evals|original_cost]
+```
 
-Only **two algorithms** are supported here for now:
+**Algorithms** compared in the W&B sweeps:
 
-- **UCB-E**: arm **selection** uses the UCB bound; arm **recommendation** uses the row **empirical mean**.
-- **Gittins**: arm **selection** uses the Gittins **index**; arm **recommendation** uses the **posterior mean** \(E[\theta_k \mid D_t]\) under the normal–normal model.
+| Policy | Selection | Recommendation |
+|--------|-----------|----------------|
+| UCB-E | UCB bound | Empirical mean |
+| UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
+| Gittins | Gittins index | Posterior mean \(E[\theta_k \mid D_t]\) |
 
-### Example: GSM8K matrix (`gsm8k_1_samples_various_models_seed1.npy`)
+`simulate_simple_regret.py` runs UCB-E and Gittins (`--algorithms ucb gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`).
 
-Simulate and save traces:
+**Common flags** — run any script with `--help` for the full list:
+
+- `--eval-budget-fraction` — fraction of matrix cells (unit cost) or total full-evaluation cost (with `--cost-vector`).
+- `--cost-vector <.json/.npy>` — heterogeneous per-arm costs; omit for unit cost (1 per evaluation).
+- `--gittins-prior-mean` / `--gittins-prior-variance` — Gittins prior; MMLU bucket priors in [`docs/mmlu_prior_buckets.md`](docs/mmlu_prior_buckets.md).
+- `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
+
+## Examples
+
+Two representative benchmarks below. Swap paths for any other matrix in `data/`.
+
+### GSM8K (various models)
+
+Batch size 16; Gittins prior \(\mathcal{N}(0.2, 0.01)\).
+
+Bandit (unit cost):
 
 ```bash
 python scripts/simulate_simple_regret.py \
   --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
-  --out outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
-  --seed 0 \
-  --eval-budget-fraction 0.10 \
-  --batch-size 16 \
-  --gittins-batch-size 16 \
-  --gittins-prior-mean 0.2 \
-  --gittins-prior-variance 0.01
-```
+  --out outputs/bandit_traces/gsm8k_seed1.npz \
+  --seed 0 --eval-budget-fraction 0.10 \
+  --batch-size 16 --gittins-batch-size 16 \
+  --gittins-prior-mean 0.2 --gittins-prior-variance 0.01
 
-Notes:
-
-- The UCB-E and Gittins batch sizes are separate flags; for a fair comparison, set them equal (as above).
-- The simulation always tracks a cumulative-cost x-axis using a **per-arm cost vector**:
-  - omit `--cost-vector` to use a homogeneous cost vector of all ones (so cumulative cost equals cumulative evaluations), or
-  - pass `--cost-vector <.json/.npy>` for heterogeneous costs (e.g. pricing).
-- By default, Gittins uses \(\tau^2 = 1/(4B)\) with \(B=\) `--gittins-batch-size`. Override with `--gittins-obs-noise-variance`.
-- Set `--gittins-prior-mean` / `--gittins-prior-variance` to match your dataset/prior assumptions. GSM8K uses \(\mathcal{N}(0.2, 0.01)\); MMLU subjects use bucket priors from the W&B sweeps (e.g. abstract algebra: \(\mathcal{N}(0.4, 0.02)\); see `docs/mmlu_prior_buckets.md`).
-- To run only one algorithm, use `--algorithms ucb` or `--algorithms gittins`.
-
-Plot from the saved traces:
-
-```bash
 python scripts/plot_simple_regret_results.py \
-  --traces outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
-  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins.png \
-  --x-axis evals
+  --traces outputs/bandit_traces/gsm8k_seed1.npz \
+  --out outputs/figures/gsm8k_seed1.png --x-axis evals
 ```
 
-Plot versus cumulative monetary cost (when you used a pricing cost vector):
+Cost-aware bandit: add `--cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json` to simulate, then plot with `--x-axis original_cost`.
+
+BayesOpt (unit cost):
 
 ```bash
-python scripts/plot_simple_regret_results.py \
-  --traces outputs/bandit_traces/gsm8k_various_models_seed1_ucb_gittins.npz \
-  --out outputs/figures/gsm8k_various_models_seed1_ucb_gittins_cost.png \
-  --x-axis original_cost
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
+  --acquisition logei --seed 0 --out-dir outputs/bo_baselines
 ```
 
-### Bandit baselines used in comparison figures
+Cost-aware BayesOpt: use `--acquisition logeipc` (costs are in the `.npz`).
 
-The comparison figures use `scripts/simulate_simple_regret.py` for the bandit
-baselines. Both UCB-E and Gittins use post-reveal recommendations: UCB-E
-recommends by empirical mean after the newly revealed batch, and Gittins
-recommends by posterior mean after the newly revealed batch.
+### MMLU (abstract algebra)
 
-Gittins nominal stopping times (`gittins_stop_*`, `gittins_recommendation_aware_stop_*`)
-are recorded **after each batch is revealed** (post-pull Γ and posterior means).
-UCB-E and Gittins both run to the nominal budget: 10% of matrix cells without
-`--cost-vector`, or 10% of total full-evaluation cost with `--cost-vector`.
+Batch size 4; Gittins prior \(\mathcal{N}(0.4, 0.02)\) (low bucket — see prior doc for other subjects).
 
-Comparison-figure settings: GSM8K uses batch size **16** and Gittins prior
-\(\mathcal{N}(0.2, 0.01)\) (W&B `gittins_*_dataset`). MMLU abstract algebra uses
-batch size **4** and Gittins prior \(\mathcal{N}(0.4, 0.02)\) (W&B low bucket;
-`gittins_*_dataset`).
-
-GSM8K unit-cost bandit baselines:
-
-```bash
-python scripts/simulate_simple_regret.py \
-  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
-  --out outputs/bandit_traces/gsm8k_seed1_unit_costs.npz \
-  --seed 0 \
-  --eval-budget-fraction 0.10 \
-  --batch-size 16 \
-  --gittins-batch-size 16 \
-  --gittins-prior-mean 0.2 \
-  --gittins-prior-variance 0.01 \
-  --algorithms ucb gittins
-```
-
-GSM8K cost-aware bandit baselines:
-
-```bash
-python scripts/simulate_simple_regret.py \
-  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
-  --out outputs/bandit_traces/gsm8k_seed1_cost_aware.npz \
-  --seed 0 \
-  --eval-budget-fraction 0.10 \
-  --batch-size 16 \
-  --gittins-batch-size 16 \
-  --gittins-prior-mean 0.2 \
-  --gittins-prior-variance 0.01 \
-  --cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
-  --algorithms ucb gittins
-```
-
-MMLU abstract algebra unit-cost bandit baselines:
-
-(`abstract_algebra` is in the MMLU **low** bucket; W&B `gittins_*_dataset` uses
-\(\mathcal{N}(0.4, 0.02)\).)
+Bandit (unit cost):
 
 ```bash
 python scripts/simulate_simple_regret.py \
   --matrix data/MMLU_matrices/abstract_algebra.npy \
-  --out outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
-  --seed 0 \
-  --eval-budget-fraction 0.10 \
-  --batch-size 4 \
-  --gittins-batch-size 4 \
-  --gittins-prior-mean 0.4 \
-  --gittins-prior-variance 0.02 \
-  --algorithms ucb gittins
+  --out outputs/bandit_traces/mmlu_abstract_algebra.npz \
+  --seed 0 --eval-budget-fraction 0.10 \
+  --batch-size 4 --gittins-batch-size 4 \
+  --gittins-prior-mean 0.4 --gittins-prior-variance 0.02
+
+python scripts/plot_simple_regret_results.py \
+  --traces outputs/bandit_traces/mmlu_abstract_algebra.npz \
+  --out outputs/figures/mmlu_abstract_algebra.png --x-axis evals
 ```
 
-MMLU abstract algebra cost-aware bandit baselines:
+Cost-aware bandit: add `--cost-vector data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json` to simulate, then plot with `--x-axis original_cost`.
+
+BayesOpt (unit cost):
 
 ```bash
-python scripts/simulate_simple_regret.py \
-  --matrix data/MMLU_matrices/abstract_algebra.npy \
-  --out outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
-  --seed 0 \
-  --eval-budget-fraction 0.10 \
-  --batch-size 4 \
-  --gittins-batch-size 4 \
-  --gittins-prior-mean 0.4 \
-  --gittins-prior-variance 0.02 \
-  --cost-vector data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json \
-  --algorithms ucb gittins
+KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
+  --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
+  --acquisition logei --seed 0 --out-dir outputs/bo_baselines
 ```
+
+Cost-aware BayesOpt: use `--acquisition logeipc`.
+
+Combine bandit and BayesOpt traces with `plot_bandit_bo_comparison.py` (pass `--bandit-trace`, `--pbgi-trace`, `--log-bo-trace`, and `--x-axis evals` or `original_cost`).
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `simulate_simple_regret.py` | Run UCB-E / Gittins; save trace `.npz` |
+| `plot_simple_regret_results.py` | Plot regret from a trace bundle |
+| `plot_arm_eval_rollouts.py` | Per-arm batch-pull rollouts (re-simulates from traces) |
+| `run_bo_baseline.py` | BayesOpt baselines on `data/bo_inputs/*.npz` |
+| `plot_bandit_bo_comparison.py` | Overlay bandit + BO curves |
+| `convert_matrix_to_bo_inputs.py` | Build BO input files from a matrix |
+| `run_simple_regret_wandb.py` | W&B sweep launcher (UCB-E, UCB-E-LRF, Gittins) |
+| `run_bo_baseline_wandb.py` | W&B sweep launcher (BayesOpt baselines) |
+| `download_wandb_simple_regret.py` | Pull bandit W&B sweep results |
+| `download_wandb_bo_baseline.py` | Pull BayesOpt W&B sweep results |
+| `plot_wandb_simple_regret_curves.py` | Plot downloaded W&B curves (merge bandit + BO histories) |
 
 ## BayesOpt baseline
 
-BayesOpt baselines are run separately from the bandit simulators because they consume
-`data/bo_inputs/*.npz`: each row is a complete configuration, and evaluating one
-candidate reveals its aggregate `Y` and consumes the full-evaluation `cost`.
+BayesOpt runs on configuration-level inputs (`data/bo_inputs/*.npz`), not matrix cells. Each row is a full configuration (arm); evaluating one candidate reveals its aggregate score and consumes the stored cost.
 
-The runner is `scripts/run_bo_baseline.py`. It uses BoTorch `MixedSingleTaskGP`
-with all `X` columns treated as categorical dimensions, and then scores remaining
-candidates with the selected acquisition (`pbgi`, `logei`, or `logeipc`).
+**Budget.** Defaults to `eval_budget_fraction` (10% in the example sweeps) of configurations (unit cost) or total cost (cost-aware). Remaining budget after initialization goes to acquisition-driven BO steps.
 
-The default random initialization uses the number of levels in the **major
-categorical dimension**: `model_id` for GSM8K/PIQA (`11` models) and `prompt_idx`
-for MMLU (`100` prompts). Pass `--n-init` to override this default.
+**Random initialization.** Unless `--n-init` is set, the number of initial arms is
 
-The nominal evaluation budget matches the bandit simulators: by default
-`--eval-budget-fraction 0.10`, so the runner evaluates
-`floor(0.10 × n_configs)` configurations in total, counting initialization and
-BO-selected points together. Equivalently,
+\[
+n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.4 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
+\]
 
-`n_steps = max(0, floor(eval_budget_fraction × n_configs) - n_init)`.
+where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
 
-Acquisition natural stops (`pbgi_stop_*`, and the analogous LogEI/LogEIPC checks)
-are recorded **after each configuration is evaluated**: the GP is refit on the
-updated training set and remaining candidates are rescored. The run still
-continues to the nominal budget (10% of configurations unit-cost, or 10% of
-`sum(cost)` cost-aware). Pass `--n-steps` to override the unit-cost BO step count.
+At the default 10% budget:
 
-### GSM8K BayesOpt
+| Dataset | \(d\) | \(n_{\mathrm{configs}}\) | Default \(n_{\mathrm{init}}\) | BO steps after init |
+|---------|------|---------------------------|-------------------------------|---------------------|
+| GSM8K | 11 models | 122 | 5 | 7 |
+| PIQA | 11 models | 103 | 4 | 6 |
+| MMLU | 100 prompts | 1500 | 60 | 90 |
 
-Unit-cost run:
+Override with `--n-init`. See **Examples** above for GSM8K and MMLU commands.
+
+### W&B download and aggregate plots (bandit + BO)
+
+Use separate download pipelines, then merge when plotting:
 
 ```bash
-KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
-  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
-  --acquisition logei \
-  --seed 0 \
-  --out-dir outputs/bo_baselines
+# Bandit sweep
+python scripts/download_wandb_simple_regret.py \
+  --entity <entity> --project GittinsBanditEval --sweep-id <bandit_sweep> \
+  --dataset gsm8k --raw-dir outputs/wandb_downloads/gsm8k_bandit
+
+# BO sweep
+python scripts/download_wandb_bo_baseline.py \
+  --entity <entity> --project GittinsBanditEval --sweep-id <bo_sweep> \
+  --dataset gsm8k --raw-dir outputs/wandb_downloads/gsm8k_bo \
+  --expected-grid-yaml scripts/config/GSM8KBOBaselineSweep.yml
+
+# Combined aggregate plot (unit-cost example)
+python scripts/plot_wandb_simple_regret_curves.py \
+  --history-csv outputs/wandb_downloads/gsm8k_bandit/runs_history.csv.gz \
+  --history-csv outputs/wandb_downloads/gsm8k_bo/runs_history.csv.gz \
+  --dataset gsm8k --benchmark-key gsm8k_seed1 \
+  --bo-phase post_init --x-axis cum_eval \
+  --out-dir outputs/figures/wandb
 ```
 
-Cost-aware run:
-
-```bash
-KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
-  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
-  --acquisition logeipc \
-  --seed 0 \
-  --out-dir outputs/bo_baselines
-```
-
-Here `n_init` defaults to `11`. Unit-cost `n_steps` defaults to `1` (`11 + 1 = 12`
-configurations, approximately 10% of 122 configs). Cost-aware runs stop once
-cumulative cost reaches 10% of `sum(cost)`.
-
-### MMLU Abstract Algebra BayesOpt
-
-Unit-cost run:
-
-```bash
-KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
-  --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
-  --acquisition logei \
-  --seed 0 \
-  --out-dir outputs/bo_baselines
-```
-
-Cost-aware run:
-
-```bash
-KMP_DUPLICATE_LIB_OK=TRUE python scripts/run_bo_baseline.py \
-  --bo-inputs data/bo_inputs/mmlu/abstract_algebra_bo_inputs.npz \
-  --acquisition logeipc \
-  --seed 0 \
-  --out-dir outputs/bo_baselines
-```
-
-Here `n_init` defaults to `100`. Unit-cost `n_steps` defaults to `50` (`150`
-configurations, 10% of 1500 MMLU configurations). Cost-aware runs stop once
-cumulative cost reaches 10% of `sum(cost)`.
-
-### Combined bandit/BO plots
-
-Use `scripts/plot_bandit_bo_comparison.py` to combine a bandit trace from
-`scripts/simulate_simple_regret.py` with BayesOpt traces. The legend labels
-are `bandit UCB-E`, `bandit Gittins`, `BayesOpt PBGI`, and either
-`BayesOpt LogEI` (unit-cost) or `BayesOpt LogEIPC` (cost-aware). BayesOpt
-curves begin at the end of random initialization (last init point through
-acquisition-driven evaluations; x-axis is still cumulative budget from run start).
-
-MMLU examples:
-
-```bash
-python scripts/plot_bandit_bo_comparison.py \
-  --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_unit_costs.npz \
-  --pbgi-trace outputs/bo_baselines/mmlu/pbgi/abstract_algebra_bo_inputs__runseed0__pbgi__ninit100__nsteps50_traces.npz \
-  --log-bo-trace outputs/bo_baselines/mmlu/logei/abstract_algebra_bo_inputs__runseed0__logei__ninit100__nsteps50_traces.npz \
-  --log-bo-label "BayesOpt LogEI" \
-  --out outputs/figures/mmlu_abstract_algebra_unit_costs_bandit_bo_regret_vs_evals.png \
-  --title "MMLU abstract algebra unit-cost: simple regret vs cumulative examples" \
-  --x-axis evals
-
-python scripts/plot_bandit_bo_comparison.py \
-  --bandit-trace outputs/bandit_traces/mmlu_abstract_algebra_cost_aware.npz \
-  --pbgi-trace outputs/bo_baselines/mmlu/pbgi_cost_aware/abstract_algebra_bo_inputs__runseed0__pbgi_cost_aware__ninit100__nsteps50_traces.npz \
-  --log-bo-trace outputs/bo_baselines/mmlu/logeipc_cost_aware/abstract_algebra_bo_inputs__runseed0__logeipc_cost_aware__ninit100__nsteps50_traces.npz \
-  --log-bo-label "BayesOpt LogEIPC" --log-bo-color purple \
-  --out outputs/figures/mmlu_abstract_algebra_cost_aware_bandit_bo_regret_vs_full_cost.png \
-  --title "MMLU abstract algebra cost-aware: simple regret vs cumulative cost" \
-  --x-axis original_cost
-```
-
-## Simple regret simulation and figure: `plot_simple_regret.py`
-
-Simulates one or more algorithms on a masked matrix, reveals entries in batches, and plots **simple regret** \(\mu^* - \mu_{\hat{a}_t}\) versus a cumulative **budget** on the x-axis: **matrix entries evaluated** when `--gittins-cost-mode unaware` (and for UCB/LRF in that mode), or **cumulative monetary cost** (same units as the pricing JSON—e.g. USD per 1M input tokens for the bundled GSM8K configurations file) when cost-aware. Writes a PNG and, by default, a compressed trace bundle for later replotting.
-
-The script is **benchmark-agnostic** — it consumes any `(n_models, n_examples)` accuracy matrix `.npy`. Pre-registered presets (`--experiment NAME`) cover bundled benchmarks (`gsm8k_various_model`, `piqa_various_models`); pass `--matrix` / `--out` to point at any other matrix without touching `experiment_specs()`.
-
-**Basic run** (default `--experiment gsm8k_various_model` sets matrix and figure paths; see `experiment_specs()` in the script):
-
-```bash
-python scripts/plot_simple_regret.py
-```
-
-**Common overrides:**
-
-| Argument | Role |
-|----------|------|
-| `--experiment NAME` | Preset (`experiment_specs` in the script): default `--matrix` and `--out` (default `gsm8k_various_model`) |
-| `--matrix PATH` | `(n_models, n_examples)` accuracy matrix `.npy` (overrides experiment default) |
-| `--out PATH` | Output figure (PNG) (overrides experiment default) |
-| `--seed N` | RNG seed for exploration |
-| `--eval-budget-fraction F` | **Unaware:** stop after `F × (rows × cols)` evaluations. **Aware:** stop after cumulative spend reaches `F ×` (total cost to evaluate every cell: `n_examples × sum_k c_k` in pricing units) (default `0.1`) |
-| `--algorithms ucb lrf gittins` | Subset of algorithms to run (default: all three). Example: `--algorithms gittins` for a quick test |
-| `--batch-size B` | UCB-E and UCB-E-LRF: cells per batch (default `32`) |
-| `--gittins-batch-size B` | Gittins: batch size and \(B\) in \(\tau^2 = 1/(4B)\) (default `20`) |
-| `--warmup-percentage W` | UCB-E-LRF: fraction of matrix observed with **uniform random** probing before low-rank UCB (default `0.05`). The plotted LRF curve uses only the post–warm-up segment so it aligns with where that policy actually runs |
-| `--ucb-a A` | UCB exploration parameter (default `1`) |
-| `--lrf-device DEVICE` | e.g. `cpu` or `cuda` for the low-rank factorization step |
-| `--gittins-grid-points N` | Tabular DP grid size for Gittins (default `1025`) |
-| `--gittins-cost-mode unaware \| aware` | Same idea as `gittins_policy.cost_per_transition`: `unaware` uses **1.0** per arm (uniform cost); `aware` loads per-arm monetary costs. The bundled GSM8K configurations pricing JSON uses **USD per 1M input tokens**; other pricing files follow whatever unit they declare. When `aware`, the figure uses that unit on the x-axis. If UCB/LRF/RR run **alongside** cost-aware Gittins, the default is **one panel**: every curve is plotted vs cumulative cost (the trace bundle stores per-method cumulative cost; see **Bandit trace files**). **Legacy** trace bundles without `ucb_x_original_cost` / `lrf_x_original_cost`, or `--merge-ucb-lrf-from` pointing at such a file, fall back to **two panels** (evals for UCB/LRF vs cost for Gittins). |
-| `--gittins-cost C` | Ignored for cost-unaware Gittins (DP uses `1.0`); kept for compatibility |
-| `--gittins-cost-vector FILE` | Required for `aware`: per-arm costs (JSON or `.npy`; bundled GSM8K configurations file: USD per 1M input tokens). Ignored when `unaware` |
-| `--gittins-prior-mean`, `--gittins-prior-variance` | Prior \(\theta_k \sim \mathcal{N}(\mu_0, v_0)\) for Gittins (optional; see **Gittins prior** below) |
-| `--gittins-per-cell-dp` | Use one DP stage per matrix cell (slow); default is **batch-mean** DP aligned with `--gittins-batch-size` |
-| `--traces-out PATH` | Where to save `*_traces.npz` (default: same directory as `--out`, stem + `_traces.npz`) |
-| `--no-save-traces` | Skip writing trace `.npz` and `.meta.json` |
-| `--verbose` | Print each batch: distinct arms, incumbent, simple regret |
-| `--merge-ucb-lrf-from PATH` | Reuse UCB-E and UCB-E-LRF traces from an earlier `*_traces.npz` and simulate only Gittins (`--algorithms gittins` required). For **cost-aware** runs, use a merge source produced by the current script so it includes `ucb_x_original_cost` and `lrf_x_original_cost`; otherwise the figure falls back to two panels. |
-
-### Gittins prior (\(\theta_k \sim \mathcal{N}(\mu_0, v_0)\))
-
-The script resolves \((\mu_0, v_0)\) in this order:
-
-1. **CLI** — if you pass `--gittins-prior-mean` and/or `--gittins-prior-variance`, those values override everything else (omit a flag to leave that component to the next steps).
-2. **Experiment preset** — `experiment_specs()` in `plot_simple_regret.py` can set optional `gittins_prior_mean` / `gittins_prior_variance` per `--experiment` name.
-3. **Global default** — **\(\mu_0 = 0.5\)**, **\(v_0 = 0.04\)** (i.e. **N(0.5, 0.04)**) when the preset does not fix them.
-
-The **`gsm8k_various_model`** preset uses **N(0.2, 0.01)** so GSM8K runs match the intended prior without extra flags. Add other experiments by extending `ExperimentSpec` the same way.
-
-The resolved pair is stored in `*_traces.meta.json` as `gittins_prior_mean` and `gittins_prior_variance`.
-
-**Example: small budget, Gittins only (cost-unaware, default):**
-
-```bash
-python scripts/plot_simple_regret.py \
-  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
-  --out outputs/figures/simple_regret_gittins_only.png \
-  --algorithms gittins \
-  --eval-budget-fraction 0.02 \
-  --seed 0
-```
-
-**Example: cost-aware Gittins** (per-arm costs for the DP in USD per 1M input tokens; x-axis = cumulative cost in that unit). The pricing JSON below covers **all GSM8K matrices that share the same `various_models` arm configuration** — its name no longer mentions a specific samples count or seed because those don't change which arm is which:
-
-```bash
-python scripts/plot_simple_regret.py \
-  --gittins-cost-mode aware \
-  --gittins-cost-vector data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json \
-  --algorithms gittins \
-  --eval-budget-fraction 0.02
-```
-
-### Bandit trace files
-
-By default, next to the figure you get:
-
-- `<stem>_traces.npz` — arrays such as `ucb_x`, `ucb_regret`, `lrf_x_full`, `lrf_regret_full`, `lrf_x_plot`, `lrf_regret_plot`, `gittins_x`, `gittins_regret`, plus scalars `warmup_evals`, `budget_evals`, `tau_sq_gittins`. **Gittins nominal stop times** (recorded while exploration continues to the eval budget): `gittins_stop_cum_eval` / `gittins_stop_cum_original_cost` (index-induced: argmax arm complete) and `gittins_recommendation_aware_stop_cum_eval` / `gittins_recommendation_aware_stop_cum_original_cost` (first step with \(\max_{k\text{ incomplete}} \Gamma_k < \max_j \mu_j\)). Use `-1` if the rule never fired. **Cost-aware runs** also store cumulative monetary cost after each batch, aligned with the corresponding regret series: `gittins_x_original_cost`, `ucb_x_original_cost`, `lrf_x_original_cost`, `lrf_x_plot_original_cost` (post–warm-up LRF segment), and `rr_x_original_cost` if round-robin ran. These arrays are what allow a **single** cost-axis figure when multiple policies are plotted together.
-- `<stem>_traces.meta.json` — paths, hyperparameters, and a title string for reproducibility.
-
-**Replot the regret figure without resimulating:**
-
-```bash
-python scripts/replot_simple_regret_from_traces.py \
-  --traces outputs/figures/simple_regret_gsm8k_various_models_seed1_traces.npz \
-  --out outputs/figures/simple_regret_replot.png
-```
-
-## Per-arm rollout plot: `plot_arm_eval_rollouts.py`
-
-The trace `.npz` does **not** store per-arm histories. This script reads the **same** `*_traces.meta.json` beside your traces, reloads the matrix, and **re-runs** the policies with the same settings and seed so the rollout matches the original run.
-
-It produces a multi-panel figure: **x-axis** = batch iteration index \(1, \ldots, T\); **y-axis** = **cumulative batch pulls** per arm (each batch counts once per distinct arm that received at least one evaluated cell in that batch).
-
-```bash
-python scripts/plot_arm_eval_rollouts.py \
-  --traces outputs/figures/simple_regret_gsm8k_various_models_seed1_traces.npz
-```
-
-Default output: `*_arm_rollouts_batch_pulls.png` next to the traces (e.g. `simple_regret_gsm8k_various_models_seed1_arm_rollouts_batch_pulls.png`).
-
-| Argument | Role |
-|----------|------|
-| `--traces PATH` | Path to `*_traces.npz` (requires sibling `*_traces.meta.json`) |
-| `--matrix PATH` | Optional: override matrix `.npy` if the path stored in meta is wrong or the file moved |
-| `--out PATH` | Output PNG (default: derived from traces stem as above) |
-
-Gittins re-simulation can be expensive for large matrices and budgets, similar to the main plotting script.
+`benchmark_key` links bandit and BO runs (`gsm8k_seed1`, `mmlu_abstract_algebra`, …). Use `--bo-phase post_init` to drop BO random-init steps (matching `plot_bandit_bo_comparison.py`).
