@@ -149,15 +149,27 @@ class StableGittinsIndexFunction(Function):
         eps: float, 
         log_cost_X: Union[float, Tensor],
     ):
+        # Keep one scalar GI score per candidate.  BoTorch posterior outputs can
+        # have shape (n, 1), while the bisection bounds below have shape (n,).
+        # Flattening here prevents unintended PyTorch broadcasting to (n, n).
+        mean = mean.reshape(-1)
+        sigma = sigma.reshape(-1)
+        if isinstance(log_cost_X, Tensor):
+            log_cost_X = log_cost_X.reshape(-1).to(device=mean.device, dtype=mean.dtype)
+        else:
+            log_cost_X = torch.as_tensor(log_cost_X, device=mean.device, dtype=mean.dtype).expand_as(mean)
+
+        lmbda_tensor = torch.as_tensor(lmbda, device=mean.device, dtype=mean.dtype)
 
         def cost_adjusted_log_expected_improvement(best_f):
             u = _scaled_improvement(mean, sigma, best_f, maximize)
-            return _log_ei_helper(u) + sigma.log() - torch.log(torch.tensor(lmbda)) - log_cost_X
+            return _log_ei_helper(u) + sigma.log() - torch.log(lmbda_tensor) - log_cost_X
 
 
-        size = X.size(0)
-        l = bound[0] * torch.ones(size, requires_grad=False)
-        h = bound[1] * torch.ones(size, requires_grad=False)
+        size = mean.numel()
+        bound = bound.to(device=mean.device, dtype=mean.dtype).reshape(-1)
+        l = bound[0].expand(size).clone()
+        h = bound[1].expand(size).clone()
 
         if maximize:
             while torch.any(cost_adjusted_log_expected_improvement(best_f=l) < 0):

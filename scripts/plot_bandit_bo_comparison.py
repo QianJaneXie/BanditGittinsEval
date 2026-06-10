@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Plot bandit and BayesOpt PBGI simple-regret curves from trace files."""
+"""Plot bandit and BayesOpt simple-regret curves from trace files.
+
+BayesOpt curves start at the end of random initialization (last init point plus
+all acquisition-driven evaluations). The x-axis remains cumulative evals or cost
+from the start of the run.
+"""
 
 from __future__ import annotations
 
@@ -27,25 +32,111 @@ def _plot_curve(
     y_key: str,
     label: str,
     linewidth: float = 1.7,
+    color: str | None = None,
 ) -> None:
     if x_key not in z.files or y_key not in z.files:
         return
     x = np.asarray(z[x_key])
     y = np.asarray(z[y_key])
     if x.size and y.size:
-        plt.plot(x, y, linewidth=linewidth, label=label)
+        plt.plot(x, y, linewidth=linewidth, label=label, color=color)
 
 
-def _plot_stop(x: float, *, label: str, color: str) -> None:
+def _plot_stop(
+    x: float,
+    *,
+    label: str,
+    color: str,
+    linestyle: str = "--",
+) -> None:
     if x < 0:
         return
-    plt.axvline(x, color=color, linestyle="--", alpha=0.8, linewidth=1.2, label=label)
+    plt.axvline(x, color=color, linestyle=linestyle, alpha=0.8, linewidth=1.2, label=label)
+
+
+def _bo_post_init_mask(z: np.lib.npyio.NpzFile) -> np.ndarray | None:
+    if "selection_phase" not in z.files:
+        return None
+    phase = np.asarray(z["selection_phase"]).astype(str)
+    return phase != "random_init"
+
+
+def _bo_post_init_xy(z: np.lib.npyio.NpzFile, *, x_key: str) -> tuple[np.ndarray, np.ndarray]:
+    x = np.asarray(z[x_key], dtype=np.float64)
+    y = np.asarray(z["regret"], dtype=np.float64)
+    mask = _bo_post_init_mask(z)
+    if mask is None:
+        return x, y
+    if not bool(mask.any()):
+        return np.asarray([], dtype=np.float64), np.asarray([], dtype=np.float64)
+    first_bo = int(np.flatnonzero(mask)[0])
+    start = first_bo
+    if first_bo > 0:
+        phase = np.asarray(z["selection_phase"]).astype(str)
+        if phase[first_bo - 1] == "random_init":
+            start = first_bo - 1
+    return x[start:], y[start:]
+
+
+def _plot_bo_with_stop(
+    z: np.lib.npyio.NpzFile,
+    *,
+    x_key: str,
+    stop_key: str,
+    label: str,
+    curve_color: str | None,
+    stop_label: str,
+    stop_color: str,
+) -> None:
+    x, y = _bo_post_init_xy(z, x_key=x_key)
+    if x.size and y.size:
+        plt.plot(x, y, linewidth=1.7, label=label, color=curve_color)
+    stop_x = _scalar(z, stop_key)
+    if x.size and stop_x >= 0 and stop_x >= float(x[0]):
+        _plot_stop(stop_x, label=stop_label, color=stop_color)
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bandit-trace", type=Path, required=True)
-    p.add_argument("--pbgi-trace", type=Path, required=True)
+    p.add_argument(
+        "--pbgi-trace",
+        "--pbgi_trace",
+        type=Path,
+        required=True,
+        help="PBGI trace from scripts/run_bo_baseline.py.",
+    )
+    p.add_argument(
+        "--pbgi-label",
+        type=str,
+        default="BayesOpt PBGI",
+        help="Legend label for the PBGI curve.",
+    )
+    p.add_argument(
+        "--log-bo-trace",
+        "--log_bo_trace",
+        type=Path,
+        default=None,
+        help="LogEI trace (unit-cost plots) or LogEIPC trace (cost-aware plots).",
+    )
+    p.add_argument(
+        "--log-bo-label",
+        type=str,
+        default="BayesOpt Log",
+        help="Legend label for the LogEI / LogEIPC curve.",
+    )
+    p.add_argument(
+        "--pbgi-color",
+        type=str,
+        default="C2",
+        help="Matplotlib color for the PBGI curve and natural-stop marker.",
+    )
+    p.add_argument(
+        "--log-bo-color",
+        type=str,
+        default="C3",
+        help="Matplotlib color for the LogEI / LogEIPC curve and natural-stop marker.",
+    )
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("--title", type=str, required=True)
     p.add_argument(
@@ -58,29 +149,60 @@ def main() -> int:
 
     bandit = np.load(args.bandit_trace)
     pbgi = np.load(args.pbgi_trace)
+    log_bo = np.load(args.log_bo_trace) if args.log_bo_trace is not None else None
 
     if args.x_axis == "evals":
         ucb_x = "ucb_x"
         gittins_x = "gittins_x"
-        pbgi_x = "x"
+        bo_x = "x"
+        bo_stop_key = "pbgi_stop_cum_eval"
         gittins_stop_key = "gittins_stop_cum_eval"
-        pbgi_stop_key = "pbgi_stop_cum_eval"
+        gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_eval"
         xlabel = "Cumulative examples evaluated"
     else:
         ucb_x = "ucb_x_original_cost"
         gittins_x = "gittins_x_original_cost"
-        pbgi_x = "x_original_cost"
+        bo_x = "x_original_cost"
+        bo_stop_key = "pbgi_stop_cum_original_cost"
         gittins_stop_key = "gittins_stop_cum_original_cost"
-        pbgi_stop_key = "pbgi_stop_cum_original_cost"
+        gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_original_cost"
         xlabel = "Cumulative full-evaluation cost"
 
     plt.figure(figsize=(8, 5))
     _plot_curve(bandit, x_key=ucb_x, y_key="ucb_regret", label="bandit UCB-E")
     _plot_curve(bandit, x_key=gittins_x, y_key="gittins_regret", label="bandit Gittins")
-    _plot_curve(pbgi, x_key=pbgi_x, y_key="regret", label="BayesOpt PBGI")
+    if log_bo is not None:
+        _plot_bo_with_stop(
+            log_bo,
+            x_key=bo_x,
+            stop_key=bo_stop_key,
+            label=str(args.log_bo_label),
+            curve_color=args.log_bo_color,
+            stop_label=f"{args.log_bo_label} stop",
+            stop_color=str(args.log_bo_color),
+        )
+    _plot_bo_with_stop(
+        pbgi,
+        x_key=bo_x,
+        stop_key=bo_stop_key,
+        label=str(args.pbgi_label),
+        curve_color=args.pbgi_color,
+        stop_label=f"{args.pbgi_label} stop",
+        stop_color=str(args.pbgi_color),
+    )
 
-    _plot_stop(_scalar(bandit, gittins_stop_key), label="bandit Gittins stop", color="C1")
-    _plot_stop(_scalar(pbgi, pbgi_stop_key), label="BayesOpt PBGI stop", color="C2")
+    _plot_stop(
+        _scalar(bandit, gittins_stop_key),
+        label="bandit Gittins stop (index)",
+        color="C1",
+        linestyle="--",
+    )
+    _plot_stop(
+        _scalar(bandit, gittins_rec_stop_key),
+        label="bandit Gittins stop (recommendation)",
+        color="C1",
+        linestyle="-.",
+    )
 
     plt.xlabel(xlabel)
     plt.ylabel("Simple regret")

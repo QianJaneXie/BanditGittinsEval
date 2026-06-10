@@ -68,10 +68,18 @@ HISTORY_KEYS = [
     "simple_regret",
     "recommended_arm",
     "recommended_mean",
+    "pulled_arm",
+    "pulled_arms_json",
+    "pulled_rows_json",
+    "pulled_cols_json",
+    "n_pulled_arms",
+    "n_pulled_cols",
     "iter_step_s",
     "iter_total_s",
     "batch_cells",
     "step_idx",
+    "gittins_index_pulled",
+    "posterior_mean_pulled",
 ]
 
 BASE_COLUMNS = [
@@ -113,6 +121,17 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "final_cum_eval",
     "final_cum_original_cost",
     "num_batches",
+    "total_wall_time_s",
+    "git_commit",
+    "git_dirty",
+    "matrix_sha256",
+    "cost_vector_sha256",
+    "slurm_job_id",
+    "slurm_array_job_id",
+    "slurm_array_task_id",
+    "hostname",
+    "python_version",
+    "python_executable",
     "gittins_stop_cum_eval",
     "gittins_stop_cum_original_cost",
     "gittins_recommendation_aware_stop_cum_eval",
@@ -124,6 +143,8 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "lookup_memory_peak_before_mb",
     "lookup_memory_peak_after_mb",
     "lookup_memory_peak_delta_mb",
+    "peak_rss_gb",
+    "extra_peak_memory_gb",
     "lookup_roots_table_mb",
     "iter_step_mean_s",
     "iter_step_median_s",
@@ -211,9 +232,25 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
             prior_type="default",
         )
         return out
-    m = re.fullmatch(r"gittins_(unit|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
+    m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
+    if m:
+        policy = m.group(1)
+        b = int(m.group(2))
+        out.update(
+            policy_variant=f"{policy}_cost",
+            policy_family=policy,
+            cost_mode="cost",
+            batch_size=b,
+            gittins_batch_size=b,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+        return out
+    m = re.fullmatch(r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
         cost_mode = m.group(1)
+        if cost_mode == "aware":
+            cost_mode = "cost"
         b = int(m.group(2))
         out.update(
             policy_variant=f"gittins_{cost_mode}",

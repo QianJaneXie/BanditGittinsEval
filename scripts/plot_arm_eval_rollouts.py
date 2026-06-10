@@ -43,16 +43,21 @@ def simulate_with_batch_pull_snapshots(
     step_kwargs: dict,
     seed: int,
     max_evaluations: int | None = None,
+    per_arm_original_cost: torch.Tensor | None = None,
+    max_original_cost: float | None = None,
     batch_pull_snapshots: list[np.ndarray] | None = None,
 ) -> None:
     """Replay policy, recording cumulative per-arm batch pulls each iteration."""
     if max_evaluations is None:
         raise ValueError("max_evaluations is required")
+    if max_original_cost is not None and per_arm_original_cost is None:
+        raise ValueError("per_arm_original_cost is required when max_original_cost is set")
 
     torch.manual_seed(seed)
 
     obs = torch.full_like(ground_truth, float("nan"))
     evaluated = 0
+    total_original_cost = 0.0
     n_arms = int(ground_truth.shape[0])
     cumulative_batch_pulls = np.zeros(n_arms, dtype=np.int64)
 
@@ -67,12 +72,20 @@ def simulate_with_batch_pull_snapshots(
         n_batch = int(row_idx.numel())
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
+        if per_arm_original_cost is not None:
+            pulled_arm = int(row_idx[0].item())
+            total_original_cost += (
+                float(per_arm_original_cost[pulled_arm].item()) * float(n_batch)
+            )
 
         if batch_pull_snapshots is not None:
             distinct_arms = {int(x) for x in row_idx.reshape(-1).tolist()}
             for k in distinct_arms:
                 cumulative_batch_pulls[k] += 1
             batch_pull_snapshots.append(cumulative_batch_pulls.copy())
+
+        if max_original_cost is not None and total_original_cost >= float(max_original_cost):
+            break
 
 
 def _plot_arm_panel(
@@ -132,6 +145,11 @@ def main() -> int:
     ground_truth = torch.tensor(gt_np, dtype=torch.float32)
     n_arms = int(ground_truth.shape[0])
     budget_evals = int(np.asarray(z["budget_evals"]).reshape(()))
+    cost_aware = bool(np.asarray(z.get("cost_aware", np.array(False))).reshape(()))
+    budget_original_cost = float(np.asarray(z.get("budget_original_cost", -1.0)).reshape(()))
+    max_original_cost = (
+        budget_original_cost if cost_aware and budget_original_cost >= 0.0 else None
+    )
     seed = int(np.asarray(z["seed"]).reshape(()))
     ucb_batch_size = int(np.asarray(z.get("ucb_batch_size", 32)).reshape(()))
     ucb_a = float(np.asarray(z.get("ucb_a", 1.0)).reshape(()))
@@ -166,6 +184,8 @@ def main() -> int:
         step_kwargs={"a": ucb_a, "batch_size": ucb_batch_size, "return_mus": False},
         seed=seed,
         max_evaluations=budget_evals,
+        per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
+        max_original_cost=max_original_cost,
         batch_pull_snapshots=snaps,
     )
     if snaps:
@@ -219,6 +239,8 @@ def main() -> int:
         step_kwargs={},
         seed=seed,
         max_evaluations=budget_evals,
+        per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
+        max_original_cost=max_original_cost,
         batch_pull_snapshots=snaps,
     )
     if snaps:
@@ -236,7 +258,16 @@ def main() -> int:
     for ax, (title, xs, counts) in zip(axes, panels):
         _plot_arm_panel(ax, xs, counts, title, colors)
 
-    budget_line = f"seed={seed}, budget={budget_evals} evals, {n_arms} arms (re-run from traces)"
+    if max_original_cost is not None:
+        budget_line = (
+            f"seed={seed}, budget={max_original_cost:.4g} original cost, "
+            f"{n_arms} arms (re-simulated from trace hyperparameters)"
+        )
+    else:
+        budget_line = (
+            f"seed={seed}, budget={budget_evals} evals, "
+            f"{n_arms} arms (re-simulated from trace hyperparameters)"
+        )
     fig.suptitle(
         f"Per-arm cumulative batch pulls vs iteration — {matrix_path.name}\n{budget_line}",
         fontsize=11,
