@@ -192,17 +192,4 @@ wandb/
 
 .mplconfig/
 
-# W&B local metadata / artifact cache
-.wandb/
-wandb-cache/
-wandb_cache/
-wandb_artifacts/
-artifacts/
-
-# Local downloaded/generated experiment artifacts
-*.csv.gz
-*.pkl
-*.pickle
-
-# Private cluster scripts with personal account/email/path info
-slurm/*.sh
+gittinsbandit_env/

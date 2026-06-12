@@ -1,0 +1,75 @@
+program: scripts/run_simple_regret_wandb.py
+name: MMLUSimpleRegretPilot_small_lrf
+method: grid
+command:
+- ${env}
+- /scratch/yh6415/conda_envs/gittins/bin/python
+- ${program}
+- --log-step-metrics
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  dataset_tag:
+    value: mmlu
+  matrix:
+    values:
+    - data/MMLU_matrices/abstract_algebra.npy
+    - data/MMLU_matrices/business_ethics.npy
+    - data/MMLU_matrices/college_chemistry.npy
+    - data/MMLU_matrices/college_computer_science.npy
+    - data/MMLU_matrices/college_mathematics.npy
+    - data/MMLU_matrices/computer_security.npy
+    - data/MMLU_matrices/global_facts.npy
+    - data/MMLU_matrices/high_school_computer_science.npy
+    - data/MMLU_matrices/medical_genetics.npy
+    - data/MMLU_matrices/us_foreign_policy.npy
+    - data/MMLU_matrices/college_physics.npy
+    - data/MMLU_matrices/management.npy
+    - data/MMLU_matrices/jurisprudence.npy
+    - data/MMLU_matrices/public_relations.npy
+    - data/MMLU_matrices/machine_learning.npy
+    - data/MMLU_matrices/econometrics.npy
+    - data/MMLU_matrices/international_law.npy
+    - data/MMLU_matrices/formal_logic.npy
+    - data/MMLU_matrices/human_sexuality.npy
+    - data/MMLU_matrices/anatomy.npy
+    - data/MMLU_matrices/college_biology.npy
+    - data/MMLU_matrices/electrical_engineering.npy
+  run_seed:
+    values:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+  experiment_variant:
+    values:
+    - lrf_B32
+    - lrf_cost_B32
+  eval_budget_fraction:
+    value: 0.1
+  cost_vector:
+    value: data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: mmlu_simple_regret_pilot_small_lrf
+  wandb_mode:
+    value: online

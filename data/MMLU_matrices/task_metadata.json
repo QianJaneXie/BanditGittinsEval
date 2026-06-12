@@ -1,1703 +1,232 @@
 {
-  "source": {
-    "manifest": "data/MMLU_matrices/manifest.json",
-    "prior_buckets_md": "docs/mmlu_prior_buckets.md",
-    "rowmean_priors": "data_analysis/mmlu_rowmean_priors.txt"
-  },
-  "size_bucket_rule": {
-    "small": {
-      "n_questions_max": 150,
-      "batches": [
-        4,
-        8,
-        16
-      ]
-    },
-    "medium": {
-      "n_questions_min": 151,
-      "n_questions_max": 400,
-      "batches": [
-        8,
-        16,
-        32
-      ]
-    },
-    "large": {
-      "n_questions_min": 401,
-      "batches": [
-        16,
-        32,
-        64
-      ]
-    }
-  },
-  "dataset_prior_bucket_params": {
-    "low": {
-      "mu": 0.4,
-      "var": 0.02
-    },
-    "medium": {
-      "mu": 0.6,
-      "var": 0.02
-    },
-    "high": {
-      "mu": 0.75,
-      "var": 0.02
-    }
-  },
   "tasks": [
     {
-      "task": "high_school_psychology",
-      "matrix_file": "data/MMLU_matrices/high_school_psychology.npy",
-      "shape": [
-        1500,
-        545
-      ],
-      "n_questions": 545,
-      "size_bucket": "large",
-      "recommended_batches": [
-        16,
-        32,
-        64
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.781946,
-        "sigma0": 0.079605,
-        "v0": 0.00633697
-      }
-    },
-    {
-      "task": "professional_psychology",
-      "matrix_file": "data/MMLU_matrices/professional_psychology.npy",
-      "shape": [
-        1500,
-        612
-      ],
-      "n_questions": 612,
-      "size_bucket": "large",
-      "recommended_batches": [
-        16,
-        32,
-        64
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.612307,
-        "sigma0": 0.113279,
-        "v0": 0.01283219
-      }
-    },
-    {
-      "task": "miscellaneous",
-      "matrix_file": "data/MMLU_matrices/miscellaneous.npy",
-      "shape": [
-        1500,
-        783
-      ],
-      "n_questions": 783,
-      "size_bucket": "large",
-      "recommended_batches": [
-        16,
-        32,
-        64
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.771799,
-        "sigma0": 0.077806,
-        "v0": 0.00605376
-      }
-    },
-    {
-      "task": "moral_scenarios",
-      "matrix_file": "data/MMLU_matrices/moral_scenarios.npy",
-      "shape": [
-        1500,
-        895
-      ],
-      "n_questions": 895,
-      "size_bucket": "large",
-      "recommended_batches": [
-        16,
-        32,
-        64
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.349141,
-        "sigma0": 0.124815,
-        "v0": 0.01557881
-      }
-    },
-    {
-      "task": "professional_law",
-      "matrix_file": "data/MMLU_matrices/professional_law.npy",
-      "shape": [
-        1500,
-        1534
-      ],
-      "n_questions": 1534,
-      "size_bucket": "large",
-      "recommended_batches": [
-        16,
-        32,
-        64
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.441585,
-        "sigma0": 0.069831,
-        "v0": 0.00487642
-      }
-    },
-    {
-      "task": "high_school_physics",
-      "matrix_file": "data/MMLU_matrices/high_school_physics.npy",
-      "shape": [
-        1500,
-        151
-      ],
-      "n_questions": 151,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.369912,
-        "sigma0": 0.085599,
-        "v0": 0.00732723
-      }
-    },
-    {
-      "task": "astronomy",
-      "matrix_file": "data/MMLU_matrices/astronomy.npy",
-      "shape": [
-        1500,
-        152
-      ],
-      "n_questions": 152,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.643566,
-        "sigma0": 0.114545,
-        "v0": 0.01312066
-      }
-    },
-    {
-      "task": "logical_fallacies",
-      "matrix_file": "data/MMLU_matrices/logical_fallacies.npy",
-      "shape": [
-        1500,
-        163
-      ],
-      "n_questions": 163,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.710536,
-        "sigma0": 0.076465,
-        "v0": 0.00584691
-      }
-    },
-    {
-      "task": "high_school_european_history",
-      "matrix_file": "data/MMLU_matrices/high_school_european_history.npy",
-      "shape": [
-        1500,
-        165
-      ],
-      "n_questions": 165,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.677273,
-        "sigma0": 0.177082,
-        "v0": 0.03135817
-      }
-    },
-    {
-      "task": "virology",
-      "matrix_file": "data/MMLU_matrices/virology.npy",
-      "shape": [
-        1500,
-        166
-      ],
-      "n_questions": 166,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.49961,
-        "sigma0": 0.042747,
-        "v0": 0.00182733
-      }
-    },
-    {
-      "task": "world_religions",
-      "matrix_file": "data/MMLU_matrices/world_religions.npy",
-      "shape": [
-        1500,
-        171
-      ],
-      "n_questions": 171,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.761657,
-        "sigma0": 0.092996,
-        "v0": 0.00864823
-      }
-    },
-    {
-      "task": "college_medicine",
-      "matrix_file": "data/MMLU_matrices/college_medicine.npy",
-      "shape": [
-        1500,
-        173
-      ],
-      "n_questions": 173,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.570705,
-        "sigma0": 0.10911,
-        "v0": 0.01190494
-      }
-    },
-    {
-      "task": "high_school_government_and_politics",
-      "matrix_file": "data/MMLU_matrices/high_school_government_and_politics.npy",
-      "shape": [
-        1500,
-        193
-      ],
-      "n_questions": 193,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.823036,
-        "sigma0": 0.099995,
-        "v0": 0.00999893
-      }
-    },
-    {
-      "task": "high_school_geography",
-      "matrix_file": "data/MMLU_matrices/high_school_geography.npy",
-      "shape": [
-        1500,
-        198
-      ],
-      "n_questions": 198,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.759444,
-        "sigma0": 0.084325,
-        "v0": 0.00711063
-      }
-    },
-    {
-      "task": "sociology",
-      "matrix_file": "data/MMLU_matrices/sociology.npy",
-      "shape": [
-        1500,
-        201
-      ],
-      "n_questions": 201,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.792587,
-        "sigma0": 0.074132,
-        "v0": 0.00549552
-      }
-    },
-    {
-      "task": "high_school_chemistry",
-      "matrix_file": "data/MMLU_matrices/high_school_chemistry.npy",
-      "shape": [
-        1500,
-        203
-      ],
-      "n_questions": 203,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.468384,
-        "sigma0": 0.095691,
-        "v0": 0.00915669
-      }
-    },
-    {
-      "task": "high_school_us_history",
-      "matrix_file": "data/MMLU_matrices/high_school_us_history.npy",
-      "shape": [
-        1500,
-        204
-      ],
-      "n_questions": 204,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.767719,
-        "sigma0": 0.083291,
-        "v0": 0.00693742
-      }
-    },
-    {
-      "task": "high_school_statistics",
-      "matrix_file": "data/MMLU_matrices/high_school_statistics.npy",
-      "shape": [
-        1500,
-        216
-      ],
-      "n_questions": 216,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.474019,
-        "sigma0": 0.113519,
-        "v0": 0.01288663
-      }
-    },
-    {
-      "task": "human_aging",
-      "matrix_file": "data/MMLU_matrices/human_aging.npy",
-      "shape": [
-        1500,
-        223
-      ],
-      "n_questions": 223,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.66287,
-        "sigma0": 0.079195,
-        "v0": 0.00627177
-      }
-    },
-    {
-      "task": "marketing",
-      "matrix_file": "data/MMLU_matrices/marketing.npy",
-      "shape": [
-        1500,
-        234
-      ],
-      "n_questions": 234,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.845359,
-        "sigma0": 0.051565,
-        "v0": 0.00265896
-      }
-    },
-    {
-      "task": "conceptual_physics",
-      "matrix_file": "data/MMLU_matrices/conceptual_physics.npy",
-      "shape": [
-        1500,
-        235
-      ],
-      "n_questions": 235,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.523157,
-        "sigma0": 0.108915,
-        "v0": 0.01186245
-      }
-    },
-    {
-      "task": "high_school_world_history",
-      "matrix_file": "data/MMLU_matrices/high_school_world_history.npy",
-      "shape": [
-        1500,
-        237
-      ],
-      "n_questions": 237,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.773634,
-        "sigma0": 0.078111,
-        "v0": 0.0061013
-      }
-    },
-    {
-      "task": "high_school_microeconomics",
-      "matrix_file": "data/MMLU_matrices/high_school_microeconomics.npy",
-      "shape": [
-        1500,
-        238
-      ],
-      "n_questions": 238,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.628838,
-        "sigma0": 0.124879,
-        "v0": 0.01559477
-      }
-    },
-    {
-      "task": "security_studies",
-      "matrix_file": "data/MMLU_matrices/security_studies.npy",
-      "shape": [
-        1500,
-        245
-      ],
-      "n_questions": 245,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.691358,
-        "sigma0": 0.06345,
-        "v0": 0.00402586
-      }
-    },
-    {
-      "task": "clinical_knowledge",
-      "matrix_file": "data/MMLU_matrices/clinical_knowledge.npy",
-      "shape": [
-        1500,
-        265
-      ],
-      "n_questions": 265,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.640921,
-        "sigma0": 0.102664,
-        "v0": 0.01053991
-      }
+      "task": "abstract_algebra",
+      "dataset_prior_bucket": "low"
     },
     {
       "task": "high_school_mathematics",
-      "matrix_file": "data/MMLU_matrices/high_school_mathematics.npy",
-      "shape": [
-        1500,
-        270
-      ],
-      "n_questions": 270,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.344185,
-        "sigma0": 0.076244,
-        "v0": 0.00581322
-      }
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "professional_medicine",
-      "matrix_file": "data/MMLU_matrices/professional_medicine.npy",
-      "shape": [
-        1500,
-        272
-      ],
-      "n_questions": 272,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.615882,
-        "sigma0": 0.145761,
-        "v0": 0.02124636
-      }
-    },
-    {
-      "task": "professional_accounting",
-      "matrix_file": "data/MMLU_matrices/professional_accounting.npy",
-      "shape": [
-        1500,
-        282
-      ],
-      "n_questions": 282,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.44865,
-        "sigma0": 0.077114,
-        "v0": 0.00594655
-      }
-    },
-    {
-      "task": "nutrition",
-      "matrix_file": "data/MMLU_matrices/nutrition.npy",
-      "shape": [
-        1500,
-        306
-      ],
-      "n_questions": 306,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.677891,
-        "sigma0": 0.104745,
-        "v0": 0.01097144
-      }
-    },
-    {
-      "task": "high_school_biology",
-      "matrix_file": "data/MMLU_matrices/high_school_biology.npy",
-      "shape": [
-        1500,
-        310
-      ],
-      "n_questions": 310,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.709622,
-        "sigma0": 0.10346,
-        "v0": 0.01070407
-      }
-    },
-    {
-      "task": "philosophy",
-      "matrix_file": "data/MMLU_matrices/philosophy.npy",
-      "shape": [
-        1500,
-        311
-      ],
-      "n_questions": 311,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.656894,
-        "sigma0": 0.088019,
-        "v0": 0.00774728
-      }
-    },
-    {
-      "task": "prehistory",
-      "matrix_file": "data/MMLU_matrices/prehistory.npy",
-      "shape": [
-        1500,
-        324
-      ],
-      "n_questions": 324,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.683597,
-        "sigma0": 0.106687,
-        "v0": 0.01138217
-      }
-    },
-    {
-      "task": "moral_disputes",
-      "matrix_file": "data/MMLU_matrices/moral_disputes.npy",
-      "shape": [
-        1500,
-        346
-      ],
-      "n_questions": 346,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.672813,
-        "sigma0": 0.079122,
-        "v0": 0.00626023
-      }
-    },
-    {
-      "task": "elementary_mathematics",
-      "matrix_file": "data/MMLU_matrices/elementary_mathematics.npy",
-      "shape": [
-        1500,
-        378
-      ],
-      "n_questions": 378,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.412275,
-        "sigma0": 0.094315,
-        "v0": 0.00889526
-      }
-    },
-    {
-      "task": "high_school_macroeconomics",
-      "matrix_file": "data/MMLU_matrices/high_school_macroeconomics.npy",
-      "shape": [
-        1500,
-        390
-      ],
-      "n_questions": 390,
-      "size_bucket": "medium",
-      "recommended_batches": [
-        8,
-        16,
-        32
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.586238,
-        "sigma0": 0.102246,
-        "v0": 0.01045416
-      }
-    },
-    {
-      "task": "abstract_algebra",
-      "matrix_file": "data/MMLU_matrices/abstract_algebra.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.300307,
-        "sigma0": 0.078506,
-        "v0": 0.00616324
-      }
-    },
-    {
-      "task": "business_ethics",
-      "matrix_file": "data/MMLU_matrices/business_ethics.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.62386,
-        "sigma0": 0.096786,
-        "v0": 0.00936757
-      }
-    },
-    {
-      "task": "college_chemistry",
-      "matrix_file": "data/MMLU_matrices/college_chemistry.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.418187,
-        "sigma0": 0.06773,
-        "v0": 0.00458738
-      }
-    },
-    {
-      "task": "college_computer_science",
-      "matrix_file": "data/MMLU_matrices/college_computer_science.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.48468,
-        "sigma0": 0.082413,
-        "v0": 0.00679196
-      }
+      "task": "moral_scenarios",
+      "dataset_prior_bucket": "low"
     },
     {
       "task": "college_mathematics",
-      "matrix_file": "data/MMLU_matrices/college_mathematics.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.349187,
-        "sigma0": 0.068706,
-        "v0": 0.00472054
-      }
-    },
-    {
-      "task": "computer_security",
-      "matrix_file": "data/MMLU_matrices/computer_security.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.7176,
-        "sigma0": 0.06849,
-        "v0": 0.00469091
-      }
-    },
-    {
-      "task": "global_facts",
-      "matrix_file": "data/MMLU_matrices/global_facts.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.375473,
-        "sigma0": 0.078195,
-        "v0": 0.00611451
-      }
-    },
-    {
-      "task": "high_school_computer_science",
-      "matrix_file": "data/MMLU_matrices/high_school_computer_science.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.62644,
-        "sigma0": 0.11856,
-        "v0": 0.01405639
-      }
-    },
-    {
-      "task": "medical_genetics",
-      "matrix_file": "data/MMLU_matrices/medical_genetics.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.671067,
-        "sigma0": 0.126324,
-        "v0": 0.0159578
-      }
-    },
-    {
-      "task": "us_foreign_policy",
-      "matrix_file": "data/MMLU_matrices/us_foreign_policy.npy",
-      "shape": [
-        1500,
-        100
-      ],
-      "n_questions": 100,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.823593,
-        "sigma0": 0.070173,
-        "v0": 0.00492422
-      }
+      "dataset_prior_bucket": "low"
     },
     {
       "task": "college_physics",
-      "matrix_file": "data/MMLU_matrices/college_physics.npy",
-      "shape": [
-        1500,
-        102
-      ],
-      "n_questions": 102,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.36917,
-        "sigma0": 0.077155,
-        "v0": 0.00595289
-      }
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "management",
-      "matrix_file": "data/MMLU_matrices/management.npy",
-      "shape": [
-        1500,
-        103
-      ],
-      "n_questions": 103,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.751489,
-        "sigma0": 0.078192,
-        "v0": 0.00611399
-      }
+      "task": "high_school_physics",
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "jurisprudence",
-      "matrix_file": "data/MMLU_matrices/jurisprudence.npy",
-      "shape": [
-        1500,
-        108
-      ],
-      "n_questions": 108,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.706957,
-        "sigma0": 0.086516,
-        "v0": 0.00748502
-      }
-    },
-    {
-      "task": "public_relations",
-      "matrix_file": "data/MMLU_matrices/public_relations.npy",
-      "shape": [
-        1500,
-        110
-      ],
-      "n_questions": 110,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.648964,
-        "sigma0": 0.058201,
-        "v0": 0.00338741
-      }
-    },
-    {
-      "task": "machine_learning",
-      "matrix_file": "data/MMLU_matrices/machine_learning.npy",
-      "shape": [
-        1500,
-        112
-      ],
-      "n_questions": 112,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.458298,
-        "sigma0": 0.106395,
-        "v0": 0.0113199
-      }
-    },
-    {
-      "task": "econometrics",
-      "matrix_file": "data/MMLU_matrices/econometrics.npy",
-      "shape": [
-        1500,
-        114
-      ],
-      "n_questions": 114,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.441257,
-        "sigma0": 0.119746,
-        "v0": 0.01433913
-      }
-    },
-    {
-      "task": "international_law",
-      "matrix_file": "data/MMLU_matrices/international_law.npy",
-      "shape": [
-        1500,
-        121
-      ],
-      "n_questions": 121,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.761179,
-        "sigma0": 0.075692,
-        "v0": 0.00572922
-      }
+      "task": "global_facts",
+      "dataset_prior_bucket": "low"
     },
     {
       "task": "formal_logic",
-      "matrix_file": "data/MMLU_matrices/formal_logic.npy",
-      "shape": [
-        1500,
-        126
-      ],
-      "n_questions": 126,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "low",
-      "dataset_prior_params": {
-        "mu": 0.4,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.399132,
-        "sigma0": 0.091696,
-        "v0": 0.00840813
-      }
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "human_sexuality",
-      "matrix_file": "data/MMLU_matrices/human_sexuality.npy",
-      "shape": [
-        1500,
-        131
-      ],
-      "n_questions": 131,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "high",
-      "dataset_prior_params": {
-        "mu": 0.75,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.712382,
-        "sigma0": 0.094255,
-        "v0": 0.00888408
-      }
+      "task": "elementary_mathematics",
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "anatomy",
-      "matrix_file": "data/MMLU_matrices/anatomy.npy",
-      "shape": [
-        1500,
-        135
-      ],
-      "n_questions": 135,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.585951,
-        "sigma0": 0.087139,
-        "v0": 0.00759312
-      }
+      "task": "college_chemistry",
+      "dataset_prior_bucket": "low"
     },
     {
-      "task": "college_biology",
-      "matrix_file": "data/MMLU_matrices/college_biology.npy",
-      "shape": [
-        1500,
-        144
-      ],
-      "n_questions": 144,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.663444,
-        "sigma0": 0.138868,
-        "v0": 0.01928437
-      }
+      "task": "econometrics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "professional_law",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "professional_accounting",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "machine_learning",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_chemistry",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "high_school_statistics",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "college_computer_science",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "virology",
+      "dataset_prior_bucket": "low"
+    },
+    {
+      "task": "conceptual_physics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "college_medicine",
+      "dataset_prior_bucket": "medium"
     },
     {
       "task": "electrical_engineering",
-      "matrix_file": "data/MMLU_matrices/electrical_engineering.npy",
-      "shape": [
-        1500,
-        145
-      ],
-      "n_questions": 145,
-      "size_bucket": "small",
-      "recommended_batches": [
-        4,
-        8,
-        16
-      ],
-      "default_prior": {
-        "mu": 0.5,
-        "var": 0.04
-      },
-      "dataset_prior_bucket": "medium",
-      "dataset_prior_params": {
-        "mu": 0.6,
-        "var": 0.02
-      },
-      "rowmean_prior_estimate": {
-        "mu0": 0.576363,
-        "sigma0": 0.075188,
-        "v0": 0.00565318
-      }
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "anatomy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_macroeconomics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "professional_psychology",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "professional_medicine",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "business_ethics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_computer_science",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_microeconomics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "clinical_knowledge",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "astronomy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "public_relations",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "philosophy",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "human_aging",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "college_biology",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "medical_genetics",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "moral_disputes",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "high_school_european_history",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "nutrition",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "prehistory",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "security_studies",
+      "dataset_prior_bucket": "medium"
+    },
+    {
+      "task": "jurisprudence",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_biology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "logical_fallacies",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "human_sexuality",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "computer_security",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "management",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_geography",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "international_law",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "world_religions",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_us_history",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "miscellaneous",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_world_history",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_psychology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "sociology",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "high_school_government_and_politics",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "us_foreign_policy",
+      "dataset_prior_bucket": "high"
+    },
+    {
+      "task": "marketing",
+      "dataset_prior_bucket": "high"
     }
   ]
 }

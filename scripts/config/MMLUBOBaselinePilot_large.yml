@@ -1,0 +1,64 @@
+program: scripts/run_bo_baseline_wandb.py
+name: MMLUBOBaselinePilot_large
+method: grid
+command:
+- ${env}
+- /scratch/yh6415/conda_envs/gittins/bin/python
+- ${program}
+- --log-step-metrics
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  dataset_tag:
+    value: mmlu
+  bo_inputs:
+    values:
+    - data/bo_inputs/mmlu/high_school_psychology_bo_inputs.npz
+    - data/bo_inputs/mmlu/professional_psychology_bo_inputs.npz
+    - data/bo_inputs/mmlu/miscellaneous_bo_inputs.npz
+    - data/bo_inputs/mmlu/moral_scenarios_bo_inputs.npz
+    - data/bo_inputs/mmlu/professional_law_bo_inputs.npz
+  run_seed:
+    values:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+  experiment_variant:
+    values:
+    - pbgi_unit
+    - pbgi_cost
+    - logei_unit
+    - logeipc_cost
+  eval_budget_fraction:
+    value: 0.1
+  cost_scaling_factor:
+    value: 0.0001
+  observation_noise:
+    value: 1.0e-06
+  dtype:
+    value: float64
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: mmlu_bo_baseline_pilot_large
+  wandb_mode:
+    value: online

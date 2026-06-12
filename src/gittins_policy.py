@@ -59,6 +59,226 @@ def _normal_normal_posterior(
     return float(mu_t), float(v_t)
 
 
+def _gittins_posterior_means(
+    observed_matrix: torch.Tensor,
+    *,
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq_cell: float,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return (mus_posterior, counts, completely_sensed_mask) for the current mask."""
+    counts = (~observed_matrix.isnan()).sum(1)
+    completely_sensed_mask = counts == observed_matrix.shape[1]
+    obs_sum_per_arm = torch.nan_to_num(observed_matrix, nan=0.0).sum(dim=1).to(torch.float64)
+    t = counts.to(torch.float64)
+    v0 = float(prior_variance)
+    prec = (1.0 / v0) + (t / float(tau_sq_cell))
+    v_t = 1.0 / prec
+    mus_posterior = (
+        v_t * (float(prior_mean) / v0 + obs_sum_per_arm / float(tau_sq_cell))
+    ).to(torch.float32)
+    mus_posterior[counts == 0] = float(prior_mean)
+    return mus_posterior, counts, completely_sensed_mask
+
+
+def _refresh_gittins_scores(
+    observed_matrix: torch.Tensor,
+    *,
+    scores: torch.Tensor,
+    mus_posterior: torch.Tensor,
+    completely_sensed_mask: torch.Tensor,
+    counts: torch.Tensor,
+    arm_indices: Iterable[int],
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq_cell: float,
+    obs_noise_variance: float,
+    arm_costs: torch.Tensor,
+    n_gittins_grid_points: int,
+    batch_size: int,
+    use_batch_mean_gittins_dp: bool,
+    force_per_observation_dp: bool,
+    roots_lookup_table: torch.Tensor,
+    n_examples: int,
+) -> None:
+    """Update ``scores[k]`` in place for listed arms; complete arms use posterior mean."""
+    n_pts = int(n_gittins_grid_points)
+    for k in arm_indices:
+        if completely_sensed_mask[k]:
+            continue
+        t = int(counts[k].item())
+        row = observed_matrix[k]
+        valid = ~torch.isnan(row)
+        obs_sum = float(row[valid].sum().item())
+        mu_kt, v_kt = _normal_normal_posterior(
+            prior_mean, prior_variance, tau_sq_cell, obs_sum, t
+        )
+        c_k = float(arm_costs[k].item())
+        if use_batch_mean_gittins_dp:
+            remaining = n_examples - t
+            bsz_plan = int(batch_size)
+            n_batch = (remaining + bsz_plan - 1) // bsz_plan
+            transition_costs_bm = jnp.full((n_batch,), c_k, dtype=jnp.float32)
+            g = compute_gittins_shrinking_posterior_walk_batch_mean(
+                jnp.float32(mu_kt),
+                jnp.float32(v_kt),
+                jnp.float32(obs_noise_variance),
+                int(batch_size),
+                remaining,
+                transition_costs_bm,
+                jnp.uint32(n_pts),
+            )
+        elif force_per_observation_dp:
+            transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
+            g = compute_gittins_shrinking_posterior_walk_per_observation(
+                jnp.uint32(t),
+                jnp.float32(mu_kt),
+                jnp.float32(prior_variance),
+                jnp.float32(tau_sq_cell),
+                transition_costs_per_cell,
+                jnp.uint32(n_pts),
+            )
+        else:
+            k_roots = min(k, roots_lookup_table.shape[0] - 1)
+            root_t = float(roots_lookup_table[k_roots, t].item())
+            g = jnp.float32(mu_kt) - jnp.float32(root_t)
+        scores[k] = float(jax.device_get(g))
+
+    for k in range(observed_matrix.shape[0]):
+        if completely_sensed_mask[k]:
+            scores[k] = float(mus_posterior[k].item())
+
+
+def evaluate_gittins_stopping_rules(
+    scores: torch.Tensor,
+    mus_posterior: torch.Tensor,
+    completely_sensed_mask: torch.Tensor,
+    *,
+    sim_cum_eval: int,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+) -> None:
+    """Record nominal stop times using **post-pull** Γ and μ (``sim_cum_eval`` after the batch)."""
+    if (
+        recommendation_aware_stop_cum_eval_holder is not None
+        and len(recommendation_aware_stop_cum_eval_holder) == 1
+        and recommendation_aware_stop_cum_eval_holder[0] is None
+    ):
+        incomplete = ~completely_sensed_mask
+        if bool(incomplete.any()):
+            max_gittins = float(scores[incomplete].max().item())
+            max_mu = float(mus_posterior.max().item())
+            if max_gittins < max_mu:
+                recommendation_aware_stop_cum_eval_holder[0] = int(sim_cum_eval)
+
+    best_method_index = int(torch.argmax(scores).item())
+    if (
+        bool(completely_sensed_mask[best_method_index])
+        and natural_stop_cum_eval_holder is not None
+        and len(natural_stop_cum_eval_holder) == 1
+        and natural_stop_cum_eval_holder[0] is None
+    ):
+        natural_stop_cum_eval_holder[0] = int(sim_cum_eval)
+
+
+def gittins_post_pull_update(
+    observed_matrix: torch.Tensor,
+    *,
+    cached_scores: torch.Tensor,
+    recompute_arms: Iterable[int],
+    prior_mean: float = 0.5,
+    prior_variance: float = 0.04,
+    obs_noise_variance: float = 0.01,
+    cost_per_transition: float | Sequence[float] | torch.Tensor = 1.0,
+    cost_scaling_factor: float = 1e-4,
+    n_gittins_grid_points: int = 2**10 + 1,
+    batch_size: int = 32,
+    use_batch_mean_gittins_dp: bool = False,
+    force_per_observation_dp: bool = False,
+    roots_lookup_table: torch.Tensor | None = None,
+    batch_observation_model: bool = False,
+    sim_cum_eval: int,
+    natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """After a batch is revealed: refresh μ, update Γ, and evaluate stopping rules."""
+    observed_matrix = observed_matrix.detach()
+    if observed_matrix.device.type != "cpu":
+        observed_matrix = observed_matrix.cpu()
+
+    m_methods, n_examples = observed_matrix.shape
+    tau_sq = float(obs_noise_variance)
+    tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
+    mus_posterior, counts, completely_sensed_mask = _gittins_posterior_means(
+        observed_matrix,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
+    )
+
+    if cached_scores.shape != (m_methods,) or cached_scores.dtype != torch.float32:
+        raise ValueError(
+            "cached_scores must have shape (n_arms,) and dtype float32; "
+            f"got shape {tuple(cached_scores.shape)}, dtype {cached_scores.dtype}"
+        )
+    scores = cached_scores
+    arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
+    n_pts = int(n_gittins_grid_points)
+
+    if roots_lookup_table is None:
+        if use_batch_mean_gittins_dp or force_per_observation_dp:
+            raise ValueError("roots_lookup_table is required for post-pull Gittins refresh")
+        transition_stds = transition_stds_shrinking_gaussian_posterior(
+            jnp.float32(prior_variance), jnp.float32(tau_sq_cell), n_examples
+        )
+        if arm_costs.numel() == 1 or torch.allclose(arm_costs, arm_costs[0].expand_as(arm_costs)):
+            costs_per_arm = jnp.float32(float(arm_costs[0].item()))
+            roots_all = compute_roots_lookup_table(
+                transition_stds=transition_stds,
+                costs_per_arm=costs_per_arm,
+                n_points=n_pts,
+            )
+        else:
+            arm_costs_jnp = jnp.asarray(arm_costs.numpy(), dtype=jnp.float32)
+            roots_all = compute_roots_lookup_table(
+                transition_stds=transition_stds,
+                costs_per_arm=arm_costs_jnp,
+                n_points=n_pts,
+            )
+        roots_lookup_table = torch.from_numpy(jax.device_get(roots_all)).to(torch.float32)
+    if roots_lookup_table.ndim == 1:
+        roots_lookup_table = roots_lookup_table.unsqueeze(0)
+
+    _refresh_gittins_scores(
+        observed_matrix,
+        scores=scores,
+        mus_posterior=mus_posterior,
+        completely_sensed_mask=completely_sensed_mask,
+        counts=counts,
+        arm_indices=recompute_arms,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
+        obs_noise_variance=tau_sq,
+        arm_costs=arm_costs,
+        n_gittins_grid_points=n_gittins_grid_points,
+        batch_size=batch_size,
+        use_batch_mean_gittins_dp=use_batch_mean_gittins_dp,
+        force_per_observation_dp=force_per_observation_dp,
+        roots_lookup_table=roots_lookup_table,
+        n_examples=n_examples,
+    )
+    evaluate_gittins_stopping_rules(
+        scores,
+        mus_posterior,
+        completely_sensed_mask,
+        sim_cum_eval=int(sim_cum_eval),
+        natural_stop_cum_eval_holder=natural_stop_cum_eval_holder,
+        recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_cum_eval_holder,
+    )
+    return mus_posterior, scores
+
+
 def gittins_index_exploration(
     observed_matrix: torch.Tensor,
     *,
@@ -76,6 +296,7 @@ def gittins_index_exploration(
     allow_early_stop: bool = True,
     sim_cum_eval: int | None = None,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
     roots_lookup_table: torch.Tensor | None = None,
     force_per_observation_dp: bool = False,
     batch_observation_model: bool = False,
@@ -91,14 +312,13 @@ def gittins_index_exploration(
     chosen B). Default prior on each θ_k is N(0.5, 0.04); override with ``prior_mean`` and
     ``prior_variance``.
 
-    **Stopping / continuation:** Fully observed arms use their row **empirical mean** as the
-    comparison score. If the arm with the largest score is already fully observed and
+    **Stopping / continuation:** Nominal stop times are **not** recorded here. After each batch is
+    revealed, call ``gittins_post_pull_update`` (post-pull Γ and μ, then stopping rules). This
+    function only **chooses the next pull** from pre-pull Γ. Fully observed arms use posterior mean
+    as their score. If the arm with the largest pre-pull score is already fully observed and
     ``allow_early_stop`` is True (default), return ``None`` so the simulator can end the run. If
     ``allow_early_stop`` is False, fall back to the best **incomplete** arm so exploration can
-    continue (e.g. to a fixed eval budget). When ``natural_stop_cum_eval_holder`` is a one-element
-    list ``[None]`` and ``sim_cum_eval`` is the simulator’s cumulative eval count **before** this
-    step, the first time the argmax arm is fully observed we set ``holder[0]`` to that count (for
-    plotting a nominal stopping time).
+    continue (e.g. to a fixed eval budget).
 
     **Batch semantics (not a mixed pair minibatch):** compute the Gittins index for every arm,
     choose the single arm k* with the largest index, then evaluate **that method** on
@@ -146,10 +366,10 @@ def gittins_index_exploration(
             that learning advances once per simulator batch instead of once per matrix cell.
         allow_early_stop: If False, never return ``None`` just because the top-scoring arm is
             complete; instead pull the best arm that still has free cells.
-        sim_cum_eval: Optional cumulative evaluations revealed **before** this policy step; used
-            with ``natural_stop_cum_eval_holder`` only.
-        natural_stop_cum_eval_holder: Optional ``[None]`` list; first natural-stop step sets
-            ``holder[0]`` to ``sim_cum_eval``.
+        sim_cum_eval: Unused for stopping (kept for API compatibility). Use
+            ``gittins_post_pull_update`` with post-pull ``sim_cum_eval`` for stop-time holders.
+        natural_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
+        recommendation_aware_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
 
     Returns:
         ``batch`` with shape ``(2, b)``, ``b ≤ batch_size``, or ``None`` if every cell is observed.
@@ -168,26 +388,14 @@ def gittins_index_exploration(
         observed_matrix = observed_matrix.cpu()
 
     m_methods, n_examples = observed_matrix.shape
-    counts = (~observed_matrix.isnan()).sum(1)
-    completely_sensed_mask = counts == n_examples
-    # Posterior mean for recommendation: μ_{k,t} = E[θ_k | D_t] under the normal–normal model
-    # (Gaussian prior on θ_k, Gaussian observation noise).
-    obs_sum_per_arm = torch.nan_to_num(observed_matrix, nan=0.0).sum(dim=1).to(torch.float64)
-    t = counts.to(torch.float64)
-    v0 = float(prior_variance)
     tau_sq = float(obs_noise_variance)
-    # If observations are treated as *batch means* with variance `tau_sq = 1/(4B)`, then an
-    # equivalent per-cell model uses variance `tau_sq_cell = tau_sq * B` for each revealed entry.
-    # This keeps the posterior and the per-cell random-walk DP consistent while still letting the
-    # caller specify the batch-mean noise level.
     tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
-    prec = (1.0 / v0) + (t / tau_sq_cell)
-    v_t = 1.0 / prec
-    mus_posterior = (v_t * (float(prior_mean) / v0 + obs_sum_per_arm / tau_sq_cell)).to(
-        torch.float32
+    mus_posterior, counts, completely_sensed_mask = _gittins_posterior_means(
+        observed_matrix,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
     )
-    # Handle t=0 explicitly to avoid any 0/0 corner cases if user passes weird params.
-    mus_posterior[counts == 0] = float(prior_mean)
 
     if completely_sensed_mask.sum() == m_methods:
         return (None, mus_posterior) if return_mus else None
@@ -242,63 +450,28 @@ def gittins_index_exploration(
         else:
             arm_indices = sorted({int(k) for k in recompute_arms if 0 <= int(k) < m_methods})
 
-    for k in arm_indices:
-        if completely_sensed_mask[k]:
-            continue
-        t = int(counts[k].item())
-        row = observed_matrix[k]
-        valid = ~torch.isnan(row)
-        obs_sum = float(row[valid].sum().item())
-        mu_kt, v_kt = _normal_normal_posterior(
-            prior_mean, prior_variance, tau_sq_cell, obs_sum, t
-        )
-        c_k = float(arm_costs[k].item())
-        if use_batch_mean_gittins_dp:
-            remaining = n_examples - t
-            bsz_plan = int(batch_size)
-            n_batch = (remaining + bsz_plan - 1) // bsz_plan
-            transition_costs_bm = jnp.full((n_batch,), c_k, dtype=jnp.float32)
-            g = compute_gittins_shrinking_posterior_walk_batch_mean(
-                jnp.float32(mu_kt),
-                jnp.float32(v_kt),
-                jnp.float32(obs_noise_variance),
-                int(batch_size),
-                remaining,
-                transition_costs_bm,
-                jnp.uint32(n_pts),
-            )
-        else:
-            if force_per_observation_dp:
-                transition_costs_per_cell = jnp.full((n_examples,), c_k, dtype=jnp.float32)
-                g = compute_gittins_shrinking_posterior_walk_per_observation(
-                    jnp.uint32(t),
-                    jnp.float32(mu_kt),
-                    jnp.float32(prior_variance),
-                    jnp.float32(tau_sq_cell),
-                    transition_costs_per_cell,
-                    jnp.uint32(n_pts),
-                )
-            else:
-                # Always-lookup path: index = mu_t - root[t].
-                k_roots = min(k, roots_lookup_table.shape[0] - 1)
-                root_t = float(roots_lookup_table[k_roots, t].item())
-                g = jnp.float32(mu_kt) - jnp.float32(root_t)
-        scores[k] = float(jax.device_get(g))
-
-    for k in range(m_methods):
-        if completely_sensed_mask[k]:
-            scores[k] = float(mus_posterior[k].item())
+    _refresh_gittins_scores(
+        observed_matrix,
+        scores=scores,
+        mus_posterior=mus_posterior,
+        completely_sensed_mask=completely_sensed_mask,
+        counts=counts,
+        arm_indices=arm_indices,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
+        obs_noise_variance=tau_sq,
+        arm_costs=arm_costs,
+        n_gittins_grid_points=n_gittins_grid_points,
+        batch_size=batch_size,
+        use_batch_mean_gittins_dp=use_batch_mean_gittins_dp,
+        force_per_observation_dp=force_per_observation_dp,
+        roots_lookup_table=roots_lookup_table,
+        n_examples=n_examples,
+    )
 
     best_method_index = int(torch.argmax(scores).item())
     winner_complete = bool(completely_sensed_mask[best_method_index])
-    if (
-        winner_complete
-        and natural_stop_cum_eval_holder is not None
-        and len(natural_stop_cum_eval_holder) == 1
-        and natural_stop_cum_eval_holder[0] is None
-        and sim_cum_eval is not None
-    ):
-        natural_stop_cum_eval_holder[0] = int(sim_cum_eval)
 
     if winner_complete:
         if allow_early_stop:
