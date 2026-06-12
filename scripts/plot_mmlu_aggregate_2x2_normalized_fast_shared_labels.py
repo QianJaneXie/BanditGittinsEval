@@ -74,6 +74,30 @@ STYLE_BY_KIND = {
         "linewidth": 3.0,
         "zorder": 3,
     },
+    "bo_pbgi_unit": {
+        "color": "tab:red",
+        "label": "BO-PBGI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_logei_unit": {
+        "color": "tab:brown",
+        "label": "BO-LogEI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_pbgi_cost": {
+        "color": "tab:red",
+        "label": "BO-PBGI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_logeipc_cost": {
+        "color": "tab:brown",
+        "label": "BO-LogEI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
 }
 
 LINEWIDTH_MULT = 3.6
@@ -87,20 +111,31 @@ def safe_token(s: str) -> str:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
 
-    p.add_argument("--small-root", type=Path, default=Path(r"outputs\wandb_downloads\mmlu_small_merged_finished_with_stopping"))
-    p.add_argument("--large-root", type=Path, default=Path(r"outputs\wandb_downloads\mmlu_large_merged_finished_nostop"))
+    p.add_argument("--small-root", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_small"))
+    p.add_argument("--large-root", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_large"))
+    p.add_argument("--small-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\mmlu_small_lrf"))
+    p.add_argument("--large-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\mmlu_large_lrf"))
+    p.add_argument("--small-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_small_bo"))
+    p.add_argument("--large-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_large_bo"))
     p.add_argument("--task-metadata", type=Path, default=Path(r"data\MMLU_matrices\task_metadata.json"))
     p.add_argument("--out-dir", type=Path, default=Path(r"outputs\wandb_plots\paper_figures"))
 
     p.add_argument("--cost-mode", choices=["unit", "aware"], default="unit")
     p.add_argument("--small-batch-size", type=int, default=4)
     p.add_argument("--large-batch-size", type=int, default=16)
+    p.add_argument("--small-lrf-batch-size", type=int, default=32)
+    p.add_argument("--large-lrf-batch-size", type=int, default=32)
     p.add_argument("--scale", default="1e-4")
+    p.add_argument("--bo-pbgi-unit-variant", default="pbgi_unit")
+    p.add_argument("--bo-logei-unit-variant", default="logei_unit")
+    p.add_argument("--bo-pbgi-cost-variant", default="pbgi_cost")
+    p.add_argument("--bo-logei-cost-variant", default="logeipc_cost")
     p.add_argument("--grid-size", type=int, default=350)
 
     p.add_argument("--normalize-x", choices=["final", "none"], default="final")
-    p.add_argument("--normalize-y", choices=["initial", "none"], default="initial")
+    p.add_argument("--normalize-y", choices=["initial", "task_initial", "none"], default="initial")
     p.add_argument("--y-eps", type=float, default=1e-8)
+    p.add_argument("--preserve-lrf-bo-x-offset", action="store_true", default=False)
 
     p.add_argument("--range", choices=["stderr", "std", "none"], default="stderr")
     p.add_argument("--stderr-k", type=float, default=2.0)
@@ -129,7 +164,7 @@ def parse_args() -> argparse.Namespace:
     # plot_gsm8k_piqa_paper_grid.py (matching the paper's main figure).
     p.add_argument("--shared-x-label-size", type=float, default=81)
     p.add_argument("--shared-y-label-size", type=float, default=81)
-    p.add_argument("--shared-x-label-y", type=float, default=0.150)
+    p.add_argument("--shared-x-label-y", type=float, default=0.205)
     p.add_argument("--shared-y-label-x", type=float, default=-0.023)
 
     p.add_argument("--y-limit-min", type=float, default=None)
@@ -140,13 +175,17 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--left", type=float, default=0.045)
     p.add_argument("--right", type=float, default=0.995)
     p.add_argument("--top", type=float, default=0.765)
-    p.add_argument("--bottom", type=float, default=0.205)
+    p.add_argument("--bottom", type=float, default=0.325)
     p.add_argument("--wspace", type=float, default=0.24)
     p.add_argument("--hspace", type=float, default=0.34)
 
-    p.add_argument("--legend-y", type=float, default=0.040)
-    p.add_argument("--legend-ncol", type=int, default=5)
+    p.add_argument("--legend-y", type=float, default=0.020)
+    p.add_argument("--legend-ncol", type=int, default=4)
     p.add_argument("--dpi", type=int, default=260)
+    p.add_argument("--show-stopping", action="store_true", default=True)
+    p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
+    p.add_argument("--stop-alpha", type=float, default=0.12)
+    p.add_argument("--stop-line-alpha", type=float, default=0.72)
 
     return p.parse_args()
 
@@ -186,9 +225,31 @@ def tasks_for_group(metadata: dict[str, dict[str, Any]], *, size_bucket: str, di
     target_prior = diff_to_prior[difficulty]
     tasks = []
     for task, row in metadata.items():
-        if str(row.get("size_bucket")) == size_bucket and str(row.get("dataset_prior_bucket")) == target_prior:
+        row_size = row.get("size_bucket")
+        size_ok = row_size is None or str(row_size) == size_bucket
+        if size_ok and str(row.get("dataset_prior_bucket")) == target_prior:
             tasks.append(task)
     return sorted(tasks)
+
+
+def tasks_for_size(root: Path) -> set[str]:
+    summary_path = root / "runs_summary.csv"
+    if not summary_path.is_file():
+        return set()
+    header = pd.read_csv(summary_path, nrows=0)
+    usecols = [c for c in ["mmlu_task", "matrix_task"] if c in header.columns]
+    if not usecols:
+        return set()
+    df = pd.read_csv(summary_path, usecols=usecols)
+    tasks: set[str] = set()
+    for col in usecols:
+        tasks.update(normalize_task_name(str(v)) for v in df[col].dropna().unique() if str(v) and str(v) != "nan")
+    return tasks
+
+
+def normalize_task_name(value: str) -> str:
+    s = str(value).replace("\\", "/").rstrip("/")
+    return s.split("/")[-1]
 
 
 def task_history_path(root: Path, task: str) -> Path:
@@ -202,13 +263,27 @@ def task_history_path(root: Path, task: str) -> Path:
     raise FileNotFoundError(f"Missing runs_history.csv.gz for task={task} under {root}")
 
 
-def variant_names(batch_size: int, scale: str, cost_mode: str) -> dict[str, str]:
+def variant_names(
+    batch_size: int,
+    lrf_batch_size: int,
+    scale: str,
+    cost_mode: str,
+    args: argparse.Namespace,
+) -> dict[str, str]:
     b = int(batch_size)
+    lb = int(lrf_batch_size)
+    token = "cost" if cost_mode in {"aware", "cost"} else "unit"
     return {
-        "gittins_data": f"gittins_{cost_mode}_B{b}_scale{scale}_dataset",
-        "gittins_default": f"gittins_{cost_mode}_B{b}_scale{scale}_default",
-        "ucb": f"ucb_B{b}",
-        "lrf": f"lrf_B{b}",
+        "gittins_data": f"gittins_{token}_B{b}_scale{scale}_dataset",
+        "gittins_default": f"gittins_{token}_B{b}_scale{scale}_default",
+        "ucb": f"ucb_cost_B{b}" if token == "cost" else f"ucb_B{b}",
+        "lrf": f"lrf_cost_B{lb}" if token == "cost" else f"lrf_B{lb}",
+        "bo_pbgi_cost" if token == "cost" else "bo_pbgi_unit": str(
+            args.bo_pbgi_cost_variant if token == "cost" else args.bo_pbgi_unit_variant
+        ),
+        "bo_logeipc_cost" if token == "cost" else "bo_logei_unit": str(
+            args.bo_logei_cost_variant if token == "cost" else args.bo_logei_unit_variant
+        ),
     }
 
 
@@ -218,11 +293,19 @@ def header_columns(path: Path) -> list[str]:
     return header.split(",")
 
 
-def read_filtered_history(path: Path, wanted_variants: set[str], x_col: str) -> pd.DataFrame:
+def read_filtered_history(
+    path: Path,
+    wanted_variants: set[str],
+    x_col: str,
+    tasks: set[str] | None = None,
+) -> pd.DataFrame:
     available = set(header_columns(path))
     desired = [
         "run_id",
         "experiment_variant",
+        "mmlu_task",
+        "matrix_task",
+        "benchmark_key",
         x_col,
         "cum_eval",
         "simple_regret",
@@ -237,20 +320,152 @@ def read_filtered_history(path: Path, wanted_variants: set[str], x_col: str) -> 
     if missing:
         raise ValueError(f"{path} missing required columns: {missing}")
 
-    df = pd.read_csv(
+    chunks = []
+    for chunk in pd.read_csv(
         path,
         compression="gzip",
         usecols=usecols,
         low_memory=True,
-    )
-    df = df[df["experiment_variant"].astype(str).isin(wanted_variants)].copy()
-    if df.empty:
-        return df
+        chunksize=250_000,
+    ):
+        chunk = chunk[chunk["experiment_variant"].astype(str).isin(wanted_variants)].copy()
+        if chunk.empty:
+            continue
+        if tasks:
+            task_mask = pd.Series(False, index=chunk.index)
+            if "mmlu_task" in chunk.columns:
+                task_mask |= chunk["mmlu_task"].astype(str).map(normalize_task_name).isin(tasks)
+            if "matrix_task" in chunk.columns:
+                task_mask |= chunk["matrix_task"].astype(str).map(normalize_task_name).isin(tasks)
+            if "benchmark_key" in chunk.columns:
+                bkey = chunk["benchmark_key"].astype(str)
+                for task in tasks:
+                    task_mask |= bkey.str.endswith("_" + task) | bkey.str.contains(task, regex=False)
+            chunk = chunk[task_mask].copy()
+        if not chunk.empty:
+            chunks.append(chunk)
 
+    if not chunks:
+        return pd.DataFrame(columns=usecols)
+
+    df = pd.concat(chunks, ignore_index=True, sort=False)
     for col in [x_col, "cum_eval", "simple_regret", "n_cells", "warmup_percentage", "eval_budget_fraction"]:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
+
+def task_column(df: pd.DataFrame, known_tasks: list[str] | None = None) -> pd.Series:
+    if "mmlu_task" in df.columns:
+        s = df["mmlu_task"].astype(str).map(normalize_task_name)
+        if ((s != "nan") & (s != "")).any():
+            return s
+    if "matrix_task" in df.columns:
+        s = df["matrix_task"].astype(str).map(normalize_task_name)
+        if ((s != "nan") & (s != "")).any():
+            return s
+    if "benchmark_key" in df.columns:
+        keys = df["benchmark_key"].astype(str)
+        if known_tasks:
+            out = pd.Series([""] * len(df), index=df.index, dtype=str)
+            for task in known_tasks:
+                mask = keys.str.endswith("_" + task) | keys.str.contains(task, regex=False)
+                out[mask] = task
+            return out
+        return keys
+    return pd.Series([""] * len(df), index=df.index, dtype=str)
+
+
+def read_stopping_summary(root: Path, wanted_variants: set[str], tasks: set[str]) -> pd.DataFrame:
+    path = root / "runs_summary.csv"
+    if not path.is_file():
+        return pd.DataFrame()
+    header = pd.read_csv(path, nrows=0)
+    desired = [
+        "run_id",
+        "experiment_variant",
+        "mmlu_task",
+        "matrix_task",
+        "gittins_stop_cum_eval",
+        "gittins_stop_cum_original_cost",
+        "bo_stop_cum_eval",
+        "bo_stop_cum_original_cost",
+    ]
+    usecols = [c for c in desired if c in header.columns]
+    if "run_id" not in usecols or "experiment_variant" not in usecols:
+        return pd.DataFrame()
+    df = pd.read_csv(path, usecols=usecols)
+    df = df[df["experiment_variant"].astype(str).isin(wanted_variants)].copy()
+    if tasks:
+        task_mask = pd.Series(False, index=df.index)
+        if "mmlu_task" in df.columns:
+            task_mask |= df["mmlu_task"].astype(str).map(normalize_task_name).isin(tasks)
+        if "matrix_task" in df.columns:
+            task_mask |= df["matrix_task"].astype(str).map(normalize_task_name).isin(tasks)
+        df = df[task_mask].copy()
+    for col in [
+        "gittins_stop_cum_eval",
+        "gittins_stop_cum_original_cost",
+        "bo_stop_cum_eval",
+        "bo_stop_cum_original_cost",
+    ]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
+
+
+def stop_column_for_kind(kind: str, x_col: str) -> str | None:
+    if kind.startswith("bo_"):
+        return "bo_stop_cum_eval" if x_col == "cum_eval" else "bo_stop_cum_original_cost"
+    if kind in {"gittins_data", "gittins_default"}:
+        return "gittins_stop_cum_eval" if x_col == "cum_eval" else "gittins_stop_cum_original_cost"
+    return None
+
+
+def collect_normalized_stops(
+    df: pd.DataFrame,
+    stop_df: pd.DataFrame,
+    *,
+    kind: str,
+    variant: str,
+    x_col: str,
+    normalize_x: str,
+    preserve_lrf_bo_x_offset: bool,
+) -> list[float]:
+    stop_col = stop_column_for_kind(kind, x_col)
+    if stop_col is None or stop_df.empty or stop_col not in stop_df.columns:
+        return []
+    sdf = stop_df[stop_df["experiment_variant"].astype(str) == variant].copy()
+    if sdf.empty:
+        return []
+    stops_by_run = pd.to_numeric(sdf.set_index("run_id")[stop_col], errors="coerce")
+    out: list[float] = []
+    for run_id, rg in df.groupby("run_id", sort=False):
+        if run_id not in stops_by_run.index:
+            continue
+        stop = float(stops_by_run.loc[run_id])
+        if not np.isfinite(stop):
+            continue
+        xs = pd.to_numeric(rg[x_col], errors="coerce").dropna()
+        if xs.empty:
+            continue
+        if normalize_x == "final":
+            x1 = float(xs.max())
+            if preserve_lrf_bo_x_offset and kind.startswith("bo_"):
+                denom = x1
+                if not np.isfinite(denom) or denom <= 0:
+                    continue
+                stop = stop / denom
+            else:
+                x0 = float(xs.min())
+                denom = x1 - x0
+                if not np.isfinite(denom) or denom <= 0:
+                    continue
+                stop = (stop - x0) / denom
+            if stop < 0.0 or stop > 1.0:
+                continue
+        out.append(float(stop))
+    return out
 
 
 def first_finite(g: pd.DataFrame, col: str, default: float = float("nan")) -> float:
@@ -279,10 +494,13 @@ def lrf_warmup_evals(g: pd.DataFrame, default_warmup: float) -> float:
 def run_to_curve(
     rg: pd.DataFrame,
     *,
+    kind: str,
     x_col: str,
     y_col: str,
     normalize_x: str,
     normalize_y: str,
+    y_denominator: float | None,
+    preserve_lrf_bo_x_offset: bool,
     y_eps: float,
     grid_size: int,
 ) -> np.ndarray | None:
@@ -300,15 +518,19 @@ def run_to_curve(
     if len(x) < 2:
         return None
 
-    # Normalized x: first logged point -> 0, last logged point -> 1.
-    # This avoids empty slices at x=0 because W&B history starts after the first batch.
     if normalize_x == "final":
-        x0 = float(x[0])
         x1 = float(x[-1])
-        denom = x1 - x0
-        if not np.isfinite(denom) or denom <= 0:
-            return None
-        x = (x - x0) / denom
+        if preserve_lrf_bo_x_offset and (kind == "lrf" or kind.startswith("bo_")):
+            denom = x1
+            if not np.isfinite(denom) or denom <= 0:
+                return None
+            x = x / denom
+        else:
+            x0 = float(x[0])
+            denom = x1 - x0
+            if not np.isfinite(denom) or denom <= 0:
+                return None
+            x = (x - x0) / denom
     elif normalize_x == "none":
         # For raw mode, we still interpolate over each run's own x range. Not recommended for aggregate.
         pass
@@ -317,6 +539,11 @@ def run_to_curve(
 
     if normalize_y == "initial":
         denom_y = max(abs(float(y[0])), float(y_eps))
+        y = y / denom_y
+    elif normalize_y == "task_initial":
+        if y_denominator is None or not np.isfinite(float(y_denominator)):
+            return None
+        denom_y = max(abs(float(y_denominator)), float(y_eps))
         y = y / denom_y
     elif normalize_y == "none":
         pass
@@ -349,6 +576,8 @@ def collect_curves_from_task_df(
     grid_size: int,
     normalize_x: str,
     normalize_y: str,
+    y_denominator: float | None,
+    preserve_lrf_bo_x_offset: bool,
     y_eps: float,
     crop_lrf_warmup: bool,
     warmup_default: float,
@@ -375,16 +604,53 @@ def collect_curves_from_task_df(
         for _, rg in sub.groupby("run_id", sort=False):
             yi = run_to_curve(
                 rg,
+                kind=kind,
                 x_col=x_col,
                 y_col="simple_regret",
                 normalize_x=normalize_x,
                 normalize_y=normalize_y,
+                y_denominator=y_denominator,
+                preserve_lrf_bo_x_offset=preserve_lrf_bo_x_offset,
                 y_eps=y_eps,
                 grid_size=grid_size,
             )
             if yi is not None:
                 out[kind].append(yi)
 
+    return out
+
+
+def compute_task_initial_denominators(
+    loaded_sources: list[dict[str, Any]],
+    *,
+    x_col: str,
+    y_eps: float,
+) -> dict[str, float]:
+    """One denominator per task, shared by all policies/runs for that task."""
+    per_task: dict[str, list[float]] = {}
+    for source in loaded_sources:
+        df = source.get("df")
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            continue
+        needed = {"_mmlu_task_for_plot", "run_id", "experiment_variant", x_col, "simple_regret"}
+        if not needed.issubset(df.columns):
+            continue
+        for (_, _, run_id), rg in df.groupby(["_mmlu_task_for_plot", "experiment_variant", "run_id"], sort=False):
+            if pd.isna(run_id):
+                continue
+            gg = rg[[x_col, "simple_regret"]].dropna().sort_values(x_col)
+            if gg.empty:
+                continue
+            task = str(rg["_mmlu_task_for_plot"].iloc[0])
+            val = float(gg["simple_regret"].iloc[0])
+            if np.isfinite(val):
+                per_task.setdefault(task, []).append(abs(val))
+
+    out: dict[str, float] = {}
+    for task, vals in per_task.items():
+        finite = [float(v) for v in vals if np.isfinite(v) and float(v) > float(y_eps)]
+        if finite:
+            out[task] = max(finite)
     return out
 
 
@@ -420,6 +686,7 @@ def plot_group_panel(
     *,
     group_label: str,
     root: Path,
+    method_roots: dict[str, Path],
     tasks: list[str],
     method_variants: dict[str, str],
     x_col: str,
@@ -429,48 +696,127 @@ def plot_group_panel(
 ) -> None:
     group_curves: dict[str, list[np.ndarray]] = {kind: [] for kind in method_variants}
     group_task_counts: dict[str, int] = {kind: 0 for kind in method_variants}
+    group_stops: dict[str, list[float]] = {kind: [] for kind in method_variants}
 
     print(f"\n[{group_label}] reading {len(tasks)} tasks from {root}")
     t_group = time.time()
 
-    wanted_variants = set(method_variants.values())
+    task_set = set(tasks)
 
-    for i, task in enumerate(tasks, 1):
+    source_to_kinds: dict[Path, list[str]] = {}
+    for kind in method_variants:
+        source_to_kinds.setdefault(Path(method_roots.get(kind, root)), []).append(kind)
+
+    loaded_sources: list[dict[str, Any]] = []
+    for source_root, kinds in source_to_kinds.items():
+        wanted = {method_variants[kind] for kind in kinds}
         t0 = time.time()
         try:
-            path = task_history_path(root, task)
-            df = read_filtered_history(path, wanted_variants, x_col=x_col)
+            merged_path = source_root / "runs_history.csv.gz"
+            stop_df = read_stopping_summary(source_root, wanted, task_set)
+            if merged_path.is_file():
+                df = read_filtered_history(merged_path, wanted, x_col=x_col, tasks=task_set)
+            else:
+                pieces = []
+                for task in tasks:
+                    path = task_history_path(source_root, task)
+                    pieces.append(read_filtered_history(path, wanted, x_col=x_col))
+                df = pd.concat(pieces, ignore_index=True, sort=False) if pieces else pd.DataFrame()
         except Exception as e:
-            print(f"  {i:02d}/{len(tasks):02d} {task}: SKIP ({e})")
+            labels = ", ".join(STYLE_BY_KIND[kind]["label"] for kind in kinds)
+            print(f"  {labels}: SKIP ({e})")
             continue
 
-        task_curves = collect_curves_from_task_df(
-            df,
-            method_variants=method_variants,
-            x_col=x_col,
-            grid_size=int(args.grid_size),
-            normalize_x=args.normalize_x,
-            normalize_y=args.normalize_y,
-            y_eps=float(args.y_eps),
-            crop_lrf_warmup=bool(args.crop_lrf_warmup),
-            warmup_default=float(args.warmup_percentage_default),
+        if df.empty:
+            labels = ", ".join(STYLE_BY_KIND[kind]["label"] for kind in kinds)
+            print(f"  {labels}: rows=0; variants={sorted(wanted)}; {time.time() - t0:.1f}s")
+            continue
+
+        df["_mmlu_task_for_plot"] = task_column(df, tasks)
+        loaded_sources.append(
+            {
+                "source_root": source_root,
+                "kinds": kinds,
+                "df": df,
+                "stop_df": stop_df,
+                "elapsed": time.time() - t0,
+            }
         )
 
-        msg_parts = []
-        for kind, curves in task_curves.items():
-            if curves:
-                group_curves[kind].extend(curves)
-                group_task_counts[kind] += 1
-            msg_parts.append(f"{STYLE_BY_KIND[kind]['label']}={len(curves)}")
+    task_denominators: dict[str, float] = {}
+    if args.normalize_y == "task_initial":
+        task_denominators = compute_task_initial_denominators(
+            loaded_sources,
+            x_col=x_col,
+            y_eps=float(args.y_eps),
+        )
+        print(f"  task_initial denominators: {len(task_denominators)}/{len(tasks)} tasks")
 
-        print(f"  {i:02d}/{len(tasks):02d} {task}: rows={len(df):,}; " + ", ".join(msg_parts) + f"; {time.time() - t0:.1f}s")
+    for source in loaded_sources:
+        source_root = source["source_root"]
+        kinds = source["kinds"]
+        df = source["df"]
+        stop_df = source["stop_df"]
+        source_msgs = []
+        for kind in kinds:
+            variant = method_variants[kind]
+            used_tasks = 0
+            total_curves = 0
+            kind_df = df[df["experiment_variant"].astype(str) == variant].copy()
+            group_stops[kind].extend(
+                collect_normalized_stops(
+                    kind_df,
+                    stop_df,
+                    kind=kind,
+                    variant=variant,
+                    x_col=x_col,
+                    normalize_x=args.normalize_x,
+                    preserve_lrf_bo_x_offset=bool(args.preserve_lrf_bo_x_offset),
+                )
+            )
+            for task in tasks:
+                task_df = kind_df[kind_df["_mmlu_task_for_plot"].astype(str) == task].copy()
+                if task_df.empty:
+                    continue
+                task_curves = collect_curves_from_task_df(
+                    task_df,
+                    method_variants={kind: variant},
+                    x_col=x_col,
+                    grid_size=int(args.grid_size),
+                    normalize_x=args.normalize_x,
+                    normalize_y=args.normalize_y,
+                    y_denominator=task_denominators.get(task) if args.normalize_y == "task_initial" else None,
+                    preserve_lrf_bo_x_offset=bool(args.preserve_lrf_bo_x_offset),
+                    y_eps=float(args.y_eps),
+                    crop_lrf_warmup=bool(args.crop_lrf_warmup),
+                    warmup_default=float(args.warmup_percentage_default),
+                )
+                curves = task_curves.get(kind, [])
+                if curves:
+                    group_curves[kind].extend(curves)
+                    used_tasks += 1
+                    total_curves += len(curves)
+            group_task_counts[kind] = used_tasks
+            source_msgs.append(
+                f"{STYLE_BY_KIND[kind]['label']}: tasks={used_tasks}/{len(tasks)}, "
+                f"curves={total_curves}, variant={variant}"
+            )
 
-        # Free memory aggressively between tasks.
-        del df
+        print(f"  {source_root}: rows={len(df):,}; " + "; ".join(source_msgs) + f"; {source['elapsed']:.1f}s")
+    del loaded_sources
 
     print(f"[{group_label}] finished in {time.time() - t_group:.1f}s")
 
-    for kind in ["gittins_data", "gittins_default", "ucb", "lrf"]:
+    for kind in [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]:
         if kind not in method_variants:
             continue
         curves = group_curves.get(kind, [])
@@ -524,6 +870,40 @@ def plot_group_panel(
                 }
             )
 
+    if args.show_stopping:
+        for kind in ["gittins_data", "gittins_default", "bo_pbgi_unit", "bo_logei_unit", "bo_pbgi_cost", "bo_logeipc_cost"]:
+            if kind not in method_variants:
+                continue
+            vals = np.asarray(group_stops.get(kind, []), dtype=float)
+            vals = vals[np.isfinite(vals)]
+            if vals.size == 0:
+                print(f"WARNING: no stopping values for {group_label} / {STYLE_BY_KIND[kind]['label']}")
+                continue
+            mean_stop = float(np.mean(vals))
+            if vals.size > 1:
+                band = float(np.std(vals, ddof=1) / math.sqrt(vals.size)) * float(args.stderr_k)
+            else:
+                band = 0.0
+            style = STYLE_BY_KIND[kind]
+            if band > 0:
+                ax.axvspan(
+                    mean_stop - band,
+                    mean_stop + band,
+                    color=style["color"],
+                    alpha=float(args.stop_alpha),
+                    linewidth=0,
+                    zorder=1,
+                )
+            extra = float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0
+            ax.axvline(
+                mean_stop,
+                color=style["color"],
+                linestyle="--",
+                linewidth=2.6 * float(LINEWIDTH_MULT) * extra,
+                alpha=float(args.stop_line_alpha),
+                zorder=2,
+            )
+
     if args.y_limit_min is not None or args.y_limit_max is not None:
         lo, hi = ax.get_ylim()
         ax.set_ylim(
@@ -547,37 +927,55 @@ def main() -> int:
     group_defs = {
         ("Easy", "Small"): {
             "root": args.small_root,
+            "lrf_root": args.small_lrf_root,
+            "bo_root": args.small_bo_root,
             "size_bucket": "small",
             "batch_size": int(args.small_batch_size),
+            "lrf_batch_size": int(args.small_lrf_batch_size),
             "include_lrf": bool(args.include_small_lrf),
         },
         ("Easy", "Large"): {
             "root": args.large_root,
+            "lrf_root": args.large_lrf_root,
+            "bo_root": args.large_bo_root,
             "size_bucket": "large",
             "batch_size": int(args.large_batch_size),
+            "lrf_batch_size": int(args.large_lrf_batch_size),
             "include_lrf": bool(args.include_large_lrf),
         },
         ("Hard", "Small"): {
             "root": args.small_root,
+            "lrf_root": args.small_lrf_root,
+            "bo_root": args.small_bo_root,
             "size_bucket": "small",
             "batch_size": int(args.small_batch_size),
+            "lrf_batch_size": int(args.small_lrf_batch_size),
             "include_lrf": bool(args.include_small_lrf),
         },
         ("Hard", "Large"): {
             "root": args.large_root,
+            "lrf_root": args.large_lrf_root,
+            "bo_root": args.large_bo_root,
             "size_bucket": "large",
             "batch_size": int(args.large_batch_size),
+            "lrf_batch_size": int(args.large_lrf_batch_size),
             "include_lrf": bool(args.include_large_lrf),
         },
     }
 
     selected_tasks: dict[str, list[str]] = {}
+    tasks_by_size = {
+        "small": tasks_for_size(args.small_root),
+        "large": tasks_for_size(args.large_root),
+    }
     for (difficulty, size), cfg in group_defs.items():
-        tasks = tasks_for_group(
+        difficulty_tasks = tasks_for_group(
             metadata,
             size_bucket=str(cfg["size_bucket"]),
             difficulty=difficulty,
         )
+        size_tasks = tasks_by_size.get(str(cfg["size_bucket"]), set())
+        tasks = sorted([t for t in difficulty_tasks if not size_tasks or t in size_tasks])
         selected_tasks[f"{difficulty}-{size}"] = tasks
         print(f"{difficulty}-{size}: {len(tasks)} tasks -> {', '.join(tasks)}")
 
@@ -601,15 +999,32 @@ def main() -> int:
         for c, size in enumerate(col_labels):
             cfg = group_defs[(difficulty, size)]
             batch_size = int(cfg["batch_size"])
-            method_variants = variant_names(batch_size, str(args.scale), str(args.cost_mode))
+            method_variants = variant_names(
+                batch_size,
+                int(cfg["lrf_batch_size"]),
+                str(args.scale),
+                str(args.cost_mode),
+                args,
+            )
             if not bool(cfg["include_lrf"]):
                 method_variants.pop("lrf", None)
+            method_roots = {
+                "gittins_data": Path(cfg["root"]),
+                "gittins_default": Path(cfg["root"]),
+                "ucb": Path(cfg["root"]),
+                "lrf": Path(cfg["lrf_root"]),
+                "bo_pbgi_unit": Path(cfg["bo_root"]),
+                "bo_logei_unit": Path(cfg["bo_root"]),
+                "bo_pbgi_cost": Path(cfg["bo_root"]),
+                "bo_logeipc_cost": Path(cfg["bo_root"]),
+            }
 
             group_label = f"{difficulty}-{size}"
             plot_group_panel(
                 axes[r, c],
                 group_label=group_label,
                 root=Path(cfg["root"]),
+                method_roots=method_roots,
                 tasks=selected_tasks[group_label],
                 method_variants=method_variants,
                 x_col=x_col,
@@ -671,9 +1086,43 @@ def main() -> int:
         fontweight="normal",
     )
 
-    legend_order = ["gittins_data", "gittins_default", "ucb", "lrf"]
+    legend_order = [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]
     final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
     final_labels = [STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
+
+    if args.show_stopping:
+        for kind in [
+            "gittins_data",
+            "gittins_default",
+            "bo_pbgi_unit",
+            "bo_logei_unit",
+            "bo_pbgi_cost",
+            "bo_logeipc_cost",
+        ]:
+            if kind not in legend_handles:
+                continue
+            final_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=STYLE_BY_KIND[kind]["color"],
+                    linestyle="--",
+                    linewidth=2.6
+                    * float(LINEWIDTH_MULT)
+                    * (float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0),
+                    alpha=float(args.stop_line_alpha),
+                )
+            )
+            final_labels.append(f"{STYLE_BY_KIND[kind]['label']} mean stop")
 
     if args.range != "none":
         final_handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
@@ -714,6 +1163,8 @@ def main() -> int:
         f"_x{args.normalize_x}_y{args.normalize_y}"
         f"_fast"
     )
+    if args.preserve_lrf_bo_x_offset:
+        stem += "_lrf_bo_xoffset"
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
     out_csv = args.out_dir / f"{stem}_aggregated.csv"
@@ -732,6 +1183,12 @@ def main() -> int:
                 "normalize_y": args.normalize_y,
                 "small_batch_size": args.small_batch_size,
                 "large_batch_size": args.large_batch_size,
+                "small_lrf_batch_size": args.small_lrf_batch_size,
+                "large_lrf_batch_size": args.large_lrf_batch_size,
+                "bo_pbgi_unit_variant": args.bo_pbgi_unit_variant,
+                "bo_logei_unit_variant": args.bo_logei_unit_variant,
+                "bo_pbgi_cost_variant": args.bo_pbgi_cost_variant,
+                "bo_logei_cost_variant": args.bo_logei_cost_variant,
                 "scale": args.scale,
                 "selected_tasks": selected_tasks,
                 "note": "high prior bucket is plotted as Easy; low prior bucket is plotted as Hard; medium prior bucket is omitted. Large LRF is omitted by default.",

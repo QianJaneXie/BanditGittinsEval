@@ -36,6 +36,8 @@ COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
 COLOR_GITTINS_S = "tab:orange"
 COLOR_GITTINS_G = "tab:green"
+COLOR_BO_PBGI = "tab:red"
+COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
     "gittins_data": {
@@ -62,6 +64,30 @@ STYLE_BY_KIND = {
         "linewidth": 3.0,
         "zorder": 3,
     },
+    "bo_pbgi_unit": {
+        "color": COLOR_BO_PBGI,
+        "label": "BO-PBGI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_logei_unit": {
+        "color": COLOR_BO_LOGEI,
+        "label": "BO-LogEI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_pbgi_cost": {
+        "color": COLOR_BO_PBGI,
+        "label": "BO-PBGI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
+    "bo_logeipc_cost": {
+        "color": COLOR_BO_LOGEI,
+        "label": "BO-LogEI",
+        "linewidth": 3.0,
+        "zorder": 2,
+    },
 }
 
 # Thicken curve/stop lines for readability.
@@ -74,14 +100,38 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--gsm8k-dir",
         type=Path,
-        default=Path(r"outputs\wandb_downloads\gsm8k_406hah4y"),
+        default=Path(r"outputs\wandb_downloads_new\ucb_gittins\gsm8k"),
         help="Folder containing GSM8K runs_history.csv.gz, runs_summary.csv, runs_stopping.csv.",
+    )
+    p.add_argument(
+        "--gsm8k-lrf-dir",
+        type=Path,
+        default=Path(r"outputs\wandb_downloads_new\lrf\gsm8k_lrf"),
+        help="Optional folder containing GSM8K LRF runs_history.csv.gz.",
+    )
+    p.add_argument(
+        "--gsm8k-bo-dir",
+        type=Path,
+        default=Path(r"outputs\wandb_downloads_new\bo_baseline\gsm8k_bo"),
+        help="Optional folder containing GSM8K BO baseline runs_history.csv.gz.",
     )
     p.add_argument(
         "--piqa-dir",
         type=Path,
-        default=Path(r"outputs\wandb_downloads\piqa_hzpntjfe"),
+        default=Path(r"outputs\wandb_downloads_new\ucb_gittins\piqa"),
         help="Folder containing PIQA runs_history.csv.gz, runs_summary.csv, runs_stopping.csv.",
+    )
+    p.add_argument(
+        "--piqa-lrf-dir",
+        type=Path,
+        default=Path(r"outputs\wandb_downloads_new\lrf\piqa_lrf"),
+        help="Optional folder containing PIQA LRF runs_history.csv.gz.",
+    )
+    p.add_argument(
+        "--piqa-bo-dir",
+        type=Path,
+        default=Path(r"outputs\wandb_downloads_new\bo_baseline\piqa_bo"),
+        help="Optional folder containing PIQA BO baseline runs_history.csv.gz.",
     )
     p.add_argument(
         "--out-dir",
@@ -89,8 +139,13 @@ def parse_args() -> argparse.Namespace:
         default=Path(r"outputs\wandb_plots\paper_figures"),
     )
 
-    p.add_argument("--batch-size", type=int, default=16)
+    p.add_argument("--batch-size", type=int, default=8)
+    p.add_argument("--lrf-batch-size", type=int, default=32)
     p.add_argument("--scale", default="1e-4")
+    p.add_argument("--bo-pbgi-unit-variant", default="pbgi_unit")
+    p.add_argument("--bo-logei-unit-variant", default="logei_unit")
+    p.add_argument("--bo-pbgi-cost-variant", default="pbgi_cost")
+    p.add_argument("--bo-logei-cost-variant", default="logeipc_cost")
     p.add_argument("--grid-size", type=int, default=350)
 
     # Curve uncertainty band.
@@ -125,7 +180,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--label-size", type=float, default=81)
     # Axis tick labels (numbers) should NOT be enlarged further.
     p.add_argument("--tick-size", type=float, default=57)
-    p.add_argument("--legend-size", type=float, default=63)
+    p.add_argument("--legend-size", type=float, default=58)
     # Keep row labels (Unit-cost / Cost-aware) same size as panel titles.
     p.add_argument("--row-label-size", type=float, default=81)
 
@@ -142,6 +197,21 @@ def read_history(folder: Path) -> pd.DataFrame:
     return pd.read_csv(path, compression="gzip")
 
 
+def read_histories(folders: list[Path]) -> pd.DataFrame:
+    pieces = []
+    for folder in folders:
+        if folder is None:
+            continue
+        path = folder / "runs_history.csv.gz"
+        if not path.exists():
+            print(f"WARNING: missing history file, skipping: {path}")
+            continue
+        pieces.append(pd.read_csv(path, compression="gzip"))
+    if not pieces:
+        raise FileNotFoundError("No runs_history.csv.gz files found in requested folders")
+    return pd.concat(pieces, ignore_index=True, sort=False)
+
+
 def read_stopping(folder: Path) -> pd.DataFrame:
     stop_cols = [
         "run_id",
@@ -150,6 +220,8 @@ def read_stopping(folder: Path) -> pd.DataFrame:
         "gittins_stop_cum_original_cost",
         "gittins_recommendation_aware_stop_cum_eval",
         "gittins_recommendation_aware_stop_cum_original_cost",
+        "bo_stop_cum_eval",
+        "bo_stop_cum_original_cost",
     ]
 
     stopping_path = folder / "runs_stopping.csv"
@@ -171,21 +243,45 @@ def read_stopping(folder: Path) -> pd.DataFrame:
     return pd.read_csv(summary_path, usecols=usecols)
 
 
-def variant_names(batch_size: int, scale: str, cost_mode: str) -> dict[str, str]:
+def read_stoppings(folders: list[Path]) -> pd.DataFrame:
+    pieces = []
+    for folder in folders:
+        if folder is None:
+            continue
+        sdf = read_stopping(folder)
+        if not sdf.empty:
+            pieces.append(sdf)
+    if not pieces:
+        return pd.DataFrame()
+    return pd.concat(pieces, ignore_index=True, sort=False)
+
+
+def variant_names(
+    batch_size: int,
+    lrf_batch_size: int,
+    scale: str,
+    cost_mode: str,
+    args: argparse.Namespace,
+) -> dict[str, str]:
     b = int(batch_size)
+    lb = int(lrf_batch_size)
     if cost_mode == "unit":
         return {
             "gittins_data": f"gittins_unit_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_unit_B{b}_scale{scale}_default",
             "ucb": f"ucb_B{b}",
-            "lrf": f"lrf_B{b}",
+            "lrf": f"lrf_B{lb}",
+            "bo_pbgi_unit": str(args.bo_pbgi_unit_variant),
+            "bo_logei_unit": str(args.bo_logei_unit_variant),
         }
     if cost_mode in {"aware", "cost"}:
         return {
             "gittins_data": f"gittins_cost_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_cost_B{b}_scale{scale}_default",
             "ucb": f"ucb_cost_B{b}",
-            "lrf": f"lrf_cost_B{b}",
+            "lrf": f"lrf_cost_B{lb}",
+            "bo_pbgi_cost": str(args.bo_pbgi_cost_variant),
+            "bo_logeipc_cost": str(args.bo_logei_cost_variant),
         }
     raise ValueError(cost_mode)
 
@@ -302,12 +398,18 @@ def aggregate_variant(
     return x_grid, mean, std, stderr, n
 
 
-def stopping_col_for_xaxis(x_axis: str) -> str | None:
+def stopping_cols_for_kind(kind: str, x_axis: str) -> list[str]:
+    if kind.startswith("bo_"):
+        if x_axis == "cum_eval":
+            return ["bo_stop_cum_eval"]
+        if x_axis == "cum_original_cost":
+            return ["bo_stop_cum_original_cost"]
+        return []
     if x_axis == "cum_eval":
-        return "gittins_stop_cum_eval"
+        return ["gittins_stop_cum_eval"]
     if x_axis == "cum_original_cost":
-        return "gittins_stop_cum_original_cost"
-    return None
+        return ["gittins_stop_cum_original_cost"]
+    return []
 
 
 def draw_stopping(
@@ -326,20 +428,25 @@ def draw_stopping(
     if not show_stopping or stop_df.empty:
         return
 
-    stop_col = stopping_col_for_xaxis(x_axis)
-    if stop_col is None or stop_col not in stop_df.columns:
-        return
-
     for kind in kinds_to_draw:
+        if kind not in variants:
+            continue
         band_color = STYLE_BY_KIND[kind]["color"]
         variant = variants[kind]
         sdf = stop_df[stop_df["experiment_variant"].astype(str) == variant].copy()
         if sdf.empty:
             continue
 
-        vals = pd.to_numeric(sdf[stop_col], errors="coerce")
-        vals = vals[np.isfinite(vals) & (vals >= 0)]
+        vals = pd.Series(dtype=float)
+        for stop_col in stopping_cols_for_kind(kind, x_axis):
+            if stop_col not in sdf.columns:
+                continue
+            vals = pd.to_numeric(sdf[stop_col], errors="coerce")
+            vals = vals[np.isfinite(vals) & (vals >= 0)]
+            if not vals.empty:
+                break
         if vals.empty:
+            print(f"WARNING: no stopping values for {STYLE_BY_KIND[kind]['label']} ({variant}) on {x_axis}")
             continue
 
         arr = vals.to_numpy(dtype=float)
@@ -403,13 +510,24 @@ def plot_panel(
     x_axis: str,
     args: argparse.Namespace,
 ) -> dict[str, plt.Line2D]:
-    variants = variant_names(args.batch_size, args.scale, cost_mode)
+    variants = variant_names(args.batch_size, args.lrf_batch_size, args.scale, cost_mode, args)
     df = prepare_panel_df(history, dataset, variants)
 
     handles: dict[str, plt.Line2D] = {}
-    order = ["gittins_data", "gittins_default", "ucb", "lrf"]
+    order = [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]
 
     for kind in order:
+        if kind not in variants:
+            continue
         variant = variants[kind]
         vg = df[df["experiment_variant"].astype(str) == variant].copy()
 
@@ -453,7 +571,14 @@ def plot_panel(
         stopping,
         variants,
         x_axis,
-        kinds_to_draw=["gittins_data", "gittins_default"],
+        kinds_to_draw=[
+            "gittins_data",
+            "gittins_default",
+            "bo_pbgi_unit",
+            "bo_logei_unit",
+            "bo_pbgi_cost",
+            "bo_logeipc_cost",
+        ],
         show_stopping=args.show_stopping,
         stop_band=args.stop_band,
         stop_alpha=args.stop_alpha,
@@ -505,15 +630,27 @@ def main() -> int:
     setup_matplotlib(args)
 
     datasets = [
-        {"key": "gsm8k", "title": "GSM8K", "dir": args.gsm8k_dir},
-        {"key": "piqa", "title": "PIQA", "dir": args.piqa_dir},
+        {
+            "key": "gsm8k",
+            "title": "GSM8K",
+            "dir": args.gsm8k_dir,
+            "history_dirs": [args.gsm8k_dir, args.gsm8k_lrf_dir, args.gsm8k_bo_dir],
+            "stopping_dirs": [args.gsm8k_dir, args.gsm8k_bo_dir],
+        },
+        {
+            "key": "piqa",
+            "title": "PIQA",
+            "dir": args.piqa_dir,
+            "history_dirs": [args.piqa_dir, args.piqa_lrf_dir, args.piqa_bo_dir],
+            "stopping_dirs": [args.piqa_dir, args.piqa_bo_dir],
+        },
     ]
 
     histories = {}
     stoppings = {}
     for d in datasets:
-        histories[d["key"]] = read_history(d["dir"])
-        stoppings[d["key"]] = read_stopping(d["dir"])
+        histories[d["key"]] = read_histories(d["history_dirs"])
+        stoppings[d["key"]] = read_stoppings(d["stopping_dirs"])
 
     fig, axes = plt.subplots(
         2,
@@ -583,7 +720,14 @@ def main() -> int:
         fontweight="normal",
     )
 
-    legend_order = ["gittins_data", "gittins_default", "ucb", "lrf"]
+    legend_order = [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+    ]
     final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
     final_labels = [STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
 
@@ -612,6 +756,21 @@ def main() -> int:
         )
         final_labels.append("Gittins-G mean stop")
 
+        for kind in ["bo_pbgi_unit", "bo_logei_unit"]:
+            if kind not in legend_handles:
+                continue
+            final_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=STYLE_BY_KIND[kind]["color"],
+                    linestyle="--",
+                    linewidth=2.6 * float(LINEWIDTH_MULT),
+                    alpha=args.stop_line_alpha,
+                )
+            )
+            final_labels.append(f"{STYLE_BY_KIND[kind]['label']} mean stop")
+
     # One neutral patch for all semi-transparent standard-error bands.
     if args.range != "none" or (args.show_stopping and args.stop_band != "none"):
         final_handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
@@ -628,7 +787,7 @@ def main() -> int:
         loc="lower center",
         ncol=4,
         frameon=False,
-        bbox_to_anchor=(0.5, -0.005),
+        bbox_to_anchor=(0.5, 0.015),
         fontsize=args.legend_size,
         handlelength=2.0,
         handletextpad=0.35,
@@ -641,12 +800,12 @@ def main() -> int:
         left=0.060,
         right=0.985,
         top=0.765,
-        bottom=0.205,
+        bottom=0.325,
         wspace=0.24,
-        hspace=0.46,
+        hspace=0.74,
     )
 
-    stem = f"figure1_gsm8k_piqa_B{args.batch_size}_scale{args.scale}".replace(".", "")
+    stem = f"figure1_gsm8k_piqa_B{args.batch_size}_LRFB{args.lrf_batch_size}_scale{args.scale}".replace(".", "")
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
 
