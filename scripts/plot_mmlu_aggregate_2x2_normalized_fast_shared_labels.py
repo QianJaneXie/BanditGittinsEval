@@ -133,9 +133,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--grid-size", type=int, default=350)
 
     p.add_argument("--normalize-x", choices=["final", "none"], default="final")
-    p.add_argument("--normalize-y", choices=["initial", "task_initial", "none"], default="initial")
+    p.add_argument(
+        "--normalize-y",
+        choices=["initial", "task_initial", "bandit_initial_mean", "none"],
+        default="initial",
+    )
     p.add_argument("--y-eps", type=float, default=1e-8)
     p.add_argument("--preserve-lrf-bo-x-offset", action="store_true", default=False)
+    p.add_argument("--crop-bo-random-init", action="store_true", default=False)
 
     p.add_argument("--range", choices=["stderr", "std", "none"], default="stderr")
     p.add_argument("--stderr-k", type=float, default=2.0)
@@ -312,6 +317,8 @@ def read_filtered_history(
         "n_cells",
         "warmup_percentage",
         "eval_budget_fraction",
+        "selection_phase",
+        "step_idx",
     ]
     usecols = [c for c in desired if c in available]
 
@@ -540,7 +547,7 @@ def run_to_curve(
     if normalize_y == "initial":
         denom_y = max(abs(float(y[0])), float(y_eps))
         y = y / denom_y
-    elif normalize_y == "task_initial":
+    elif normalize_y in {"task_initial", "bandit_initial_mean"}:
         if y_denominator is None or not np.isfinite(float(y_denominator)):
             return None
         denom_y = max(abs(float(y_denominator)), float(y_eps))
@@ -580,6 +587,7 @@ def collect_curves_from_task_df(
     preserve_lrf_bo_x_offset: bool,
     y_eps: float,
     crop_lrf_warmup: bool,
+    crop_bo_random_init: bool,
     warmup_default: float,
 ) -> dict[str, list[np.ndarray]]:
     out: dict[str, list[np.ndarray]] = {kind: [] for kind in method_variants}
@@ -598,6 +606,14 @@ def collect_curves_from_task_df(
                 warmup = lrf_warmup_evals(vg, default_warmup=warmup_default)
                 if math.isfinite(warmup) and "cum_eval" in vg.columns:
                     vg = vg[pd.to_numeric(vg["cum_eval"], errors="coerce") >= warmup]
+                pieces.append(vg)
+            sub = pd.concat(pieces, ignore_index=False) if pieces else sub.iloc[0:0]
+
+        if kind.startswith("bo_") and crop_bo_random_init and "selection_phase" in sub.columns:
+            pieces = []
+            for _, vg in sub.groupby("run_id", sort=False):
+                phase = vg["selection_phase"].astype(str)
+                vg = vg[phase != "random_init"]
                 pieces.append(vg)
             sub = pd.concat(pieces, ignore_index=False) if pieces else sub.iloc[0:0]
 
@@ -651,6 +667,44 @@ def compute_task_initial_denominators(
         finite = [float(v) for v in vals if np.isfinite(v) and float(v) > float(y_eps)]
         if finite:
             out[task] = max(finite)
+    return out
+
+
+def compute_bandit_initial_mean_denominators(
+    loaded_sources: list[dict[str, Any]],
+    *,
+    x_col: str,
+    y_eps: float,
+) -> dict[str, float]:
+    """One denominator per task from first simple regret of bandit methods."""
+    bandit_kinds = {"gittins_data", "gittins_default", "ucb"}
+    per_task: dict[str, list[float]] = {}
+    for source in loaded_sources:
+        df = source.get("df")
+        kinds = set(source.get("kinds", []))
+        if not kinds & bandit_kinds:
+            continue
+        if not isinstance(df, pd.DataFrame) or df.empty:
+            continue
+        needed = {"_mmlu_task_for_plot", "run_id", "experiment_variant", x_col, "simple_regret"}
+        if not needed.issubset(df.columns):
+            continue
+        for (_, _, run_id), rg in df.groupby(["_mmlu_task_for_plot", "experiment_variant", "run_id"], sort=False):
+            if pd.isna(run_id):
+                continue
+            gg = rg[[x_col, "simple_regret"]].dropna().sort_values(x_col)
+            if gg.empty:
+                continue
+            task = str(rg["_mmlu_task_for_plot"].iloc[0])
+            val = float(gg["simple_regret"].iloc[0])
+            if np.isfinite(val) and abs(val) > float(y_eps):
+                per_task.setdefault(task, []).append(abs(val))
+
+    out: dict[str, float] = {}
+    for task, vals in per_task.items():
+        finite = [float(v) for v in vals if np.isfinite(v) and float(v) > float(y_eps)]
+        if finite:
+            out[task] = float(np.mean(finite))
     return out
 
 
@@ -751,6 +805,13 @@ def plot_group_panel(
             y_eps=float(args.y_eps),
         )
         print(f"  task_initial denominators: {len(task_denominators)}/{len(tasks)} tasks")
+    elif args.normalize_y == "bandit_initial_mean":
+        task_denominators = compute_bandit_initial_mean_denominators(
+            loaded_sources,
+            x_col=x_col,
+            y_eps=float(args.y_eps),
+        )
+        print(f"  bandit_initial_mean denominators: {len(task_denominators)}/{len(tasks)} tasks")
 
     for source in loaded_sources:
         source_root = source["source_root"]
@@ -785,10 +846,13 @@ def plot_group_panel(
                     grid_size=int(args.grid_size),
                     normalize_x=args.normalize_x,
                     normalize_y=args.normalize_y,
-                    y_denominator=task_denominators.get(task) if args.normalize_y == "task_initial" else None,
+                    y_denominator=task_denominators.get(task)
+                    if args.normalize_y in {"task_initial", "bandit_initial_mean"}
+                    else None,
                     preserve_lrf_bo_x_offset=bool(args.preserve_lrf_bo_x_offset),
                     y_eps=float(args.y_eps),
                     crop_lrf_warmup=bool(args.crop_lrf_warmup),
+                    crop_bo_random_init=bool(args.crop_bo_random_init),
                     warmup_default=float(args.warmup_percentage_default),
                 )
                 curves = task_curves.get(kind, [])
@@ -1037,7 +1101,7 @@ def main() -> int:
                 axes[r, c].set_title(size, fontsize=args.title_size, fontweight="normal", pad=8)
 
     # Shared axis labels only. Individual panel x/y labels are removed to avoid overlap.
-    ylabel = "Normalized simple regret" if args.normalize_y != "none" else "Simple regret"
+    ylabel = "Normalized simple regret" if args.normalize_y != "none" else "Mean simple regret"
     xlabel = "Normalized cumulative evaluations" if args.cost_mode == "unit" else "Normalized cumulative cost"
 
     for ax in axes.ravel():
@@ -1165,6 +1229,8 @@ def main() -> int:
     )
     if args.preserve_lrf_bo_x_offset:
         stem += "_lrf_bo_xoffset"
+    if args.crop_bo_random_init:
+        stem += "_bo_after_init"
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
     out_csv = args.out_dir / f"{stem}_aggregated.csv"

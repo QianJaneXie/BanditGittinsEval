@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from plot_mmlu_aggregate_2x2_normalized_fast_shared_labels import (
+    compute_bandit_initial_mean_denominators,
     compute_task_initial_denominators,
     normalize_task_name,
     read_filtered_history,
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--task-metadata", type=Path, default=Path(r"data\MMLU_matrices\task_metadata.json"))
     p.add_argument("--out-csv", type=Path, default=Path(r"outputs\wandb_plots_new\paper_figures\mmlu_task_initial_denominators_Bsmall2_Blarge8.csv"))
     p.add_argument("--cost-mode", choices=["unit", "aware"], default="unit")
+    p.add_argument("--denominator", choices=["task_initial", "bandit_initial_mean"], default="task_initial")
     p.add_argument("--small-batch-size", type=int, default=2)
     p.add_argument("--large-batch-size", type=int, default=8)
     p.add_argument("--small-lrf-batch-size", type=int, default=32)
@@ -106,7 +108,10 @@ def main() -> int:
             df = read_source(root, wanted, set(tasks), x_col)
             loaded.append({"df": df})
 
-        denoms = compute_task_initial_denominators(loaded, x_col=x_col, y_eps=float(args.y_eps))
+        if args.denominator == "bandit_initial_mean":
+            denoms = compute_bandit_initial_mean_denominators(loaded, x_col=x_col, y_eps=float(args.y_eps))
+        else:
+            denoms = compute_task_initial_denominators(loaded, x_col=x_col, y_eps=float(args.y_eps))
         for task in tasks:
             rows.append(
                 {
