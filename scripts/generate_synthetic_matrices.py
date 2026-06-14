@@ -11,7 +11,11 @@ Settings:
    shape copied from one real GSM8K matrix
    prior = default N(0.5, 0.04)
 
-2. MMLU high/easy-like:
+2. Optional GSM8K dataset-prior:
+   shape copied from one real GSM8K matrix
+   prior = dataset N(0.2, 0.01)
+
+3. MMLU high/easy-like:
    one synthetic matrix per selected high/easy MMLU subject
    shape copied from the real MMLU subject matrix
    prior = high/easy N(0.75, 0.02)
@@ -27,6 +31,7 @@ import numpy as np
 
 
 DEFAULT_PRIOR = (0.5, 0.04)
+GSM8K_DATASET_PRIOR = (0.2, 0.01)
 MMLU_HIGH_PRIOR = (0.75, 0.01)
 
 MMLU_HIGH_SUBJECTS = [
@@ -213,6 +218,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
     )
     parser.add_argument(
+        "--skip-gsm8k-default",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--include-gsm8k-dataset",
+        action="store_true",
+    )
+    parser.add_argument(
         "--skip-mmlu",
         action="store_true",
     )
@@ -230,26 +243,49 @@ def main() -> int:
         seed_dir = f"seed{matrix_seed}"
 
         if not args.skip_gsm8k:
-            mu, var = DEFAULT_PRIOR
-            out = (
-                args.out_dir
-                / "gsm8k_default"
-                / seed_dir
-                / f"gsm8k_default_synthetic_seed{matrix_seed}.npy"
-            )
+            if not args.skip_gsm8k_default:
+                mu, var = DEFAULT_PRIOR
+                out = (
+                    args.out_dir
+                    / "gsm8k_default"
+                    / seed_dir
+                    / f"gsm8k_default_synthetic_seed{matrix_seed}.npy"
+                )
 
-            write_synthetic_matrix(
-                reference_matrix=args.gsm8k_reference,
-                output_matrix=out,
-                prior_mean=mu,
-                prior_variance=var,
-                base_seed=args.base_seed,
-                matrix_seed=matrix_seed,
-                setting="gsm8k_default",
-                subject=None,
-                overwrite=args.overwrite,
-            )
-            total += 1
+                write_synthetic_matrix(
+                    reference_matrix=args.gsm8k_reference,
+                    output_matrix=out,
+                    prior_mean=mu,
+                    prior_variance=var,
+                    base_seed=args.base_seed,
+                    matrix_seed=matrix_seed,
+                    setting="gsm8k_default",
+                    subject=None,
+                    overwrite=args.overwrite,
+                )
+                total += 1
+
+            if args.include_gsm8k_dataset:
+                mu, var = GSM8K_DATASET_PRIOR
+                out = (
+                    args.out_dir
+                    / "gsm8k_dataset"
+                    / seed_dir
+                    / f"gsm8k_dataset_synthetic_seed{matrix_seed}.npy"
+                )
+
+                write_synthetic_matrix(
+                    reference_matrix=args.gsm8k_reference,
+                    output_matrix=out,
+                    prior_mean=mu,
+                    prior_variance=var,
+                    base_seed=args.base_seed,
+                    matrix_seed=matrix_seed,
+                    setting="gsm8k_dataset",
+                    subject=None,
+                    overwrite=args.overwrite,
+                )
+                total += 1
 
         if not args.skip_mmlu:
             mu, var = MMLU_HIGH_PRIOR
