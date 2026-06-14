@@ -13,7 +13,7 @@ Layout:
 
 Default:
   x-axis: normalized cumulative evaluations/cost
-  y-axis: normalized simple regret = r(t) / r(first)
+  y-axis: normalized simple regret = r(t) / mean first simple regret of bandit methods
   band:   mean ± 2 SE
   no stopping lines
 
@@ -136,7 +136,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--normalize-y",
         choices=["initial", "task_initial", "bandit_initial_mean", "none"],
-        default="initial",
+        default="bandit_initial_mean",
     )
     p.add_argument("--y-eps", type=float, default=1e-8)
     p.add_argument("--preserve-lrf-bo-x-offset", action="store_true", default=False)
@@ -682,12 +682,21 @@ def compute_bandit_initial_mean_denominators(
     for source in loaded_sources:
         df = source.get("df")
         kinds = set(source.get("kinds", []))
-        if not kinds & bandit_kinds:
+        kind_to_variant = source.get("kind_to_variant", {})
+        wanted_variants = {
+            str(kind_to_variant[kind])
+            for kind in kinds & bandit_kinds
+            if kind in kind_to_variant
+        }
+        if not wanted_variants:
             continue
         if not isinstance(df, pd.DataFrame) or df.empty:
             continue
         needed = {"_mmlu_task_for_plot", "run_id", "experiment_variant", x_col, "simple_regret"}
         if not needed.issubset(df.columns):
+            continue
+        df = df[df["experiment_variant"].astype(str).isin(wanted_variants)].copy()
+        if df.empty:
             continue
         for (_, _, run_id), rg in df.groupby(["_mmlu_task_for_plot", "experiment_variant", "run_id"], sort=False):
             if pd.isna(run_id):
@@ -791,6 +800,7 @@ def plot_group_panel(
             {
                 "source_root": source_root,
                 "kinds": kinds,
+                "kind_to_variant": {kind: method_variants[kind] for kind in kinds},
                 "df": df,
                 "stop_df": stop_df,
                 "elapsed": time.time() - t0,
