@@ -94,7 +94,7 @@ STYLE_BY_KIND = {
     },
     "bo_logeipc_cost": {
         "color": "tab:brown",
-        "label": "BO-LogEI",
+        "label": "BO-LogEI(PC)",
         "linewidth": 3.0,
         "zorder": 2,
     },

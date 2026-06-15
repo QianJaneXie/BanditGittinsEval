@@ -22,7 +22,7 @@ STYLE = {
     "bo_pbgi_unit": ("tab:red", "BO-PBGI", 3.0, 2),
     "bo_logei_unit": ("tab:brown", "BO-LogEI", 3.0, 2),
     "bo_pbgi_cost": ("tab:red", "BO-PBGI", 3.0, 2),
-    "bo_logeipc_cost": ("tab:brown", "BO-LogEI", 3.0, 2),
+    "bo_logeipc_cost": ("tab:brown", "BO-LogEI(PC)", 3.0, 2),
 }
 ORDER = [
     "gittins_data",

@@ -72,7 +72,7 @@ STYLE_BY_KIND = {
     },
     "bo_logei_unit": {
         "color": COLOR_BO_LOGEI,
-        "label": "BO-LogEI",
+        "label": "BO-LogEI(PC)",
         "linewidth": 3.0,
         "zorder": 2,
     },
@@ -84,7 +84,7 @@ STYLE_BY_KIND = {
     },
     "bo_logeipc_cost": {
         "color": COLOR_BO_LOGEI,
-        "label": "BO-LogEI",
+        "label": "BO-LogEI(PC)",
         "linewidth": 3.0,
         "zorder": 2,
     },
@@ -314,6 +314,11 @@ def is_lrf_variant(variant: str) -> bool:
     return v.startswith("lrf") or "lrf" in v
 
 
+def is_bo_variant(variant: str) -> bool:
+    v = str(variant).lower()
+    return v.startswith(("pbgi", "logei", "logeipc")) or v.startswith("bo")
+
+
 def lrf_warmup_evals(
     g: pd.DataFrame,
     default_warmup: float = 0.05,
@@ -341,6 +346,22 @@ def crop_lrf_after_warmup(df: pd.DataFrame) -> pd.DataFrame:
             warmup = lrf_warmup_evals(g)
             if math.isfinite(warmup) and "cum_eval" in g.columns:
                 g = g[pd.to_numeric(g["cum_eval"], errors="coerce") >= warmup]
+        pieces.append(g)
+
+    if not pieces:
+        return df.iloc[0:0].copy()
+    return pd.concat(pieces, ignore_index=False)
+
+
+def crop_bo_after_random_init(df: pd.DataFrame) -> pd.DataFrame:
+    if "selection_phase" not in df.columns:
+        return df
+
+    pieces = []
+    for variant, g in df.groupby("experiment_variant", sort=False):
+        if is_bo_variant(str(variant)):
+            phase = g["selection_phase"].astype(str).str.lower()
+            g = g[phase != "random_init"]
         pieces.append(g)
 
     if not pieces:
@@ -496,6 +517,7 @@ def prepare_panel_df(history: pd.DataFrame, dataset: str, variants: dict[str, st
 
     df = df.dropna(subset=["experiment_variant", "run_id", "simple_regret"])
     df = crop_lrf_after_warmup(df)
+    df = crop_bo_after_random_init(df)
     return df
 
 
