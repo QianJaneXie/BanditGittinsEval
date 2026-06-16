@@ -17,6 +17,7 @@ import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from PIL import Image
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.ticker import FormatStrFormatter, MaxNLocator
@@ -267,8 +268,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--right", type=float, default=0.985)
     p.add_argument("--top", type=float, default=0.965)
     p.add_argument("--shared-y-label-x", type=float, default=0.042)
-    p.add_argument("--shared-x-label-pad-in", type=float, default=0.30)
-    p.add_argument("--legend-pad-in", type=float, default=0.80)
+    p.add_argument("--shared-x-label-pad-in", type=float, default=0.48)
+    p.add_argument("--legend-pad-in", type=float, default=0.95)
     p.add_argument("--bottom-floor-in", type=float, default=0.75)
     p.add_argument("--shared-x-label-x-offset", type=float, default=0.01)
     p.add_argument("--shared-y-label-y-offset", type=float, default=0.01)
@@ -448,9 +449,11 @@ def plot_panel(task: str, mode: str, df: pd.DataFrame, args: argparse.Namespace)
     ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+    x_left, x_right = ax.get_xlim()
+    ax.set_xlim(x_left, x_right + 0.08 * (x_right - x_left))
     for spine in ax.spines.values():
         spine.set_linewidth(0.9)
-    fig.subplots_adjust(left=0.20, right=0.97, bottom=0.17, top=0.82)
+    fig.subplots_adjust(left=0.20, right=0.90, bottom=0.17, top=0.82)
 
     out = panel_path(args, task, mode)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -467,7 +470,7 @@ def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[obj
     ]
     labels = [STYLE_BY_KIND[k]["label"] for k in kinds]
     if mode == "aware":
-        labels = ["BO-LogEI(PC)" if label == "BO-LogEI" else label for label in labels]
+        labels = ["BO-LogEIPC" if label == "BO-LogEI" else label for label in labels]
     if args.range != "none":
         handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
         labels.append(f"\u00b1{args.se_mult:g} SE band")
@@ -491,12 +494,27 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
     fig_height = (panel_area_height_in + bottom_in) / float(args.top)
     bottom_frac = bottom_in / fig_height
 
+    panel_paths = [panel_path(args, task, mode) for task in tasks]
+    panel_sizes = []
+    for path in panel_paths:
+        with Image.open(path) as image:
+            panel_sizes.append(image.size)
+    target_width = max(width for width, _ in panel_sizes)
+    target_height = max(height for _, height in panel_sizes)
+
     fig, axes = plt.subplots(nrows, ncols, figsize=(float(args.fig_width), fig_height), squeeze=False)
     first_shape = None
     for idx, task in enumerate(tasks):
         ax = axes[idx // ncols][idx % ncols]
-        path = panel_path(args, task, mode)
-        img = mpimg.imread(path)
+        path = panel_paths[idx]
+        with Image.open(path) as src:
+            if src.size != (target_width, target_height):
+                canvas = Image.new("RGBA", (target_width, target_height), "white")
+                offset = ((target_width - src.width) // 2, (target_height - src.height) // 2)
+                canvas.paste(src.convert("RGBA"), offset)
+                img = np.asarray(canvas)
+            else:
+                img = np.asarray(src.convert("RGBA"))
         if first_shape is None:
             first_shape = img.shape
         elif img.shape != first_shape:

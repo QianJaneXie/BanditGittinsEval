@@ -22,7 +22,7 @@ STYLE = {
     "bo_pbgi_unit": ("tab:red", "BO-PBGI", 3.0, 2),
     "bo_logei_unit": ("tab:brown", "BO-LogEI", 3.0, 2),
     "bo_pbgi_cost": ("tab:red", "BO-PBGI", 3.0, 2),
-    "bo_logeipc_cost": ("tab:brown", "BO-LogEI(PC)", 3.0, 2),
+    "bo_logeipc_cost": ("tab:brown", "BO-LogEIPC", 3.0, 2),
 }
 ORDER = [
     "gittins_data",
@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--groups", type=Path, default=base / f"{stem}_groups.json")
     p.add_argument("--out-png", type=Path, default=base / f"{stem}.png")
     p.add_argument("--out-pdf", type=Path, default=base / f"{stem}.pdf")
-    p.add_argument("--shared-x-label-y", type=float, default=0.205)
+    p.add_argument("--shared-x-label-y", type=float, default=0.285)
     p.add_argument("--shared-y-label-x", type=float, default=-0.023)
     p.add_argument("--small-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_small\runs_summary.csv"))
     p.add_argument("--large-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_large\runs_summary.csv"))
@@ -145,7 +145,7 @@ def main() -> int:
     for ax in axes.ravel():
         ax.set_xlabel("")
         ax.set_ylabel("")
-    fig.text(float(args.shared_y_label_x), 0.5 * (0.325 + 0.765), "Normalized simple regret", ha="center", va="center", rotation="vertical", fontsize=81)
+    fig.text(float(args.shared_y_label_x), 0.5 * (0.375 + 0.765), "Normalized simple regret", ha="center", va="center", rotation="vertical", fontsize=81)
     fig.text(
         0.5 * (0.045 + 0.995),
         float(args.shared_x_label_y),
@@ -177,9 +177,9 @@ def main() -> int:
             labels.append(label)
     handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
     labels.append("±2 SE band")
-    fig.legend(handles, labels, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(0.5, 0.02), fontsize=58, handlelength=2.0, handletextpad=0.35, columnspacing=1.15)
+    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.045), fontsize=58, handlelength=2.0, handletextpad=0.35, columnspacing=1.15)
 
-    fig.subplots_adjust(left=0.045, right=0.995, top=0.765, bottom=0.325, wspace=0.24, hspace=0.34)
+    fig.subplots_adjust(left=0.045, right=0.995, top=0.765, bottom=0.375, wspace=0.24, hspace=0.34)
     fig.savefig(args.out_png, dpi=260, bbox_inches="tight", pad_inches=0.22)
     fig.savefig(args.out_pdf, bbox_inches="tight", pad_inches=0.22)
     print(f"Wrote {args.out_png}")
