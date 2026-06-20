@@ -341,7 +341,7 @@ def read_filtered_history(
         compression="gzip",
         usecols=usecols,
         low_memory=True,
-        chunksize=250_000,
+        chunksize=50_000,
     ):
         chunk = chunk[chunk["experiment_variant"].astype(str).isin(wanted_variants)].copy()
         if chunk.empty:

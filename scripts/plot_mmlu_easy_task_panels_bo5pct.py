@@ -9,6 +9,8 @@ unit-cost and cost-aware grid figures.
 from __future__ import annotations
 
 import argparse
+import gc
+import json
 import math
 import re
 from pathlib import Path
@@ -230,13 +232,52 @@ COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
-    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.4, "z": 6},
-    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.4, "z": 5},
+    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.88, "z": 6},
+    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.88, "z": 5},
     "ucb": {"color": COLOR_UCB, "label": "UCB-E", "lw": 1.8, "z": 4},
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 1.8, "z": 3},
     "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 1.9, "z": 3.5},
     "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI", "lw": 1.9, "z": 3.4},
 }
+
+LEGEND_BASE_LINEWIDTH_BY_KIND = {
+    "gittins_data": 2.4,
+    "gittins_default": 2.4,
+    "ucb": 1.8,
+    "lrf": 1.8,
+    "bo_pbgi": 1.9,
+    "bo_logei": 1.9,
+}
+LEGEND_LINEWIDTH_MULT = 1.8
+LEGEND_STOP_BASE_LINEWIDTH = 1.9
+
+
+def cache_method_kind(kind: str, mode: str) -> str:
+    if kind == "gittins_data":
+        return "gittins_s"
+    if kind == "gittins_default":
+        return "gittins_g"
+    if kind == "ucb":
+        return "ucbe"
+    if kind == "bo_logei" and mode == "aware":
+        return "bo_logeipc"
+    return kind
+
+
+def style_kind_from_cache(method_kind: str) -> str:
+    return {
+        "gittins_s": "gittins_data",
+        "gittins_g": "gittins_default",
+        "ucbe": "ucb",
+        "bo_logeipc": "bo_logei",
+    }.get(str(method_kind), str(method_kind))
+
+
+def method_label_for_kind(kind: str, mode: str) -> str:
+    label = STYLE_BY_KIND[kind]["label"]
+    if mode == "aware" and label == "BO-LogEI":
+        return "BO-LogEIPC"
+    return label
 
 
 def clean_tick_label(value: float, _pos: int) -> str:
@@ -245,8 +286,22 @@ def clean_tick_label(value: float, _pos: int) -> str:
     return f"{float(value):.2f}"
 
 
+def clean_x_tick_label(value: float, _pos: int) -> str:
+    if abs(float(value)) < 1e-12:
+        return "0"
+    return f"{float(value):g}"
+
+
 def safe_token(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(s))
+
+
+def cache_curve_path(args: argparse.Namespace, task: str, mode: str) -> Path:
+    return args.out_root / "processed_curves" / mode / f"{safe_token(task)}_curves.csv"
+
+
+def cache_meta_path(args: argparse.Namespace, task: str, mode: str) -> Path:
+    return args.out_root / "processed_curves" / mode / f"{safe_token(task)}_meta.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -256,6 +311,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cost-mode", choices=["both", "unit", "aware"], default="both")
     p.add_argument("--assemble-only", action="store_true", help="Reuse existing individual panels and only reassemble grids.")
     p.add_argument("--individual-only", action="store_true", help="Write individual task panels and skip grid assembly.")
+    p.add_argument("--cache-curves-only", action="store_true", help="Write processed curve CSV/JSON files and do not plot panels or assemble grids.")
+    p.add_argument("--plot-from-cache", action="store_true", help="Plot individual panels from processed_curves without reading raw history.")
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
     p.add_argument("--se-mult", type=float, default=2.0)
@@ -567,16 +624,16 @@ def load_stop_summary_group_mode(group: str, mode: str, tasks: list[str], args: 
     return pd.concat(pieces, ignore_index=True, sort=False)
 
 
-def draw_stopping(
-    ax: plt.Axes,
+def stop_lines_from_summary(
     task_stop_df: pd.DataFrame,
     variants: dict[str, str],
     x_col: str,
     args: argparse.Namespace,
-) -> None:
+) -> list[dict[str, object]]:
     if not bool(args.show_stopping) or task_stop_df.empty:
-        return
+        return []
 
+    stop_lines: list[dict[str, object]] = []
     for kind in ["gittins_data", "gittins_default", "bo_pbgi", "bo_logei"]:
         stop_col = stop_column_for_kind(kind, x_col)
         if stop_col is None or stop_col not in task_stop_df.columns:
@@ -595,22 +652,60 @@ def draw_stopping(
         if not np.isfinite(mean_stop):
             continue
 
-        color = STYLE_BY_KIND[kind]["color"]
+        entry: dict[str, object] = {
+            "method_kind": cache_method_kind(kind, "aware" if x_col == "cum_original_cost" else "unit"),
+            "x": mean_stop,
+            "label": method_label_for_kind(kind, "aware" if x_col == "cum_original_cost" else "unit"),
+        }
         if len(arr) > 1:
             band = float(np.std(arr, ddof=1) / np.sqrt(len(arr))) * float(args.se_mult)
             lo = mean_stop - band
             hi = mean_stop + band
             if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
-                ax.axvspan(lo, hi, color=color, alpha=float(args.stop_alpha), linewidth=0, zorder=1)
+                entry["lo"] = lo
+                entry["hi"] = hi
+        stop_lines.append(entry)
+    return stop_lines
 
+
+def draw_cached_stopping(ax: plt.Axes, stop_lines: list[dict[str, object]], args: argparse.Namespace) -> None:
+    if not bool(args.show_stopping):
+        return
+
+    for stop in stop_lines:
+        kind = style_kind_from_cache(str(stop.get("method_kind", "")))
+        if kind not in STYLE_BY_KIND:
+            continue
+        color = STYLE_BY_KIND[kind]["color"]
+        lo = stop.get("lo")
+        hi = stop.get("hi")
+        if lo is not None and hi is not None:
+            lo_f = float(lo)
+            hi_f = float(hi)
+            if np.isfinite(lo_f) and np.isfinite(hi_f) and hi_f > lo_f:
+                ax.axvspan(lo_f, hi_f, color=color, alpha=float(args.stop_alpha), linewidth=0, zorder=1)
+
+        mean_stop = float(stop.get("x", float("nan")))
+        if not np.isfinite(mean_stop):
+            continue
         ax.axvline(
             mean_stop,
-            color=color,
+            color=STYLE_BY_KIND[kind]["color"],
             linestyle="--",
             linewidth=max(1.1, float(STYLE_BY_KIND[kind]["lw"]) * 0.9),
             alpha=float(args.stop_line_alpha),
             zorder=2,
         )
+
+
+def draw_stopping(
+    ax: plt.Axes,
+    task_stop_df: pd.DataFrame,
+    variants: dict[str, str],
+    x_col: str,
+    args: argparse.Namespace,
+) -> None:
+    draw_cached_stopping(ax, stop_lines_from_summary(task_stop_df, variants, x_col, args), args)
 
 
 def panel_path(args: argparse.Namespace, task: str, mode: str) -> Path:
@@ -619,14 +714,24 @@ def panel_path(args: argparse.Namespace, task: str, mode: str) -> Path:
     return args.out_root / "individual" / mode / f"{safe_token(task)}_{mode}_B{batch}_scale{safe_token(args.scale)}.png"
 
 
-def plot_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, args: argparse.Namespace) -> Path:
+def panel_title(task: str) -> str:
+    return f"{TASK_DISPLAY[task]} ({TASK_SIZE[task]})"
+
+
+def compute_panel_payload(
+    task: str,
+    mode: str,
+    df: pd.DataFrame,
+    stop_df: pd.DataFrame,
+    args: argparse.Namespace,
+) -> tuple[pd.DataFrame, dict[str, object]]:
     x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
-    fig, ax = plt.subplots(figsize=(args.single_width, args.single_height))
     group = TASK_GROUP[task]
     variants = variants_for_group(group, mode, args.scale)
     task_df = df[df["_mmlu_task_for_plot"].astype(str) == task].copy()
     task_stop_df = stop_df[stop_df["_mmlu_task_for_plot"].astype(str) == task].copy() if not stop_df.empty else stop_df
 
+    rows: list[pd.DataFrame] = []
     for kind in ["gittins_data", "gittins_default", "ucb", "lrf", "bo_pbgi", "bo_logei"]:
         variant = variants[kind]
         vg = task_df[task_df["experiment_variant"].astype(str) == variant].copy()
@@ -650,24 +755,93 @@ def plot_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, ar
         if x_grid.size == 0:
             continue
         center, lo, hi = band_from_yarr(y_arr, float(args.se_mult), args.range)
-        style = STYLE_BY_KIND[kind]
-        ax.plot(x_grid, center, color=style["color"], linewidth=style["lw"], zorder=style["z"])
-        if args.range != "none":
-            ax.fill_between(x_grid, lo, hi, color=style["color"], alpha=float(args.curve_alpha), linewidth=0, zorder=style["z"] - 0.5)
+        n_runs = np.sum(~np.isnan(y_arr), axis=0)
+        rows.append(pd.DataFrame({
+            "mmlu_task": task,
+            "mode": mode,
+            "method_kind": cache_method_kind(kind, mode),
+            "method_label": method_label_for_kind(kind, mode),
+            "x": x_grid,
+            "mean": center,
+            "lo": lo,
+            "hi": hi,
+            "n_runs": n_runs,
+            "x_label": x_col,
+        }))
 
-    draw_stopping(ax, task_stop_df, variants, x_col, args)
+    curves = pd.concat(rows, ignore_index=True, sort=False) if rows else pd.DataFrame(
+        columns=["mmlu_task", "mode", "method_kind", "method_label", "x", "mean", "lo", "hi", "n_runs", "x_label"]
+    )
+    stop_lines = stop_lines_from_summary(task_stop_df, variants, x_col, args)
 
-    ax.set_title(f"{TASK_DISPLAY[task]} ({TASK_SIZE[task]})", fontsize=float(args.title_size), pad=3)
+    meta: dict[str, object] = {
+        "mmlu_task": task,
+        "mode": mode,
+        "x_label": x_col,
+        "y_label": "simple_regret",
+        "title": panel_title(task),
+        "xlim": None,
+        "ylim": None,
+        "stop_lines": stop_lines,
+        "band_style": {
+            "range": args.range,
+            "se_mult": float(args.se_mult),
+            "curve_alpha": float(args.curve_alpha),
+            "stop_alpha": float(args.stop_alpha),
+            "stop_line_alpha": float(args.stop_line_alpha),
+        },
+        "style_keys_present": sorted(curves["method_kind"].dropna().astype(str).unique().tolist()) if not curves.empty else [],
+    }
+    return curves, meta
+
+
+def apply_panel_axes_style(ax: plt.Axes, task: str, args: argparse.Namespace) -> None:
+    ax.set_title(panel_title(task), fontsize=float(args.title_size), pad=3)
     ax.grid(True, alpha=0.18, linewidth=0.8)
     ax.tick_params(axis="both", labelsize=float(args.tick_size), width=0.9, length=3)
     ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
-    ax.xaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    ax.xaxis.set_major_formatter(FuncFormatter(clean_x_tick_label))
     ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
-    x_left, x_right = ax.get_xlim()
-    ax.set_xlim(x_left, x_right + 0.08 * (x_right - x_left))
     for spine in ax.spines.values():
         spine.set_linewidth(0.9)
+
+
+def draw_panel_payload(
+    task: str,
+    mode: str,
+    curves: pd.DataFrame,
+    meta: dict[str, object],
+    args: argparse.Namespace,
+) -> Path:
+    fig, ax = plt.subplots(figsize=(args.single_width, args.single_height))
+
+    for method_kind, cg in curves.groupby("method_kind", sort=False):
+        kind = style_kind_from_cache(str(method_kind))
+        if kind not in STYLE_BY_KIND:
+            continue
+        style = STYLE_BY_KIND[kind]
+        cg = cg.sort_values("x")
+        x = pd.to_numeric(cg["x"], errors="coerce").to_numpy(dtype=float)
+        mean = pd.to_numeric(cg["mean"], errors="coerce").to_numpy(dtype=float)
+        lo = pd.to_numeric(cg["lo"], errors="coerce").to_numpy(dtype=float)
+        hi = pd.to_numeric(cg["hi"], errors="coerce").to_numpy(dtype=float)
+        ax.plot(x, mean, color=style["color"], linewidth=style["lw"], zorder=style["z"])
+        if args.range != "none":
+            ax.fill_between(x, lo, hi, color=style["color"], alpha=float(args.curve_alpha), linewidth=0, zorder=style["z"] - 0.5)
+
+    draw_cached_stopping(ax, list(meta.get("stop_lines", [])), args)
+    apply_panel_axes_style(ax, task, args)
+    if meta.get("xlim") is not None:
+        ax.set_xlim(*meta["xlim"])
+    else:
+        x_left, x_right = ax.get_xlim()
+        ax.set_xlim(x_left, x_right + 0.08 * (x_right - x_left))
+        meta["xlim"] = [float(v) for v in ax.get_xlim()]
+    if meta.get("ylim") is not None:
+        ax.set_ylim(*meta["ylim"])
+    else:
+        meta["ylim"] = [float(v) for v in ax.get_ylim()]
     fig.subplots_adjust(left=0.20, right=0.90, bottom=0.17, top=0.82)
 
     out = panel_path(args, task, mode)
@@ -677,10 +851,72 @@ def plot_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, ar
     return out
 
 
+def write_panel_cache(task: str, mode: str, curves: pd.DataFrame, meta: dict[str, object], args: argparse.Namespace) -> None:
+    if meta.get("xlim") is None or meta.get("ylim") is None:
+        xs: list[float] = []
+        ys: list[float] = []
+        if not curves.empty:
+            xs.extend(pd.to_numeric(curves["x"], errors="coerce").dropna().astype(float).tolist())
+            for col in ["lo", "hi", "mean"]:
+                ys.extend(pd.to_numeric(curves[col], errors="coerce").dropna().astype(float).tolist())
+        for stop in meta.get("stop_lines", []):
+            for key in ["lo", "hi", "x"]:
+                if key in stop and np.isfinite(float(stop[key])):
+                    xs.append(float(stop[key]))
+        if xs and meta.get("xlim") is None:
+            x_left = float(np.min(xs))
+            x_right = float(np.max(xs))
+            pad = 0.08 * (x_right - x_left) if x_right > x_left else max(1.0, abs(x_right) * 0.08)
+            meta["xlim"] = [x_left, x_right + pad]
+        if ys and meta.get("ylim") is None:
+            y_lo = float(np.min(ys))
+            y_hi = float(np.max(ys))
+            pad = 0.05 * (y_hi - y_lo) if y_hi > y_lo else max(0.01, abs(y_hi) * 0.05)
+            meta["ylim"] = [y_lo - pad, y_hi + pad]
+
+    curve_path = cache_curve_path(args, task, mode)
+    meta_path = cache_meta_path(args, task, mode)
+    curve_path.parent.mkdir(parents=True, exist_ok=True)
+    curves.to_csv(curve_path, index=False)
+    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    print(f"[CACHE] wrote {curve_path}")
+    print(f"[CACHE] wrote {meta_path}")
+
+
+def plot_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, args: argparse.Namespace) -> Path:
+    curves, meta = compute_panel_payload(task, mode, df, stop_df, args)
+    out = draw_panel_payload(task, mode, curves, meta, args)
+    if not bool(args.cache_curves_only):
+        write_panel_cache(task, mode, curves, meta, args)
+    return out
+
+
+def cache_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, args: argparse.Namespace) -> None:
+    curves, meta = compute_panel_payload(task, mode, df, stop_df, args)
+    write_panel_cache(task, mode, curves, meta, args)
+
+
+def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Path:
+    curve_path = cache_curve_path(args, task, mode)
+    meta_path = cache_meta_path(args, task, mode)
+    if not curve_path.is_file() or not meta_path.is_file():
+        raise FileNotFoundError(f"Missing processed cache for {task}/{mode}: {curve_path} or {meta_path}")
+    curves = pd.read_csv(curve_path)
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    out = draw_panel_payload(task, mode, curves, meta, args)
+    print(f"[PLOT-CACHE] wrote {out}")
+    return out
+
+
 def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[object], list[str]]:
     kinds = ["gittins_data", "gittins_default", "ucb", "lrf", "bo_pbgi", "bo_logei"]
     handles: list[object] = [
-        Line2D([0], [0], color=STYLE_BY_KIND[k]["color"], linewidth=STYLE_BY_KIND[k]["lw"])
+        Line2D(
+            [0],
+            [0],
+            color=STYLE_BY_KIND[k]["color"],
+            linewidth=float(LEGEND_BASE_LINEWIDTH_BY_KIND[k]) * float(LEGEND_LINEWIDTH_MULT),
+        )
         for k in kinds
     ]
     labels = [STYLE_BY_KIND[k]["label"] for k in kinds]
@@ -690,7 +926,13 @@ def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[obj
         handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
         labels.append(f"\u00b1{args.se_mult:g} SE band")
     if args.show_stopping:
-        handles.append(Line2D([0], [0], color="0.35", linestyle="--", linewidth=1.9))
+        handles.append(Line2D(
+            [0],
+            [0],
+            color="0.35",
+            linestyle="--",
+            linewidth=float(LEGEND_STOP_BASE_LINEWIDTH) * float(LEGEND_LINEWIDTH_MULT),
+        ))
         labels.append("Mean stop")
     return handles, labels
 
@@ -792,6 +1034,8 @@ def main() -> int:
     args = parse_args()
     setup_matplotlib(args)
     args.out_root.mkdir(parents=True, exist_ok=True)
+    if bool(args.cache_curves_only) and bool(args.plot_from_cache):
+        raise ValueError("--cache-curves-only and --plot-from-cache cannot be used together")
 
     modes = []
     if args.cost_mode in {"both", "unit"}:
@@ -799,17 +1043,31 @@ def main() -> int:
     if args.cost_mode in {"both", "aware"}:
         modes.append("aware")
     for mode in modes:
+        if bool(args.plot_from_cache):
+            for task in selected_tasks(args):
+                plot_panel_from_cache(task, mode, args)
+            if bool(args.assemble_only):
+                grid = assemble_grid(mode, args)
+                print(f"[ASSEMBLE] wrote {grid}")
+            continue
+
         if not bool(args.assemble_only):
             for group in ["small", "medium", "large"]:
                 tasks = [task for task in selected_tasks(args) if TASK_GROUP[task] == group]
                 loaded = load_group_mode(group, mode, tasks, args)
                 stop_df = load_stop_summary_group_mode(group, mode, tasks, args)
                 for task in tasks:
-                    out = plot_panel(task, mode, loaded, stop_df, args)
-                    print(f"Wrote panel: {out}")
-        if not bool(args.individual_only):
+                    if bool(args.cache_curves_only):
+                        cache_panel(task, mode, loaded, stop_df, args)
+                    else:
+                        out = plot_panel(task, mode, loaded, stop_df, args)
+                        print(f"Wrote panel: {out}")
+                del loaded
+                del stop_df
+                gc.collect()
+        if not bool(args.individual_only) and not bool(args.cache_curves_only):
             grid = assemble_grid(mode, args)
-            print(f"Wrote grid: {grid}")
+            print(f"[ASSEMBLE] wrote {grid}")
     return 0
 
 
