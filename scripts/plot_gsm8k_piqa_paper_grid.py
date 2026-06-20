@@ -30,13 +30,14 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 
 
 COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
 COLOR_GITTINS_S = "tab:orange"
 COLOR_GITTINS_G = "tab:green"
-COLOR_BO_PBGI = "tab:red"
+COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
@@ -92,7 +93,13 @@ STYLE_BY_KIND = {
 
 # Thicken curve/stop lines for readability.
 LINEWIDTH_MULT = 3.6
-GITTINS_LINE_EXTRA_MULT = 1.0
+GITTINS_LINE_EXTRA_MULT = 1.2
+
+
+def clean_tick_label(value: float, _pos: int) -> str:
+    if abs(float(value)) < 1e-12:
+        return "0"
+    return f"{float(value):.2f}"
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -369,11 +376,77 @@ def crop_bo_after_random_init(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(pieces, ignore_index=False)
 
 
+def bo_average_initial_x(df: pd.DataFrame, x_col: str) -> float:
+    if "selection_phase" not in df.columns or x_col not in df.columns:
+        return float("nan")
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    init = df[phase == "random_init"].copy()
+    if init.empty:
+        return float("nan")
+
+    vals = []
+    for _, rg in init.groupby("run_id", sort=False):
+        xs = pd.to_numeric(rg[x_col], errors="coerce").dropna()
+        if not xs.empty:
+            vals.append(float(xs.max()))
+    if not vals:
+        return float("nan")
+    return float(np.mean(vals))
+
+
+def bo_post_init_aligned_to_average_start(
+    df: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+) -> pd.DataFrame:
+    target = bo_average_initial_x(df, x_col)
+    if "selection_phase" not in df.columns:
+        return df
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    post = df[phase != "random_init"].copy()
+    if post.empty or not math.isfinite(target):
+        return post
+
+    rows: list[pd.DataFrame] = []
+    for run_id, rg in post.groupby("run_id", sort=False):
+        gg = rg[[x_col, y_col]].dropna().sort_values(x_col)
+        if gg.empty:
+            continue
+        gg = gg.groupby(x_col, as_index=False)[y_col].last()
+        x = pd.to_numeric(gg[x_col], errors="coerce").to_numpy(dtype=float)
+        y = pd.to_numeric(gg[y_col], errors="coerce").to_numpy(dtype=float)
+        good = np.isfinite(x) & np.isfinite(y)
+        x = x[good]
+        y = y[good]
+        if len(x) == 0 or target > float(x[-1]):
+            continue
+
+        if target < float(x[0]):
+            x = np.concatenate([[target], x])
+            y = np.concatenate([[float(y[0])], y])
+        elif target > float(x[0]):
+            y0 = float(np.interp(target, x, y))
+            keep = x > target
+            x = np.concatenate([[target], x[keep]])
+            y = np.concatenate([[y0], y[keep]])
+
+        rows.append(pd.DataFrame({"run_id": run_id, x_col: x, y_col: y}))
+
+    if not rows:
+        return post.iloc[0:0].copy()
+    return pd.concat(rows, ignore_index=True, sort=False)
+
+
 def aggregate_variant(
     df: pd.DataFrame,
     x_col: str,
     y_col: str,
     grid_size: int,
+    *,
+    extend_right: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     runs: list[tuple[np.ndarray, np.ndarray]] = []
     min_x = float("inf")
@@ -407,7 +480,8 @@ def aggregate_variant(
 
     ys = []
     for x, y in runs:
-        yi = np.interp(x_grid, x, y, left=np.nan, right=np.nan)
+        right = float(y[-1]) if extend_right else np.nan
+        yi = np.interp(x_grid, x, y, left=np.nan, right=right)
         ys.append(yi)
 
     y_arr = np.vstack(ys)
@@ -517,7 +591,6 @@ def prepare_panel_df(history: pd.DataFrame, dataset: str, variants: dict[str, st
 
     df = df.dropna(subset=["experiment_variant", "run_id", "simple_regret"])
     df = crop_lrf_after_warmup(df)
-    df = crop_bo_after_random_init(df)
     return df
 
 
@@ -557,7 +630,23 @@ def plot_panel(
             print(f"WARNING: missing variant for {dataset_title} {cost_mode}: {variant}")
             continue
 
-        x_grid, mean, std, stderr, n = aggregate_variant(vg, x_axis, "simple_regret", args.grid_size)
+        if kind.startswith("bo_"):
+            vg = bo_post_init_aligned_to_average_start(
+                vg,
+                x_col=x_axis,
+                y_col="simple_regret",
+            )
+            if vg.empty:
+                print(f"WARNING: no BO post-init points for {dataset_title} {cost_mode}: {variant}")
+                continue
+
+        x_grid, mean, std, stderr, n = aggregate_variant(
+            vg,
+            x_axis,
+            "simple_regret",
+            args.grid_size,
+            extend_right=kind.startswith("bo_"),
+        )
         if x_grid.size == 0:
             print(f"WARNING: no plottable points for {dataset_title} {cost_mode}: {variant}")
             continue
@@ -617,6 +706,8 @@ def plot_panel(
 
     ax.grid(True, alpha=0.23, linewidth=0.9)
     ax.tick_params(axis="both", labelsize=args.tick_size, width=1.2, length=6)
+    ax.xaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
 
     for spine in ax.spines.values():
         spine.set_linewidth(1.2)

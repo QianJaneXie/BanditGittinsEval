@@ -22,9 +22,9 @@ Difficulty mapping:
   low prior bucket  -> Hard
   medium prior bucket is omitted from this 2x2 main-text aggregate.
 
-Large LRF:
-  Large panels do not plot LRF by default because the current large data do not
-  include LRF runs. Small panels keep LRF by default.
+LRF:
+  LRF is plotted whenever downloaded runs are available. Incomplete LRF task
+  coverage is allowed; aggregate panels use the available task/run curves.
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 
 
 STYLE_BY_KIND = {
@@ -75,7 +76,7 @@ STYLE_BY_KIND = {
         "zorder": 3,
     },
     "bo_pbgi_unit": {
-        "color": "tab:red",
+        "color": "tab:olive",
         "label": "BO-PBGI",
         "linewidth": 3.0,
         "zorder": 2,
@@ -87,7 +88,7 @@ STYLE_BY_KIND = {
         "zorder": 2,
     },
     "bo_pbgi_cost": {
-        "color": "tab:red",
+        "color": "tab:olive",
         "label": "BO-PBGI",
         "linewidth": 3.0,
         "zorder": 2,
@@ -101,7 +102,13 @@ STYLE_BY_KIND = {
 }
 
 LINEWIDTH_MULT = 3.6
-GITTINS_LINE_EXTRA_MULT = 1.0
+GITTINS_LINE_EXTRA_MULT = 1.2
+
+
+def clean_tick_label(value: float, _pos: int) -> str:
+    if abs(float(value)) < 1e-12:
+        return "0"
+    return f"{float(value):.2f}"
 
 
 def safe_token(s: str) -> str:
@@ -115,8 +122,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--large-root", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_large"))
     p.add_argument("--small-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\mmlu_small_lrf"))
     p.add_argument("--large-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\mmlu_large_lrf"))
-    p.add_argument("--small-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_small_bo"))
-    p.add_argument("--large-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_large_bo"))
+    p.add_argument("--small-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\mmlu_small_bo"))
+    p.add_argument("--large-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\mmlu_large_bo"))
     p.add_argument("--task-metadata", type=Path, default=Path(r"data\MMLU_matrices\task_metadata.json"))
     p.add_argument("--out-dir", type=Path, default=Path(r"outputs\wandb_plots\paper_figures"))
 
@@ -147,7 +154,8 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--include-small-lrf", action="store_true", default=True)
     p.add_argument("--no-include-small-lrf", dest="include_small_lrf", action="store_false")
-    p.add_argument("--include-large-lrf", action="store_true", default=False)
+    p.add_argument("--include-large-lrf", action="store_true", default=True)
+    p.add_argument("--no-include-large-lrf", dest="include_large_lrf", action="store_false")
 
     # LRF warmup crop is consistent with earlier MMLU regret-panel handling.
     p.add_argument("--crop-lrf-warmup", action="store_true", default=True)
@@ -498,6 +506,70 @@ def lrf_warmup_evals(g: pd.DataFrame, default_warmup: float) -> float:
     return float("nan")
 
 
+def bo_average_initial_x(df: pd.DataFrame, x_col: str) -> float:
+    if "selection_phase" not in df.columns or x_col not in df.columns:
+        return float("nan")
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    init = df[phase == "random_init"].copy()
+    if init.empty:
+        return float("nan")
+
+    vals = []
+    for _, rg in init.groupby("run_id", sort=False):
+        xs = pd.to_numeric(rg[x_col], errors="coerce").dropna()
+        if not xs.empty:
+            vals.append(float(xs.max()))
+    if not vals:
+        return float("nan")
+    return float(np.mean(vals))
+
+
+def bo_post_init_aligned_to_average_start(
+    df: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+) -> pd.DataFrame:
+    target = bo_average_initial_x(df, x_col)
+    if "selection_phase" not in df.columns:
+        return df
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    post = df[phase != "random_init"].copy()
+    if post.empty or not math.isfinite(target):
+        return post
+
+    rows: list[pd.DataFrame] = []
+    for run_id, rg in post.groupby("run_id", sort=False):
+        gg = rg[[x_col, y_col]].dropna().sort_values(x_col)
+        if gg.empty:
+            continue
+        gg = gg.groupby(x_col, as_index=False)[y_col].last()
+        x = pd.to_numeric(gg[x_col], errors="coerce").to_numpy(dtype=float)
+        y = pd.to_numeric(gg[y_col], errors="coerce").to_numpy(dtype=float)
+        good = np.isfinite(x) & np.isfinite(y)
+        x = x[good]
+        y = y[good]
+        if len(x) == 0 or target > float(x[-1]):
+            continue
+
+        if target < float(x[0]):
+            x = np.concatenate([[target], x])
+            y = np.concatenate([[float(y[0])], y])
+        elif target > float(x[0]):
+            y0 = float(np.interp(target, x, y))
+            keep = x > target
+            x = np.concatenate([[target], x[keep]])
+            y = np.concatenate([[y0], y[keep]])
+
+        rows.append(pd.DataFrame({"run_id": run_id, x_col: x, y_col: y}))
+
+    if not rows:
+        return post.iloc[0:0].copy()
+    return pd.concat(rows, ignore_index=True, sort=False)
+
+
 def run_to_curve(
     rg: pd.DataFrame,
     *,
@@ -510,6 +582,7 @@ def run_to_curve(
     preserve_lrf_bo_x_offset: bool,
     y_eps: float,
     grid_size: int,
+    extend_right: bool = False,
 ) -> np.ndarray | None:
     gg = rg[[x_col, y_col]].dropna().sort_values(x_col)
     if gg.empty:
@@ -571,7 +644,8 @@ def run_to_curve(
     else:
         x_grid = np.linspace(float(np.nanmin(x)), float(np.nanmax(x)), int(grid_size))
 
-    yi = np.interp(x_grid, x, y, left=np.nan, right=np.nan)
+    right = float(y[-1]) if extend_right else np.nan
+    yi = np.interp(x_grid, x, y, left=np.nan, right=right)
     return yi
 
 
@@ -609,13 +683,12 @@ def collect_curves_from_task_df(
                 pieces.append(vg)
             sub = pd.concat(pieces, ignore_index=False) if pieces else sub.iloc[0:0]
 
-        if kind.startswith("bo_") and crop_bo_random_init and "selection_phase" in sub.columns:
-            pieces = []
-            for _, vg in sub.groupby("run_id", sort=False):
-                phase = vg["selection_phase"].astype(str)
-                vg = vg[phase != "random_init"]
-                pieces.append(vg)
-            sub = pd.concat(pieces, ignore_index=False) if pieces else sub.iloc[0:0]
+        if kind.startswith("bo_") and crop_bo_random_init:
+            sub = bo_post_init_aligned_to_average_start(
+                sub,
+                x_col=x_col,
+                y_col="simple_regret",
+            )
 
         for _, rg in sub.groupby("run_id", sort=False):
             yi = run_to_curve(
@@ -629,6 +702,7 @@ def collect_curves_from_task_df(
                 preserve_lrf_bo_x_offset=preserve_lrf_bo_x_offset,
                 y_eps=y_eps,
                 grid_size=grid_size,
+                extend_right=kind.startswith("bo_"),
             )
             if yi is not None:
                 out[kind].append(yi)
@@ -987,6 +1061,8 @@ def plot_group_panel(
 
     ax.grid(True, alpha=0.23, linewidth=0.9)
     ax.tick_params(axis="both", labelsize=args.tick_size, width=1.2, length=6)
+    ax.xaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
     for spine in ax.spines.values():
         spine.set_linewidth(1.2)
 
@@ -1111,7 +1187,7 @@ def main() -> int:
                 axes[r, c].set_title(size, fontsize=args.title_size, fontweight="normal", pad=8)
 
     # Shared axis labels only. Individual panel x/y labels are removed to avoid overlap.
-    ylabel = "Normalized simple regret" if args.normalize_y != "none" else "Mean simple regret"
+    ylabel = "Normalized simple regret" if args.normalize_y != "none" else "Simple regret"
     xlabel = "Normalized cumulative evaluations" if args.cost_mode == "unit" else "Normalized cumulative cost"
 
     for ax in axes.ravel():
@@ -1267,7 +1343,7 @@ def main() -> int:
                 "bo_logei_cost_variant": args.bo_logei_cost_variant,
                 "scale": args.scale,
                 "selected_tasks": selected_tasks,
-                "note": "high prior bucket is plotted as Easy; low prior bucket is plotted as Hard; medium prior bucket is omitted. Large LRF is omitted by default.",
+                "note": "high prior bucket is plotted as Easy; low prior bucket is plotted as Hard; medium prior bucket is omitted. LRF aggregates use available task/run curves and allow incomplete coverage.",
             },
             indent=2,
         ),

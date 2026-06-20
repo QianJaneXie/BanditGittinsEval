@@ -20,9 +20,10 @@ import pandas as pd
 from PIL import Image
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from matplotlib.ticker import FormatStrFormatter, MaxNLocator
+from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 from plot_mmlu_aggregate_2x2_normalized_fast_shared_labels import (
+    normalize_task_name,
     read_filtered_history,
     task_column,
 )
@@ -225,17 +226,23 @@ COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
 COLOR_GITTINS_S = "tab:orange"
 COLOR_GITTINS_G = "tab:green"
-COLOR_BO_PBGI = "tab:red"
+COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
-    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.0, "z": 6},
-    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.0, "z": 5},
+    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.4, "z": 6},
+    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.4, "z": 5},
     "ucb": {"color": COLOR_UCB, "label": "UCB-E", "lw": 1.8, "z": 4},
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 1.8, "z": 3},
     "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 1.9, "z": 3.5},
     "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI", "lw": 1.9, "z": 3.4},
 }
+
+
+def clean_tick_label(value: float, _pos: int) -> str:
+    if abs(float(value)) < 1e-12:
+        return "0"
+    return f"{float(value):.2f}"
 
 
 def safe_token(s: str) -> str:
@@ -248,11 +255,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prior-bucket", choices=sorted(TASKS_BY_BUCKET), default="easy")
     p.add_argument("--cost-mode", choices=["both", "unit", "aware"], default="both")
     p.add_argument("--assemble-only", action="store_true", help="Reuse existing individual panels and only reassemble grids.")
+    p.add_argument("--individual-only", action="store_true", help="Write individual task panels and skip grid assembly.")
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
     p.add_argument("--se-mult", type=float, default=2.0)
     p.add_argument("--range", choices=["stderr", "none"], default="stderr")
     p.add_argument("--curve-alpha", type=float, default=0.15)
+    p.add_argument("--show-stopping", action="store_true", default=True)
+    p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
+    p.add_argument("--stop-alpha", type=float, default=0.12)
+    p.add_argument("--stop-line-alpha", type=float, default=0.72)
     p.add_argument("--font-family", default="Times New Roman")
     p.add_argument("--single-width", type=float, default=2.25)
     p.add_argument("--single-height", type=float, default=1.65)
@@ -344,7 +356,78 @@ def crop_bo_after_random_init(df: pd.DataFrame) -> pd.DataFrame:
     return df[keep].copy()
 
 
-def aggregate_runs_to_grid(df: pd.DataFrame, x_col: str, y_col: str, grid_size: int) -> tuple[np.ndarray, np.ndarray]:
+def bo_average_initial_x(df: pd.DataFrame, x_col: str) -> float:
+    if "selection_phase" not in df.columns or x_col not in df.columns:
+        return float("nan")
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    init = df[phase == "random_init"].copy()
+    if init.empty:
+        return float("nan")
+
+    vals = []
+    for _, rg in init.groupby("run_id", sort=False):
+        xs = pd.to_numeric(rg[x_col], errors="coerce").dropna()
+        if not xs.empty:
+            vals.append(float(xs.max()))
+    if not vals:
+        return float("nan")
+    return float(np.mean(vals))
+
+
+def bo_post_init_aligned_to_average_start(
+    df: pd.DataFrame,
+    *,
+    x_col: str,
+    y_col: str,
+) -> pd.DataFrame:
+    target = bo_average_initial_x(df, x_col)
+    if "selection_phase" not in df.columns:
+        return df
+
+    phase = df["selection_phase"].astype(str).str.lower()
+    post = df[phase != "random_init"].copy()
+    if post.empty or not math.isfinite(target):
+        return post
+
+    rows: list[pd.DataFrame] = []
+    for run_id, rg in post.groupby("run_id", sort=False):
+        gg = rg[[x_col, y_col]].dropna().sort_values(x_col)
+        if gg.empty:
+            continue
+        gg = gg.groupby(x_col, as_index=False)[y_col].last()
+        x = pd.to_numeric(gg[x_col], errors="coerce").to_numpy(dtype=float)
+        y = pd.to_numeric(gg[y_col], errors="coerce").to_numpy(dtype=float)
+        good = np.isfinite(x) & np.isfinite(y)
+        x = x[good]
+        y = y[good]
+        if len(x) == 0 or target > float(x[-1]):
+            continue
+
+        if target < float(x[0]):
+            x = np.concatenate([[target], x])
+            y = np.concatenate([[float(y[0])], y])
+        elif target > float(x[0]):
+            y0 = float(np.interp(target, x, y))
+            keep = x > target
+            x = np.concatenate([[target], x[keep]])
+            y = np.concatenate([[y0], y[keep]])
+
+        rows.append(pd.DataFrame({"run_id": run_id, x_col: x, y_col: y}))
+
+    if not rows:
+        return post.iloc[0:0].copy()
+    return pd.concat(rows, ignore_index=True, sort=False)
+
+
+def aggregate_runs_to_grid(
+    df: pd.DataFrame,
+    x_col: str,
+    y_col: str,
+    grid_size: int,
+    *,
+    extend_right: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
     runs = []
     min_x = float("inf")
     max_x = -float("inf")
@@ -366,7 +449,10 @@ def aggregate_runs_to_grid(df: pd.DataFrame, x_col: str, y_col: str, grid_size: 
     if not runs or not np.isfinite(min_x) or not np.isfinite(max_x) or max_x <= min_x:
         return np.array([]), np.empty((0, 0))
     x_grid = np.linspace(min_x, max_x, int(grid_size))
-    y_arr = np.vstack([np.interp(x_grid, x, y, left=np.nan, right=np.nan) for x, y in runs])
+    y_arr = np.vstack([
+        np.interp(x_grid, x, y, left=np.nan, right=float(y[-1]) if extend_right else np.nan)
+        for x, y in runs
+    ])
     return x_grid, y_arr
 
 
@@ -412,8 +498,119 @@ def load_group_mode(group: str, mode: str, tasks: list[str], args: argparse.Name
         return pd.DataFrame()
     df = pd.concat(pieces, ignore_index=True, sort=False)
     df = crop_lrf_after_warmup(df)
-    df = crop_bo_after_random_init(df)
     return df
+
+
+def stop_column_for_kind(kind: str, x_col: str) -> str | None:
+    if kind.startswith("bo_"):
+        return "bo_stop_cum_eval" if x_col == "cum_eval" else "bo_stop_cum_original_cost"
+    if kind in {"gittins_data", "gittins_default"}:
+        return "gittins_stop_cum_eval" if x_col == "cum_eval" else "gittins_stop_cum_original_cost"
+    return None
+
+
+def load_stop_summary_group_mode(group: str, mode: str, tasks: list[str], args: argparse.Namespace) -> pd.DataFrame:
+    roots = roots_for_group(group)
+    variants = variants_for_group(group, mode, args.scale)
+    x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
+    stop_kinds = ["gittins_data", "gittins_default", "bo_pbgi", "bo_logei"]
+
+    pieces: list[pd.DataFrame] = []
+    source_variants = {
+        roots["bandit"] / "runs_summary.csv": {variants["gittins_data"], variants["gittins_default"]},
+        roots["bo"] / "runs_summary.csv": {variants["bo_pbgi"], variants["bo_logei"]},
+    }
+    desired_base = [
+        "run_id",
+        "experiment_variant",
+        "mmlu_task",
+        "matrix_task",
+        "benchmark_key",
+    ]
+    desired_stop = sorted({c for kind in stop_kinds if (c := stop_column_for_kind(kind, x_col))})
+    known_tasks = set(tasks)
+
+    for path, wanted in source_variants.items():
+        if not path.is_file():
+            print(f"SKIP missing summary {path}")
+            continue
+        header = pd.read_csv(path, nrows=0)
+        usecols = [c for c in desired_base + desired_stop if c in header.columns]
+        if "experiment_variant" not in usecols:
+            continue
+        df = pd.read_csv(path, usecols=usecols)
+        df = df[df["experiment_variant"].astype(str).isin(wanted)].copy()
+        if df.empty:
+            continue
+
+        task_mask = pd.Series(False, index=df.index)
+        if "mmlu_task" in df.columns:
+            task_mask |= df["mmlu_task"].astype(str).map(normalize_task_name).isin(known_tasks)
+        if "matrix_task" in df.columns:
+            task_mask |= df["matrix_task"].astype(str).map(normalize_task_name).isin(known_tasks)
+        if "benchmark_key" in df.columns:
+            bkey = df["benchmark_key"].astype(str)
+            for task in known_tasks:
+                task_mask |= bkey.str.endswith("_" + task) | bkey.str.contains(task, regex=False)
+        df = df[task_mask].copy()
+        if df.empty:
+            continue
+
+        df["_mmlu_task_for_plot"] = task_column(df, tasks)
+        for col in desired_stop:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        pieces.append(df)
+
+    if not pieces:
+        return pd.DataFrame()
+    return pd.concat(pieces, ignore_index=True, sort=False)
+
+
+def draw_stopping(
+    ax: plt.Axes,
+    task_stop_df: pd.DataFrame,
+    variants: dict[str, str],
+    x_col: str,
+    args: argparse.Namespace,
+) -> None:
+    if not bool(args.show_stopping) or task_stop_df.empty:
+        return
+
+    for kind in ["gittins_data", "gittins_default", "bo_pbgi", "bo_logei"]:
+        stop_col = stop_column_for_kind(kind, x_col)
+        if stop_col is None or stop_col not in task_stop_df.columns:
+            continue
+        variant = variants[kind]
+        vals = pd.to_numeric(
+            task_stop_df.loc[task_stop_df["experiment_variant"].astype(str) == variant, stop_col],
+            errors="coerce",
+        )
+        vals = vals[np.isfinite(vals) & (vals >= 0)]
+        if vals.empty:
+            continue
+
+        arr = vals.to_numpy(dtype=float)
+        mean_stop = float(np.mean(arr))
+        if not np.isfinite(mean_stop):
+            continue
+
+        color = STYLE_BY_KIND[kind]["color"]
+        if len(arr) > 1:
+            band = float(np.std(arr, ddof=1) / np.sqrt(len(arr))) * float(args.se_mult)
+            lo = mean_stop - band
+            hi = mean_stop + band
+            if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+                ax.axvspan(lo, hi, color=color, alpha=float(args.stop_alpha), linewidth=0, zorder=1)
+
+        ax.axvline(
+            mean_stop,
+            color=color,
+            linestyle="--",
+            linewidth=max(1.1, float(STYLE_BY_KIND[kind]["lw"]) * 0.9),
+            alpha=float(args.stop_line_alpha),
+            zorder=2,
+        )
 
 
 def panel_path(args: argparse.Namespace, task: str, mode: str) -> Path:
@@ -422,19 +619,34 @@ def panel_path(args: argparse.Namespace, task: str, mode: str) -> Path:
     return args.out_root / "individual" / mode / f"{safe_token(task)}_{mode}_B{batch}_scale{safe_token(args.scale)}.png"
 
 
-def plot_panel(task: str, mode: str, df: pd.DataFrame, args: argparse.Namespace) -> Path:
+def plot_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, args: argparse.Namespace) -> Path:
     x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
     fig, ax = plt.subplots(figsize=(args.single_width, args.single_height))
     group = TASK_GROUP[task]
     variants = variants_for_group(group, mode, args.scale)
     task_df = df[df["_mmlu_task_for_plot"].astype(str) == task].copy()
+    task_stop_df = stop_df[stop_df["_mmlu_task_for_plot"].astype(str) == task].copy() if not stop_df.empty else stop_df
 
     for kind in ["gittins_data", "gittins_default", "ucb", "lrf", "bo_pbgi", "bo_logei"]:
         variant = variants[kind]
         vg = task_df[task_df["experiment_variant"].astype(str) == variant].copy()
         if vg.empty:
             continue
-        x_grid, y_arr = aggregate_runs_to_grid(vg, x_col, "simple_regret", int(args.grid_size))
+        if kind.startswith("bo_"):
+            vg = bo_post_init_aligned_to_average_start(
+                vg,
+                x_col=x_col,
+                y_col="simple_regret",
+            )
+            if vg.empty:
+                continue
+        x_grid, y_arr = aggregate_runs_to_grid(
+            vg,
+            x_col,
+            "simple_regret",
+            int(args.grid_size),
+            extend_right=kind.startswith("bo_"),
+        )
         if x_grid.size == 0:
             continue
         center, lo, hi = band_from_yarr(y_arr, float(args.se_mult), args.range)
@@ -443,12 +655,15 @@ def plot_panel(task: str, mode: str, df: pd.DataFrame, args: argparse.Namespace)
         if args.range != "none":
             ax.fill_between(x_grid, lo, hi, color=style["color"], alpha=float(args.curve_alpha), linewidth=0, zorder=style["z"] - 0.5)
 
+    draw_stopping(ax, task_stop_df, variants, x_col, args)
+
     ax.set_title(f"{TASK_DISPLAY[task]} ({TASK_SIZE[task]})", fontsize=float(args.title_size), pad=3)
     ax.grid(True, alpha=0.18, linewidth=0.8)
     ax.tick_params(axis="both", labelsize=float(args.tick_size), width=0.9, length=3)
     ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
-    ax.yaxis.set_major_formatter(FormatStrFormatter("%.2f"))
+    ax.xaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
     x_left, x_right = ax.get_xlim()
     ax.set_xlim(x_left, x_right + 0.08 * (x_right - x_left))
     for spine in ax.spines.values():
@@ -474,6 +689,9 @@ def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[obj
     if args.range != "none":
         handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
         labels.append(f"\u00b1{args.se_mult:g} SE band")
+    if args.show_stopping:
+        handles.append(Line2D([0], [0], color="0.35", linestyle="--", linewidth=1.9))
+        labels.append("Mean stop")
     return handles, labels
 
 
@@ -565,6 +783,7 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
 
     out = args.out_root / f"mmlu_{args.prior_bucket}_{mode}_bo5pct.png"
     fig.savefig(out, dpi=int(args.dpi))
+    fig.savefig(out.with_suffix(".pdf"))
     plt.close(fig)
     return out
 
@@ -581,15 +800,16 @@ def main() -> int:
         modes.append("aware")
     for mode in modes:
         if not bool(args.assemble_only):
-            loaded: dict[str, pd.DataFrame] = {}
             for group in ["small", "medium", "large"]:
                 tasks = [task for task in selected_tasks(args) if TASK_GROUP[task] == group]
-                loaded[group] = load_group_mode(group, mode, tasks, args)
-            for task in selected_tasks(args):
-                out = plot_panel(task, mode, loaded[TASK_GROUP[task]], args)
-                print(f"Wrote panel: {out}")
-        grid = assemble_grid(mode, args)
-        print(f"Wrote grid: {grid}")
+                loaded = load_group_mode(group, mode, tasks, args)
+                stop_df = load_stop_summary_group_mode(group, mode, tasks, args)
+                for task in tasks:
+                    out = plot_panel(task, mode, loaded, stop_df, args)
+                    print(f"Wrote panel: {out}")
+        if not bool(args.individual_only):
+            grid = assemble_grid(mode, args)
+            print(f"Wrote grid: {grid}")
     return 0
 
 

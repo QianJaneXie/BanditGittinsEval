@@ -15,13 +15,13 @@ from matplotlib.patches import Patch
 
 
 STYLE = {
-    "gittins_data": ("tab:orange", "Gittins-S", 3.2, 5),
-    "gittins_default": ("tab:green", "Gittins-G", 3.2, 4),
+    "gittins_data": ("tab:orange", "Gittins-S", 3.84, 5),
+    "gittins_default": ("tab:green", "Gittins-G", 3.84, 4),
     "ucb": ("tab:blue", "UCB-E", 3.0, 3),
     "lrf": ("tab:purple", "LRF", 3.0, 3),
-    "bo_pbgi_unit": ("tab:red", "BO-PBGI", 3.0, 2),
+    "bo_pbgi_unit": ("tab:olive", "BO-PBGI", 3.0, 2),
     "bo_logei_unit": ("tab:brown", "BO-LogEI", 3.0, 2),
-    "bo_pbgi_cost": ("tab:red", "BO-PBGI", 3.0, 2),
+    "bo_pbgi_cost": ("tab:olive", "BO-PBGI", 3.0, 2),
     "bo_logeipc_cost": ("tab:brown", "BO-LogEIPC", 3.0, 2),
 }
 ORDER = [
@@ -89,7 +89,9 @@ def stop_values(summary: Path, tasks: list[str], variant: str, kind: str, cost_m
 def main() -> int:
     args = parse_args()
     df = pd.read_csv(args.aggregated)
-    groups = json.loads(args.groups.read_text(encoding="utf-8"))["selected_tasks"]
+    meta = json.loads(args.groups.read_text(encoding="utf-8"))
+    groups = meta["selected_tasks"]
+    ylabel = "Normalized simple regret" if meta.get("normalize_y") != "none" else "Simple regret"
 
     plt.rcParams.update({
         "font.family": "Times New Roman",
@@ -145,7 +147,7 @@ def main() -> int:
     for ax in axes.ravel():
         ax.set_xlabel("")
         ax.set_ylabel("")
-    fig.text(float(args.shared_y_label_x), 0.5 * (0.375 + 0.765), "Normalized simple regret", ha="center", va="center", rotation="vertical", fontsize=81)
+    fig.text(float(args.shared_y_label_x), 0.5 * (0.375 + 0.765), ylabel, ha="center", va="center", rotation="vertical", fontsize=81)
     fig.text(
         0.5 * (0.045 + 0.995),
         float(args.shared_x_label_y),
