@@ -108,7 +108,7 @@ GITTINS_LINE_EXTRA_MULT = 1.2
 def clean_tick_label(value: float, _pos: int) -> str:
     if abs(float(value)) < 1e-12:
         return "0"
-    return f"{float(value):.2f}"
+    return f"{float(value):g}"
 
 
 def safe_token(s: str) -> str:
@@ -126,6 +126,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--large-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\mmlu_large_bo"))
     p.add_argument("--task-metadata", type=Path, default=Path(r"data\MMLU_matrices\task_metadata.json"))
     p.add_argument("--out-dir", type=Path, default=Path(r"outputs\wandb_plots\paper_figures"))
+    p.add_argument("--cache-curves-only", action="store_true", help="Write aggregated curve/stopping cache, but do not save figures.")
+    p.add_argument("--plot-from-cache", action="store_true", help="Replot from existing aggregated curve/stopping cache without reading raw histories.")
 
     p.add_argument("--cost-mode", choices=["unit", "aware"], default="unit")
     p.add_argument("--small-batch-size", type=int, default=4)
@@ -818,6 +820,21 @@ def aggregate_curves(curves: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray, 
     return x_grid, mean, std, stderr, n.astype(float)
 
 
+def output_stem(args: argparse.Namespace) -> str:
+    stem = (
+        f"mmlu_aggregate_2x2_{args.cost_mode}"
+        f"_Bsmall{args.small_batch_size}_Blarge{args.large_batch_size}"
+        f"_scale{safe_token(str(args.scale))}"
+        f"_x{args.normalize_x}_y{args.normalize_y}"
+        f"_fast"
+    )
+    if args.preserve_lrf_bo_x_offset:
+        stem += "_lrf_bo_xoffset"
+    if args.crop_bo_random_init:
+        stem += "_bo_after_init"
+    return stem
+
+
 def plot_group_panel(
     ax: plt.Axes,
     *,
@@ -830,6 +847,7 @@ def plot_group_panel(
     args: argparse.Namespace,
     legend_handles: dict[str, Line2D],
     stats_rows: list[dict[str, Any]],
+    stop_rows: list[dict[str, Any]],
 ) -> None:
     group_curves: dict[str, list[np.ndarray]] = {kind: [] for kind in method_variants}
     group_task_counts: dict[str, int] = {kind: 0 for kind in method_variants}
@@ -1033,6 +1051,17 @@ def plot_group_panel(
             else:
                 band = 0.0
             style = STYLE_BY_KIND[kind]
+            stop_rows.append(
+                {
+                    "group": group_label,
+                    "method_kind": kind,
+                    "method": style["label"],
+                    "variant": method_variants[kind],
+                    "x": mean_stop,
+                    "band": band,
+                    "n_stops": int(vals.size),
+                }
+            )
             if band > 0:
                 ax.axvspan(
                     mean_stop - band,
@@ -1067,10 +1096,287 @@ def plot_group_panel(
         spine.set_linewidth(1.2)
 
 
+def draw_cached_panel(
+    ax: plt.Axes,
+    *,
+    group_label: str,
+    curve_df: pd.DataFrame,
+    stop_df: pd.DataFrame,
+    args: argparse.Namespace,
+    legend_handles: dict[str, Line2D],
+) -> None:
+    order = [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]
+    group_df = curve_df[curve_df["group"].astype(str) == group_label]
+    for kind in order:
+        kd = group_df[group_df["method_kind"].astype(str) == kind].sort_values("x")
+        if kd.empty:
+            continue
+        style = STYLE_BY_KIND[kind]
+        extra = float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0
+        x = kd["x"].to_numpy(float)
+        mean = kd["mean"].to_numpy(float)
+        line = ax.plot(
+            x,
+            mean,
+            color=style["color"],
+            linewidth=float(style["linewidth"]) * float(LINEWIDTH_MULT) * extra,
+            label=style["label"],
+            zorder=style["zorder"],
+        )[0]
+        legend_handles[kind] = line
+
+        if args.range != "none":
+            band_col = "stderr" if args.range == "stderr" else "std"
+            if band_col in kd.columns:
+                band = kd[band_col].to_numpy(float)
+                if args.range == "stderr":
+                    band = band * float(args.stderr_k)
+                ax.fill_between(
+                    x,
+                    mean - band,
+                    mean + band,
+                    color=style["color"],
+                    alpha=0.15,
+                    linewidth=0,
+                    zorder=style["zorder"] - 0.5,
+                )
+
+    if args.show_stopping and not stop_df.empty:
+        group_stops = stop_df[stop_df["group"].astype(str) == group_label]
+        for _, row in group_stops.iterrows():
+            kind = str(row["method_kind"])
+            if kind not in STYLE_BY_KIND:
+                continue
+            x_stop = float(row["x"])
+            band = float(row.get("band", 0.0))
+            style = STYLE_BY_KIND[kind]
+            if np.isfinite(band) and band > 0:
+                ax.axvspan(
+                    x_stop - band,
+                    x_stop + band,
+                    color=style["color"],
+                    alpha=float(args.stop_alpha),
+                    linewidth=0,
+                    zorder=1,
+                )
+            extra = float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0
+            ax.axvline(
+                x_stop,
+                color=style["color"],
+                linestyle="--",
+                linewidth=2.6 * float(LINEWIDTH_MULT) * extra,
+                alpha=float(args.stop_line_alpha),
+                zorder=2,
+            )
+
+    if args.y_limit_min is not None or args.y_limit_max is not None:
+        lo, hi = ax.get_ylim()
+        ax.set_ylim(
+            args.y_limit_min if args.y_limit_min is not None else lo,
+            args.y_limit_max if args.y_limit_max is not None else hi,
+        )
+
+    ax.grid(True, alpha=0.23, linewidth=0.9)
+    ax.tick_params(axis="both", labelsize=args.tick_size, width=1.2, length=6)
+    ax.xaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    for spine in ax.spines.values():
+        spine.set_linewidth(1.2)
+
+
+def finalize_figure(
+    fig: plt.Figure,
+    axes: np.ndarray,
+    *,
+    args: argparse.Namespace,
+    legend_handles: dict[str, Line2D],
+    out_png: Path | None,
+    out_pdf: Path | None,
+) -> None:
+    ylabel = "Normalized simple regret" if args.normalize_y != "none" else "Simple regret"
+    xlabel = "Normalized cumulative evaluations" if args.cost_mode == "unit" else "Normalized cumulative cost"
+
+    for ax in axes.ravel():
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+
+    fig.text(
+        float(args.shared_y_label_x),
+        0.5 * (float(args.bottom) + float(args.top)),
+        ylabel,
+        ha="center",
+        va="center",
+        rotation="vertical",
+        fontsize=float(args.shared_y_label_size),
+    )
+    fig.text(
+        0.5 * (float(args.left) + float(args.right)),
+        float(args.shared_x_label_y),
+        xlabel,
+        ha="center",
+        va="center",
+        fontsize=float(args.shared_x_label_size),
+    )
+
+    axes[0, 1].text(
+        1.035,
+        0.5,
+        "Easy",
+        transform=axes[0, 1].transAxes,
+        rotation=-90,
+        va="center",
+        ha="left",
+        fontsize=args.row_label_size,
+        fontweight="normal",
+    )
+    axes[1, 1].text(
+        1.035,
+        0.5,
+        "Hard",
+        transform=axes[1, 1].transAxes,
+        rotation=-90,
+        va="center",
+        ha="left",
+        fontsize=args.row_label_size,
+        fontweight="normal",
+    )
+
+    legend_order = [
+        "gittins_data",
+        "gittins_default",
+        "ucb",
+        "lrf",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]
+    final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
+    final_labels = [STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
+
+    if args.show_stopping:
+        for kind in [
+            "gittins_data",
+            "gittins_default",
+            "bo_pbgi_unit",
+            "bo_logei_unit",
+            "bo_pbgi_cost",
+            "bo_logeipc_cost",
+        ]:
+            if kind not in legend_handles:
+                continue
+            final_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=STYLE_BY_KIND[kind]["color"],
+                    linestyle="--",
+                    linewidth=2.6
+                    * float(LINEWIDTH_MULT)
+                    * (float(GITTINS_LINE_EXTRA_MULT) if kind in ("gittins_data", "gittins_default") else 1.0),
+                    alpha=float(args.stop_line_alpha),
+                )
+            )
+            final_labels.append(f"{STYLE_BY_KIND[kind]['label']} mean stop")
+
+    if args.range != "none":
+        final_handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
+        if args.range == "stderr":
+            k = float(args.stderr_k)
+            k_txt = str(int(k)) if abs(k - round(k)) < 1e-9 else f"{k:g}"
+            final_labels.append(f"±{k_txt} SE band")
+        else:
+            final_labels.append("±1 std band")
+
+    fig.legend(
+        final_handles,
+        final_labels,
+        loc="lower center",
+        ncol=min(int(args.legend_ncol), len(final_labels)),
+        frameon=False,
+        bbox_to_anchor=(0.5, float(args.legend_y)),
+        fontsize=args.legend_size,
+        handlelength=2.0,
+        handletextpad=0.35,
+        columnspacing=1.15,
+        borderpad=0.55,
+    )
+
+    fig.subplots_adjust(
+        left=float(args.left),
+        right=float(args.right),
+        top=float(args.top),
+        bottom=float(args.bottom),
+        wspace=float(args.wspace),
+        hspace=float(args.hspace),
+    )
+
+    if out_png is not None and out_pdf is not None:
+        fig.savefig(out_png, dpi=int(args.dpi), bbox_inches="tight", pad_inches=0.22)
+        fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.22)
+        print(f"Wrote:\n  {out_png}\n  {out_pdf}")
+
+
+def plot_from_cache(args: argparse.Namespace) -> int:
+    stem = output_stem(args)
+    curve_path = args.out_dir / f"{stem}_aggregated.csv"
+    stop_path = args.out_dir / f"{stem}_stops.csv"
+    if not curve_path.is_file():
+        raise FileNotFoundError(f"missing cache curve CSV: {curve_path}")
+
+    curve_df = pd.read_csv(curve_path)
+    stop_df = pd.read_csv(stop_path) if stop_path.is_file() else pd.DataFrame()
+    print(f"[PLOT-CACHE] reading {curve_path}")
+    if stop_path.is_file():
+        print(f"[PLOT-CACHE] reading {stop_path}")
+
+    fig, axes = plt.subplots(
+        2,
+        2,
+        figsize=(float(args.fig_width), float(args.fig_height)),
+        sharey=False,
+        constrained_layout=False,
+    )
+    legend_handles: dict[str, Line2D] = {}
+    row_labels = ["Easy", "Hard"]
+    col_labels = ["Small", "Large"]
+    for r, difficulty in enumerate(row_labels):
+        for c, size in enumerate(col_labels):
+            group_label = f"{difficulty}-{size}"
+            draw_cached_panel(
+                axes[r, c],
+                group_label=group_label,
+                curve_df=curve_df,
+                stop_df=stop_df,
+                args=args,
+                legend_handles=legend_handles,
+            )
+            if r == 0:
+                axes[r, c].set_title(size, fontsize=args.title_size, fontweight="normal", pad=8)
+
+    out_png = args.out_dir / f"{stem}.png"
+    out_pdf = args.out_dir / f"{stem}.pdf"
+    finalize_figure(fig, axes, args=args, legend_handles=legend_handles, out_png=out_png, out_pdf=out_pdf)
+    plt.close(fig)
+    return 0
+
+
 def main() -> int:
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     setup_matplotlib(args)
+
+    if args.plot_from_cache:
+        return plot_from_cache(args)
 
     metadata = load_task_metadata(args.task_metadata)
 
@@ -1144,6 +1450,7 @@ def main() -> int:
 
     legend_handles: dict[str, Line2D] = {}
     stats_rows: list[dict[str, Any]] = []
+    stop_rows: list[dict[str, Any]] = []
 
     for r, difficulty in enumerate(row_labels):
         for c, size in enumerate(col_labels):
@@ -1181,6 +1488,7 @@ def main() -> int:
                 args=args,
                 legend_handles=legend_handles,
                 stats_rows=stats_rows,
+                stop_rows=stop_rows,
             )
 
             if r == 0:
@@ -1306,27 +1614,20 @@ def main() -> int:
         hspace=float(args.hspace),
     )
 
-    stem = (
-        f"mmlu_aggregate_2x2_{args.cost_mode}"
-        f"_Bsmall{args.small_batch_size}_Blarge{args.large_batch_size}"
-        f"_scale{safe_token(str(args.scale))}"
-        f"_x{args.normalize_x}_y{args.normalize_y}"
-        f"_fast"
-    )
-    if args.preserve_lrf_bo_x_offset:
-        stem += "_lrf_bo_xoffset"
-    if args.crop_bo_random_init:
-        stem += "_bo_after_init"
+    stem = output_stem(args)
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
     out_csv = args.out_dir / f"{stem}_aggregated.csv"
+    out_stops = args.out_dir / f"{stem}_stops.csv"
     out_meta = args.out_dir / f"{stem}_groups.json"
 
-    fig.savefig(out_png, dpi=int(args.dpi), bbox_inches="tight", pad_inches=0.22)
-    fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.22)
+    if not args.cache_curves_only:
+        fig.savefig(out_png, dpi=int(args.dpi), bbox_inches="tight", pad_inches=0.22)
+        fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.22)
     plt.close(fig)
 
     pd.DataFrame(stats_rows).to_csv(out_csv, index=False)
+    pd.DataFrame(stop_rows).to_csv(out_stops, index=False)
     out_meta.write_text(
         json.dumps(
             {
@@ -1350,10 +1651,12 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    print(f"\nWrote {out_png}")
-    print(f"Wrote {out_pdf}")
-    print(f"Wrote {out_csv}")
-    print(f"Wrote {out_meta}")
+    if not args.cache_curves_only:
+        print(f"\nWrote {out_png}")
+        print(f"Wrote {out_pdf}")
+    print(f"[CACHE] wrote {out_csv}")
+    print(f"[CACHE] wrote {out_stops}")
+    print(f"[CACHE] wrote {out_meta}")
     return 0
 
 

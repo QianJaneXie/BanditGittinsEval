@@ -250,6 +250,7 @@ LEGEND_BASE_LINEWIDTH_BY_KIND = {
 }
 LEGEND_LINEWIDTH_MULT = 1.8
 LEGEND_STOP_BASE_LINEWIDTH = 1.9
+X_START_ZERO_LEFT_PAD_FRAC = 0.02
 
 
 def cache_method_kind(kind: str, mode: str) -> str:
@@ -313,6 +314,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--individual-only", action="store_true", help="Write individual task panels and skip grid assembly.")
     p.add_argument("--cache-curves-only", action="store_true", help="Write processed curve CSV/JSON files and do not plot panels or assemble grids.")
     p.add_argument("--plot-from-cache", action="store_true", help="Plot individual panels from processed_curves without reading raw history.")
+    p.add_argument("--x-start-zero", action="store_true", help="Force individual panel x-axis to start at 0.")
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
     p.add_argument("--se-mult", type=float, default=2.0)
@@ -832,7 +834,16 @@ def draw_panel_payload(
 
     draw_cached_stopping(ax, list(meta.get("stop_lines", [])), args)
     apply_panel_axes_style(ax, task, args)
-    if meta.get("xlim") is not None:
+    if bool(args.x_start_zero):
+        if meta.get("xlim") is not None:
+            right = float(list(meta["xlim"])[1])
+        else:
+            x_left, x_right = ax.get_xlim()
+            right = x_right + 0.08 * (x_right - x_left)
+        left = -float(X_START_ZERO_LEFT_PAD_FRAC) * right if right > 0 else 0.0
+        ax.set_xlim(left, right)
+        meta["xlim"] = [left, right]
+    elif meta.get("xlim") is not None:
         ax.set_xlim(*meta["xlim"])
     else:
         x_left, x_right = ax.get_xlim()
@@ -864,7 +875,7 @@ def write_panel_cache(task: str, mode: str, curves: pd.DataFrame, meta: dict[str
                 if key in stop and np.isfinite(float(stop[key])):
                     xs.append(float(stop[key]))
         if xs and meta.get("xlim") is None:
-            x_left = float(np.min(xs))
+            x_left = 0.0 if bool(args.x_start_zero) else float(np.min(xs))
             x_right = float(np.max(xs))
             pad = 0.08 * (x_right - x_left) if x_right > x_left else max(1.0, abs(x_right) * 0.08)
             meta["xlim"] = [x_left, x_right + pad]
