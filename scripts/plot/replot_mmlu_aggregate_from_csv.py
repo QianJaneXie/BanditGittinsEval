@@ -49,8 +49,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--shared-y-label-x", type=float, default=-0.023)
     p.add_argument("--small-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_small\runs_summary.csv"))
     p.add_argument("--large-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\mmlu_large\runs_summary.csv"))
-    p.add_argument("--small-bo-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_small_bo\runs_summary.csv"))
-    p.add_argument("--large-bo-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline\mmlu_large_bo\runs_summary.csv"))
+    p.add_argument("--small-bo-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\mmlu_small_bo\runs_summary.csv"))
+    p.add_argument("--large-bo-summary", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\mmlu_large_bo\runs_summary.csv"))
     p.add_argument("--cost-mode", choices=["unit", "aware"], default="unit")
     return p.parse_args()
 

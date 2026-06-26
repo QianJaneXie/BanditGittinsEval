@@ -39,7 +39,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-_repo_root = Path(__file__).resolve().parents[1]
+_repo_root = Path(__file__).resolve().parents[2]
 os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
 
 import matplotlib.pyplot as plt

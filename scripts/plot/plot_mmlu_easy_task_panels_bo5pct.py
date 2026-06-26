@@ -13,7 +13,12 @@ import gc
 import json
 import math
 import re
+import sys
 from pathlib import Path
+
+_plot_dir = Path(__file__).resolve().parent
+if str(_plot_dir) not in sys.path:
+    sys.path.insert(0, str(_plot_dir))
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt

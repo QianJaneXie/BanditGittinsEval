@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Paper-style 2x2 figure for GSM8K and PIQA.
+"""Paper-style 2x2 figure for GSM8K and PIQA with a right-side legend.
 
 Figure layout:
   columns: GSM8K, PIQA
   rows:    unit-cost, cost-aware
+
+This DMS-format variant keeps the same data processing and panel drawing logic
+as plot_gsm8k_piqa_paper_grid.py, but places the shared legend to the right of
+the four-panel grid.
 
 This version keeps two Gittins curves:
 - orange = Gittins-S
@@ -99,7 +103,7 @@ GITTINS_LINE_EXTRA_MULT = 1.2
 def clean_tick_label(value: float, _pos: int) -> str:
     if abs(float(value)) < 1e-12:
         return "0"
-    return f"{float(value):.2f}"
+    return f"{float(value):.2f}".rstrip("0").rstrip(".")
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
@@ -143,7 +147,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path(r"outputs\wandb_plots\paper_figures"),
+        default=Path(r"outputs\wandb_plots_new\paper_figures\gsm8k_piqa_right_legend"),
     )
 
     p.add_argument("--batch-size", type=int, default=8)
@@ -160,7 +164,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--stderr-k",
         type=float,
-        default=2.0,
+        default=1.0,
         help="Multiplier for standard-error bands when using stderr-based ranges/stop bands.",
     )
 
@@ -177,9 +181,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stop-alpha", type=float, default=0.12)
     p.add_argument("--stop-line-alpha", type=float, default=0.72)
 
-    # Make panels larger on canvas (scale up proportionally).
-    p.add_argument("--fig-width", type=float, default=26.8)
-    p.add_argument("--fig-height", type=float, default=25.9)
+    # Wide canvas leaves a dedicated legend column to the right of the grid.
+    p.add_argument("--fig-width", type=float, default=35.0)
+    p.add_argument("--fig-height", type=float, default=18.8)
 
     # Slightly larger than previous version.
     # Increase paper fonts for readability (except tick labels).
@@ -187,9 +191,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--label-size", type=float, default=81)
     # Axis tick labels (numbers) should NOT be enlarged further.
     p.add_argument("--tick-size", type=float, default=57)
-    p.add_argument("--legend-size", type=float, default=58)
+    p.add_argument("--legend-size", type=float, default=56)
+    p.add_argument("--legend-x", type=float, default=0.795)
+    p.add_argument("--legend-y", type=float, default=0.51)
+    p.add_argument("--legend-ncol", type=int, default=1)
     # Keep row labels (Unit-cost / Cost-aware) same size as panel titles.
     p.add_argument("--row-label-size", type=float, default=81)
+    p.add_argument("--y-label-pad", type=float, default=28)
+    p.add_argument("--row-label-y", type=float, default=0.455)
 
     p.add_argument("--y-limit-min", type=float, default=None)
     p.add_argument("--y-limit-max", type=float, default=None)
@@ -376,15 +385,12 @@ def crop_bo_after_random_init(df: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(pieces, ignore_index=False)
 
 
-def bo_average_initial_x(df: pd.DataFrame, x_col: str) -> float:
+def bo_mean_initial_sample_x(df: pd.DataFrame, x_col: str) -> float:
     if "selection_phase" not in df.columns or x_col not in df.columns:
         return float("nan")
 
     phase = df["selection_phase"].astype(str).str.lower()
     init = df[phase == "random_init"].copy()
-    if init.empty:
-        return float("nan")
-
     vals = []
     for _, rg in init.groupby("run_id", sort=False):
         xs = pd.to_numeric(rg[x_col], errors="coerce").dropna()
@@ -401,7 +407,7 @@ def bo_post_init_aligned_to_average_start(
     x_col: str,
     y_col: str,
 ) -> pd.DataFrame:
-    target = bo_average_initial_x(df, x_col)
+    target = bo_mean_initial_sample_x(df, x_col)
     if "selection_phase" not in df.columns:
         return df
 
@@ -803,8 +809,8 @@ def main() -> int:
         # Keep some separation from axes while preventing title cropping.
         axes[0, col].set_title(d["title"], fontsize=args.title_size, fontweight="normal", pad=8)
 
-    axes[0, 0].set_ylabel("Simple regret", fontsize=args.label_size)
-    axes[1, 0].set_ylabel("Simple regret", fontsize=args.label_size)
+    axes[0, 0].set_ylabel("Simple regret", fontsize=args.label_size, labelpad=float(args.y_label_pad))
+    axes[1, 0].set_ylabel("Simple regret", fontsize=args.label_size, labelpad=float(args.y_label_pad))
 
     for col in range(2):
         axes[0, col].set_xlabel("Cumulative evaluations", fontsize=args.label_size)
@@ -812,7 +818,7 @@ def main() -> int:
 
     axes[0, 1].text(
         1.035,
-        0.5,
+        float(args.row_label_y),
         "Unit-cost",
         transform=axes[0, 1].transAxes,
         rotation=-90,
@@ -823,7 +829,7 @@ def main() -> int:
     )
     axes[1, 1].text(
         1.035,
-        0.5,
+        float(args.row_label_y),
         "Cost-aware",
         transform=axes[1, 1].transAxes,
         rotation=-90,
@@ -897,28 +903,29 @@ def main() -> int:
     fig.legend(
         final_handles,
         final_labels,
-        loc="lower center",
-        ncol=3,
+        loc="center left",
+        ncol=max(1, int(args.legend_ncol)),
         frameon=False,
-        bbox_to_anchor=(0.5, 0.045),
+        bbox_to_anchor=(float(args.legend_x), float(args.legend_y)),
         fontsize=args.legend_size,
-        handlelength=2.0,
-        handletextpad=0.35,
-        columnspacing=1.15,
+        handlelength=2.25,
+        handletextpad=0.45,
+        columnspacing=1.0,
+        labelspacing=0.85,
         borderpad=0.55,
     )
 
-    # Layout: slightly more space between panels, but use more of the full canvas.
+    # Layout: reserve a right-side legend column instead of a bottom legend band.
     fig.subplots_adjust(
         left=0.060,
-        right=0.985,
-        top=0.765,
-        bottom=0.375,
+        right=0.720,
+        top=0.850,
+        bottom=0.155,
         wspace=0.24,
-        hspace=0.74,
+        hspace=0.52,
     )
 
-    stem = f"figure1_gsm8k_piqa_B{args.batch_size}_LRFB{args.lrf_batch_size}_scale{args.scale}".replace(".", "")
+    stem = f"figure1_gsm8k_piqa_right_legend_B{args.batch_size}_LRFB{args.lrf_batch_size}_scale{args.scale}".replace(".", "")
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
 
