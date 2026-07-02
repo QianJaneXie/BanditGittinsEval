@@ -314,6 +314,12 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--out-root", type=Path, default=Path(r"outputs\wandb_plots_new\paper_figures\mmlu_easy_bo5pct_panels"))
     p.add_argument("--prior-bucket", choices=sorted(TASKS_BY_BUCKET), default="easy")
+    p.add_argument(
+        "--tasks",
+        nargs="+",
+        default=None,
+        help="Optional subset of tasks within --prior-bucket (default: all).",
+    )
     p.add_argument("--cost-mode", choices=["both", "unit", "aware"], default="both")
     p.add_argument("--assemble-only", action="store_true", help="Reuse existing individual panels and only reassemble grids.")
     p.add_argument("--individual-only", action="store_true", help="Write individual task panels and skip grid assembly.")
@@ -954,7 +960,16 @@ def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[obj
 
 
 def selected_tasks(args: argparse.Namespace) -> list[str]:
-    return TASKS_BY_BUCKET[str(args.prior_bucket)]
+    tasks = list(TASKS_BY_BUCKET[str(args.prior_bucket)])
+    if args.tasks:
+        wanted = {normalize_task_name(t) for t in args.tasks}
+        tasks = [task for task in tasks if task in wanted]
+        missing = wanted - set(tasks)
+        if missing:
+            raise ValueError(
+                f"Unknown tasks for prior-bucket={args.prior_bucket}: {sorted(missing)}"
+            )
+    return tasks
 
 
 def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
@@ -1070,6 +1085,8 @@ def main() -> int:
         if not bool(args.assemble_only):
             for group in ["small", "medium", "large"]:
                 tasks = [task for task in selected_tasks(args) if TASK_GROUP[task] == group]
+                if not tasks:
+                    continue
                 loaded = load_group_mode(group, mode, tasks, args)
                 stop_df = load_stop_summary_group_mode(group, mode, tasks, args)
                 for task in tasks:
