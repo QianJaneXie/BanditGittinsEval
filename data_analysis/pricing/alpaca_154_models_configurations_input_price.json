@@ -1,0 +1,2629 @@
+{
+  "_metadata": {
+    "dataset": "alpaca_eval",
+    "matrix_shape": "154 x 805",
+    "pricing_source": "data_analysis\\alpaca_models\\alpaca_154_models_pricing_fixed.docx",
+    "pricing_method": "best input/output USD per 1M tokens from fixed docx; input + 8*output",
+    "input_to_output_token_ratio": "1:8",
+    "drop_annotator_row": 82,
+    "drop_annotator_model": "gpt4_1106_preview_verbose"
+  },
+  "0": {
+    "model_name": "Conifer-7B-DPO",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Conifer-7B-DPO",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "1": {
+    "model_name": "Contextual-KTO-Mistral-PairRM",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Contextual-KTO-Mistral-PairRM",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "2": {
+    "model_name": "FsfairX-Zephyr-Chat-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "FsfairX-Zephyr-Chat-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "3": {
+    "model_name": "LMCocktail-10.7B-v1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "LMCocktail-10.7B-v1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "4": {
+    "model_name": "Meta-Llama-3-70B-Instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Meta-Llama-3-70B-Instruct",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "5": {
+    "model_name": "Meta-Llama-3-8B-Instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Meta-Llama-3-8B-Instruct",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "6": {
+    "model_name": "Mistral-7B-Instruct-v0.2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mistral-7B-Instruct-v0.2",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "7": {
+    "model_name": "Mistral-7B-ReMax-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mistral-7B-ReMax-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "8": {
+    "model_name": "Mixtral-8x22B-Instruct-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mixtral-8x22B-Instruct-v0.1",
+    "input_cost_per_1m_tokens": 1.2,
+    "output_cost_per_1m_tokens": 1.2,
+    "estimated_cost_per_1m_input_tokens": 10.8,
+    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing"
+  },
+  "9": {
+    "model_name": "Mixtral-8x7B-Instruct-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mixtral-8x7B-Instruct-v0.1",
+    "input_cost_per_1m_tokens": 0.5,
+    "output_cost_per_1m_tokens": 0.5,
+    "estimated_cost_per_1m_input_tokens": 4.5,
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+  },
+  "10": {
+    "model_name": "Mixtral-8x7B-Instruct-v0.1_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mixtral-8x7B-Instruct-v0.1_concise",
+    "input_cost_per_1m_tokens": 0.5,
+    "output_cost_per_1m_tokens": 0.5,
+    "estimated_cost_per_1m_input_tokens": 4.5,
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+  },
+  "11": {
+    "model_name": "Mixtral-8x7B-Instruct-v0.1_verbose",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Mixtral-8x7B-Instruct-v0.1_verbose",
+    "input_cost_per_1m_tokens": 0.5,
+    "output_cost_per_1m_tokens": 0.5,
+    "estimated_cost_per_1m_input_tokens": 4.5,
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+  },
+  "12": {
+    "model_name": "Nanbeige-Plus-Chat-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Nanbeige-Plus-Chat-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "13": {
+    "model_name": "Nanbeige2-8B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Nanbeige2-8B-Chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "14": {
+    "model_name": "OpenHermes-2.5-Mistral-7B",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "OpenHermes-2.5-Mistral-7B",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "15": {
+    "model_name": "Qwen-14B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen-14B-Chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "16": {
+    "model_name": "Qwen1.5-1.8B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen1.5-1.8B-Chat",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "17": {
+    "model_name": "Qwen1.5-110B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen1.5-110B-Chat",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "18": {
+    "model_name": "Qwen1.5-14B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen1.5-14B-Chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "19": {
+    "model_name": "Qwen1.5-72B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen1.5-72B-Chat",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "20": {
+    "model_name": "Qwen1.5-7B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Qwen1.5-7B-Chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "21": {
+    "model_name": "Samba-CoE-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Samba-CoE-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "22": {
+    "model_name": "Samba-CoE-v0.2-best-of-16",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Samba-CoE-v0.2-best-of-16",
+    "input_cost_per_1m_tokens": 3.2,
+    "output_cost_per_1m_tokens": 3.2,
+    "estimated_cost_per_1m_input_tokens": 28.8,
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "23": {
+    "model_name": "Samba-CoE-v0.2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Samba-CoE-v0.2",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "24": {
+    "model_name": "Snorkel-Mistral-PairRM-DPO-best-of-16",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Snorkel-Mistral-PairRM-DPO-best-of-16",
+    "input_cost_per_1m_tokens": 3.2,
+    "output_cost_per_1m_tokens": 3.2,
+    "estimated_cost_per_1m_input_tokens": 28.8,
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "25": {
+    "model_name": "Snorkel-Mistral-PairRM-DPO",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Snorkel-Mistral-PairRM-DPO",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "26": {
+    "model_name": "Starling-LM-7B-alpha",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Starling-LM-7B-alpha",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "27": {
+    "model_name": "TempNet-LLaMA2-Chat-13B-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "TempNet-LLaMA2-Chat-13B-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "28": {
+    "model_name": "TempNet-LLaMA2-Chat-70B-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "TempNet-LLaMA2-Chat-70B-v0.1",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "29": {
+    "model_name": "TempNet-LLaMA2-Chat-7B-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "TempNet-LLaMA2-Chat-7B-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "30": {
+    "model_name": "Yi-34B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "Yi-34B-Chat",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "31": {
+    "model_name": "airoboros-33b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "airoboros-33b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "32": {
+    "model_name": "airoboros-65b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "airoboros-65b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "33": {
+    "model_name": "aligner-2b_claude-3-opus-20240229",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "aligner-2b_claude-3-opus-20240229",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "34": {
+    "model_name": "aligner-2b_qwen1.5-72b-chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "aligner-2b_qwen1.5-72b-chat",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "35": {
+    "model_name": "llama7B_freelb_lr5e-5_AdvLr0_InitAdvMax10_AdvStep1_Projl2_MaxNorm0_yuxinRun",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "llama7B_freelb_lr5e-5_AdvLr0_InitAdvMax10_AdvStep1_Projl2_MaxNorm0_yuxinRun",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "36": {
+    "model_name": "alpaca-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "alpaca-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "37": {
+    "model_name": "alpaca-7b_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "alpaca-7b_concise",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "38": {
+    "model_name": "alpaca-7b_verbose",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "alpaca-7b_verbose",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "39": {
+    "model_name": "alpaca-farm-ppo-human",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "alpaca-farm-ppo-human",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "40": {
+    "model_name": "alpaca-farm-ppo-sim-gpt4-20k",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "alpaca-farm-ppo-sim-gpt4-20k",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "41": {
+    "model_name": "baichuan-13b-chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "baichuan-13b-chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "42": {
+    "model_name": "baize-v2-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "baize-v2-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "43": {
+    "model_name": "baize-v2-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "baize-v2-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "44": {
+    "model_name": "causallm-14b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "causallm-14b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "45": {
+    "model_name": "chatglm2-6b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "chatglm2-6b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "46": {
+    "model_name": "claude-2.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-2.1",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+  },
+  "47": {
+    "model_name": "claude-2.1_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-2.1_concise",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+  },
+  "48": {
+    "model_name": "claude-2.1_verbose",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-2.1_verbose",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+  },
+  "49": {
+    "model_name": "claude-2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-2",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+  },
+  "50": {
+    "model_name": "claude-3-opus-20240229",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-3-opus-20240229",
+    "input_cost_per_1m_tokens": 15.0,
+    "output_cost_per_1m_tokens": 75.0,
+    "estimated_cost_per_1m_input_tokens": 615.0,
+    "sources": "Historical/legacy Claude 3 Opus pricing. Anthropic pricing"
+  },
+  "51": {
+    "model_name": "claude-3-sonnet-20240229",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-3-sonnet-20240229",
+    "input_cost_per_1m_tokens": 3.0,
+    "output_cost_per_1m_tokens": 15.0,
+    "estimated_cost_per_1m_input_tokens": 123.0,
+    "sources": "Claude 3 Sonnet pricing. Anthropic pricing"
+  },
+  "52": {
+    "model_name": "claude-instant-1.2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude-instant-1.2",
+    "input_cost_per_1m_tokens": 0.8,
+    "output_cost_per_1m_tokens": 2.4,
+    "estimated_cost_per_1m_input_tokens": 20.0,
+    "sources": "Historical Anthropic Claude Instant pricing. Anthropic PDF"
+  },
+  "53": {
+    "model_name": "claude",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+  },
+  "54": {
+    "model_name": "claude2-alpaca-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "claude2-alpaca-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "55": {
+    "model_name": "cohere",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "cohere",
+    "input_cost_per_1m_tokens": 1.0,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.0,
+    "sources": "Cohere Command pricing. Cohere pricing"
+  },
+  "56": {
+    "model_name": "cut-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "cut-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "57": {
+    "model_name": "dbrx-instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "dbrx-instruct",
+    "input_cost_per_1m_tokens": 1.2,
+    "output_cost_per_1m_tokens": 1.2,
+    "estimated_cost_per_1m_input_tokens": 10.8,
+    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing"
+  },
+  "58": {
+    "model_name": "deepseek-llm-67b-chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "deepseek-llm-67b-chat",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy for open-source 67B dense model; not current DeepSeek API endpoint. Fireworks pricing"
+  },
+  "59": {
+    "model_name": "deita-7b-v1.0",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "deita-7b-v1.0",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "60": {
+    "model_name": "dolphin-2.2.1-mistral-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "dolphin-2.2.1-mistral-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "61": {
+    "model_name": "evo-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "evo-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "62": {
+    "model_name": "evo-v2-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "evo-v2-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "63": {
+    "model_name": "falcon-40b-instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "falcon-40b-instruct",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "64": {
+    "model_name": "falcon-7b-instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "falcon-7b-instruct",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "65": {
+    "model_name": "gemini-pro",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gemini-pro",
+    "input_cost_per_1m_tokens": 0.5,
+    "output_cost_per_1m_tokens": 1.5,
+    "estimated_cost_per_1m_input_tokens": 12.5,
+    "sources": "Historical Google Gemini Pro pricing. Gemini pricing"
+  },
+  "66": {
+    "model_name": "gemma-2b-it",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gemma-2b-it",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "67": {
+    "model_name": "gemma-7b-it",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gemma-7b-it",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "68": {
+    "model_name": "gpt-3.5-turbo-0301",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-3.5-turbo-0301",
+    "input_cost_per_1m_tokens": 1.5,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.5,
+    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing"
+  },
+  "69": {
+    "model_name": "gpt-3.5-turbo-0613",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-3.5-turbo-0613",
+    "input_cost_per_1m_tokens": 1.5,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.5,
+    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing"
+  },
+  "70": {
+    "model_name": "gpt-3.5-turbo-1106",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-3.5-turbo-1106",
+    "input_cost_per_1m_tokens": 1.0,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.0,
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+  },
+  "71": {
+    "model_name": "gpt-3.5-turbo-1106_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-3.5-turbo-1106_concise",
+    "input_cost_per_1m_tokens": 1.0,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.0,
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+  },
+  "72": {
+    "model_name": "gpt-3.5-turbo-1106_verbose",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-3.5-turbo-1106_verbose",
+    "input_cost_per_1m_tokens": 1.0,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.0,
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+  },
+  "73": {
+    "model_name": "gpt-4-0125-preview",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt-4-0125-preview",
+    "input_cost_per_1m_tokens": 10.0,
+    "output_cost_per_1m_tokens": 30.0,
+    "estimated_cost_per_1m_input_tokens": 250.0,
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+  },
+  "74": {
+    "model_name": "gpt35_turbo_instruct",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt35_turbo_instruct",
+    "input_cost_per_1m_tokens": 1.5,
+    "output_cost_per_1m_tokens": 2.0,
+    "estimated_cost_per_1m_input_tokens": 17.5,
+    "sources": "Historical OpenAI GPT-3.5 Turbo Instruct pricing. OpenRouter"
+  },
+  "75": {
+    "model_name": "gpt4",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "76": {
+    "model_name": "gpt4_0314",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_0314",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "77": {
+    "model_name": "gpt4_0613",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_0613",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "78": {
+    "model_name": "gpt4_0613_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_0613_concise",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "79": {
+    "model_name": "gpt4_0613_verbose",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_0613_verbose",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "80": {
+    "model_name": "gpt4_1106_preview",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_1106_preview",
+    "input_cost_per_1m_tokens": 10.0,
+    "output_cost_per_1m_tokens": 30.0,
+    "estimated_cost_per_1m_input_tokens": 250.0,
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+  },
+  "81": {
+    "model_name": "gpt4_1106_preview_concise",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_1106_preview_concise",
+    "input_cost_per_1m_tokens": 10.0,
+    "output_cost_per_1m_tokens": 30.0,
+    "estimated_cost_per_1m_input_tokens": 250.0,
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+  },
+  "82": {
+    "model_name": "gpt4_1106_preview_verbose",
+    "in_no_rounding_debias": false,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_1106_preview_verbose",
+    "input_cost_per_1m_tokens": 10.0,
+    "output_cost_per_1m_tokens": 30.0,
+    "estimated_cost_per_1m_input_tokens": 250.0,
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+  },
+  "83": {
+    "model_name": "gpt4_gamed",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "gpt4_gamed",
+    "input_cost_per_1m_tokens": 30.0,
+    "output_cost_per_1m_tokens": 60.0,
+    "estimated_cost_per_1m_input_tokens": 510.0,
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+  },
+  "84": {
+    "model_name": "guanaco-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "guanaco-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "85": {
+    "model_name": "guanaco-33b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "guanaco-33b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "86": {
+    "model_name": "guanaco-65b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "guanaco-65b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "87": {
+    "model_name": "guanaco-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "guanaco-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "88": {
+    "model_name": "humpback-llama-65b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "humpback-llama-65b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "89": {
+    "model_name": "humpback-llama2-70b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "humpback-llama2-70b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "90": {
+    "model_name": "internlm2-chat-20b-ppo",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "internlm2-chat-20b-ppo",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "91": {
+    "model_name": "jina-chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "jina-chat",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "92": {
+    "model_name": "llama-2-13b-chat-hf",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "llama-2-13b-chat-hf",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "93": {
+    "model_name": "llama-2-70b-chat-hf",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "llama-2-70b-chat-hf",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "94": {
+    "model_name": "llama-2-7b-chat-hf",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "llama-2-7b-chat-hf",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "95": {
+    "model_name": "llama-2-chat-7b-evol70k-neft",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "llama-2-chat-7b-evol70k-neft",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "96": {
+    "model_name": "minichat-1.5-3b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "minichat-1.5-3b",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "97": {
+    "model_name": "minichat-3b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "minichat-3b",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "98": {
+    "model_name": "minotaur-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "minotaur-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "99": {
+    "model_name": "mistral-large-2402",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "mistral-large-2402",
+    "input_cost_per_1m_tokens": 8.0,
+    "output_cost_per_1m_tokens": 24.0,
+    "estimated_cost_per_1m_input_tokens": 200.0,
+    "sources": "Historical Mistral Large 2402 pricing. Holori pricing"
+  },
+  "100": {
+    "model_name": "mistral-medium",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "mistral-medium",
+    "input_cost_per_1m_tokens": 2.7,
+    "output_cost_per_1m_tokens": 8.1,
+    "estimated_cost_per_1m_input_tokens": 67.5,
+    "sources": "Historical Mistral Medium pricing. Lago pricing"
+  },
+  "101": {
+    "model_name": "mistral-orpo-beta",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "mistral-orpo-beta",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "102": {
+    "model_name": "nous-hermes-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "nous-hermes-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "103": {
+    "model_name": "oasst-rlhf-llama-33b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "oasst-rlhf-llama-33b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "104": {
+    "model_name": "oasst-sft-llama-33b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "oasst-sft-llama-33b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "105": {
+    "model_name": "oasst-sft-pythia-12b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "oasst-sft-pythia-12b",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "106": {
+    "model_name": "openbuddy-falcon-40b-v9",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-falcon-40b-v9",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "107": {
+    "model_name": "openbuddy-falcon-7b-v6",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-falcon-7b-v6",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "108": {
+    "model_name": "openbuddy-llama-30b-v7.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-llama-30b-v7.1",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "109": {
+    "model_name": "openbuddy-llama-65b-v8",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-llama-65b-v8",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "110": {
+    "model_name": "openbuddy-llama2-13b-v11.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-llama2-13b-v11.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "111": {
+    "model_name": "openbuddy-llama2-70b-v10.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openbuddy-llama2-70b-v10.1",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "112": {
+    "model_name": "openchat-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openchat-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "113": {
+    "model_name": "openchat-v2-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openchat-v2-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "114": {
+    "model_name": "openchat-v2-w-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openchat-v2-w-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "115": {
+    "model_name": "openchat-v3.1-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openchat-v3.1-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "116": {
+    "model_name": "openchat8192-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "openchat8192-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "117": {
+    "model_name": "opencoderplus-15b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "opencoderplus-15b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "118": {
+    "model_name": "pairrm-Yi-34B-Chat",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "pairrm-Yi-34B-Chat",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "119": {
+    "model_name": "pairrm-tulu-2-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "pairrm-tulu-2-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "120": {
+    "model_name": "pairrm-tulu-2-70b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "pairrm-tulu-2-70b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "121": {
+    "model_name": "pairrm-zephyr-7b-beta",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "pairrm-zephyr-7b-beta",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "122": {
+    "model_name": "phi-2-dpo",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "phi-2-dpo",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "123": {
+    "model_name": "phi-2-sft",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "phi-2-sft",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "124": {
+    "model_name": "phi-2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "phi-2",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "125": {
+    "model_name": "platolm-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "platolm-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "126": {
+    "model_name": "pythia-12b-mix-sft",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "pythia-12b-mix-sft",
+    "input_cost_per_1m_tokens": 0.1,
+    "output_cost_per_1m_tokens": 0.1,
+    "estimated_cost_per_1m_input_tokens": 0.9,
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+  },
+  "127": {
+    "model_name": "recycled-wizardlm-7b-v1.0",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "recycled-wizardlm-7b-v1.0",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "128": {
+    "model_name": "recycled-wizardlm-7b-v2.0",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "recycled-wizardlm-7b-v2.0",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "129": {
+    "model_name": "text_davinci_001",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "text_davinci_001",
+    "input_cost_per_1m_tokens": 20.0,
+    "output_cost_per_1m_tokens": 20.0,
+    "estimated_cost_per_1m_input_tokens": 180.0,
+    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing"
+  },
+  "130": {
+    "model_name": "text_davinci_003",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "text_davinci_003",
+    "input_cost_per_1m_tokens": 20.0,
+    "output_cost_per_1m_tokens": 20.0,
+    "estimated_cost_per_1m_input_tokens": 180.0,
+    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing"
+  },
+  "131": {
+    "model_name": "tulu-2-dpo-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "tulu-2-dpo-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "132": {
+    "model_name": "tulu-2-dpo-70b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "tulu-2-dpo-70b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "133": {
+    "model_name": "tulu-2-dpo-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "tulu-2-dpo-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "134": {
+    "model_name": "ultralm-13b-best-of-16",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "ultralm-13b-best-of-16",
+    "input_cost_per_1m_tokens": 3.2,
+    "output_cost_per_1m_tokens": 3.2,
+    "estimated_cost_per_1m_input_tokens": 28.8,
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "135": {
+    "model_name": "ultralm-13b-v2.0-best-of-16",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "ultralm-13b-v2.0-best-of-16",
+    "input_cost_per_1m_tokens": 3.2,
+    "output_cost_per_1m_tokens": 3.2,
+    "estimated_cost_per_1m_input_tokens": 28.8,
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "136": {
+    "model_name": "ultralm-13b-v2.0",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "ultralm-13b-v2.0",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "137": {
+    "model_name": "ultralm-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "ultralm-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "138": {
+    "model_name": "vicuna-13b-v1.3",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-13b-v1.3",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "139": {
+    "model_name": "vicuna-13b-v1.5",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-13b-v1.5",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "140": {
+    "model_name": "vicuna-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "141": {
+    "model_name": "vicuna-33b-v1.3",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-33b-v1.3",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "142": {
+    "model_name": "vicuna-7b-v1.3",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-7b-v1.3",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "143": {
+    "model_name": "vicuna-7b-v1.5",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-7b-v1.5",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "144": {
+    "model_name": "vicuna-7b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "vicuna-7b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "145": {
+    "model_name": "wizardlm-13b-v1.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "wizardlm-13b-v1.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "146": {
+    "model_name": "wizardlm-13b-v1.2",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "wizardlm-13b-v1.2",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "147": {
+    "model_name": "wizardlm-13b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "wizardlm-13b",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "148": {
+    "model_name": "wizardlm-70b",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "wizardlm-70b",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "149": {
+    "model_name": "xwinlm-13b-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "xwinlm-13b-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "150": {
+    "model_name": "xwinlm-70b-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "xwinlm-70b-v0.1",
+    "input_cost_per_1m_tokens": 0.9,
+    "output_cost_per_1m_tokens": 0.9,
+    "estimated_cost_per_1m_input_tokens": 8.1,
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+  },
+  "151": {
+    "model_name": "xwinlm-7b-v0.1",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "xwinlm-7b-v0.1",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "152": {
+    "model_name": "zephyr-7b-alpha",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "zephyr-7b-alpha",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  },
+  "153": {
+    "model_name": "zephyr-7b-beta",
+    "in_no_rounding_debias": true,
+    "num_instructions": 805,
+    "dataset_name": "alpaca_eval",
+    "pricing_assumption": {
+      "input_to_output_token_ratio": "1:8",
+      "unit": "USD_per_1M_input_tokens",
+      "formula": "input_cost + 8*output_cost",
+      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
+    },
+    "model_cost_key": "zephyr-7b-beta",
+    "input_cost_per_1m_tokens": 0.2,
+    "output_cost_per_1m_tokens": 0.2,
+    "estimated_cost_per_1m_input_tokens": 1.8,
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+  }
+}
