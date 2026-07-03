@@ -6,7 +6,168 @@
     "pricing_method": "best input/output USD per 1M tokens from fixed docx; input + 8*output",
     "input_to_output_token_ratio": "1:8",
     "drop_annotator_row": 82,
-    "drop_annotator_model": "gpt4_1106_preview_verbose"
+    "drop_annotator_model": "gpt4_1106_preview_verbose",
+    "source_file": "data_analysis/pricing/alpaca_154_models_configurations_price_1to8.json",
+    "filter": "in_no_rounding_debias == true",
+    "n_models": 153,
+    "excluded_original_indices": [
+      82
+    ],
+    "index_mapping": {
+      "0": 0,
+      "1": 1,
+      "2": 2,
+      "3": 3,
+      "4": 4,
+      "5": 5,
+      "6": 6,
+      "7": 7,
+      "8": 8,
+      "9": 9,
+      "10": 10,
+      "11": 11,
+      "12": 12,
+      "13": 13,
+      "14": 14,
+      "15": 15,
+      "16": 16,
+      "17": 17,
+      "18": 18,
+      "19": 19,
+      "20": 20,
+      "21": 21,
+      "22": 22,
+      "23": 23,
+      "24": 24,
+      "25": 25,
+      "26": 26,
+      "27": 27,
+      "28": 28,
+      "29": 29,
+      "30": 30,
+      "31": 31,
+      "32": 32,
+      "33": 33,
+      "34": 34,
+      "35": 35,
+      "36": 36,
+      "37": 37,
+      "38": 38,
+      "39": 39,
+      "40": 40,
+      "41": 41,
+      "42": 42,
+      "43": 43,
+      "44": 44,
+      "45": 45,
+      "46": 46,
+      "47": 47,
+      "48": 48,
+      "49": 49,
+      "50": 50,
+      "51": 51,
+      "52": 52,
+      "53": 53,
+      "54": 54,
+      "55": 55,
+      "56": 56,
+      "57": 57,
+      "58": 58,
+      "59": 59,
+      "60": 60,
+      "61": 61,
+      "62": 62,
+      "63": 63,
+      "64": 64,
+      "65": 65,
+      "66": 66,
+      "67": 67,
+      "68": 68,
+      "69": 69,
+      "70": 70,
+      "71": 71,
+      "72": 72,
+      "73": 73,
+      "74": 74,
+      "75": 75,
+      "76": 76,
+      "77": 77,
+      "78": 78,
+      "79": 79,
+      "80": 80,
+      "81": 81,
+      "82": 83,
+      "83": 84,
+      "84": 85,
+      "85": 86,
+      "86": 87,
+      "87": 88,
+      "88": 89,
+      "89": 90,
+      "90": 91,
+      "91": 92,
+      "92": 93,
+      "93": 94,
+      "94": 95,
+      "95": 96,
+      "96": 97,
+      "97": 98,
+      "98": 99,
+      "99": 100,
+      "100": 101,
+      "101": 102,
+      "102": 103,
+      "103": 104,
+      "104": 105,
+      "105": 106,
+      "106": 107,
+      "107": 108,
+      "108": 109,
+      "109": 110,
+      "110": 111,
+      "111": 112,
+      "112": 113,
+      "113": 114,
+      "114": 115,
+      "115": 116,
+      "116": 117,
+      "117": 118,
+      "118": 119,
+      "119": 120,
+      "120": 121,
+      "121": 122,
+      "122": 123,
+      "123": 124,
+      "124": 125,
+      "125": 126,
+      "126": 127,
+      "127": 128,
+      "128": 129,
+      "129": 130,
+      "130": 131,
+      "131": 132,
+      "132": 133,
+      "133": 134,
+      "134": 135,
+      "135": 136,
+      "136": 137,
+      "137": 138,
+      "138": 139,
+      "139": 140,
+      "140": 141,
+      "141": 142,
+      "142": 143,
+      "143": 144,
+      "144": 145,
+      "145": 146,
+      "146": 147,
+      "147": 148,
+      "148": 149,
+      "149": 150,
+      "150": 151,
+      "151": 152,
+      "152": 153
+    }
   },
   "0": {
     "model_name": "Conifer-7B-DPO",
@@ -23,7 +184,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 0
   },
   "1": {
     "model_name": "Contextual-KTO-Mistral-PairRM",
@@ -40,7 +202,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 1
   },
   "2": {
     "model_name": "FsfairX-Zephyr-Chat-v0.1",
@@ -57,7 +220,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 2
   },
   "3": {
     "model_name": "LMCocktail-10.7B-v1",
@@ -74,7 +238,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 3
   },
   "4": {
     "model_name": "Meta-Llama-3-70B-Instruct",
@@ -91,7 +256,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 4
   },
   "5": {
     "model_name": "Meta-Llama-3-8B-Instruct",
@@ -108,7 +274,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 5
   },
   "6": {
     "model_name": "Mistral-7B-Instruct-v0.2",
@@ -125,7 +292,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 6
   },
   "7": {
     "model_name": "Mistral-7B-ReMax-v0.1",
@@ -142,7 +310,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 7
   },
   "8": {
     "model_name": "Mixtral-8x22B-Instruct-v0.1",
@@ -159,7 +328,8 @@
     "input_cost_per_1m_tokens": 1.2,
     "output_cost_per_1m_tokens": 1.2,
     "estimated_cost_per_1m_input_tokens": 10.8,
-    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing",
+    "original_index": 8
   },
   "9": {
     "model_name": "Mixtral-8x7B-Instruct-v0.1",
@@ -176,7 +346,8 @@
     "input_cost_per_1m_tokens": 0.5,
     "output_cost_per_1m_tokens": 0.5,
     "estimated_cost_per_1m_input_tokens": 4.5,
-    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing",
+    "original_index": 9
   },
   "10": {
     "model_name": "Mixtral-8x7B-Instruct-v0.1_concise",
@@ -193,7 +364,8 @@
     "input_cost_per_1m_tokens": 0.5,
     "output_cost_per_1m_tokens": 0.5,
     "estimated_cost_per_1m_input_tokens": 4.5,
-    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing",
+    "original_index": 10
   },
   "11": {
     "model_name": "Mixtral-8x7B-Instruct-v0.1_verbose",
@@ -210,7 +382,8 @@
     "input_cost_per_1m_tokens": 0.5,
     "output_cost_per_1m_tokens": 0.5,
     "estimated_cost_per_1m_input_tokens": 4.5,
-    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks MoE <=56B tier. Fireworks pricing",
+    "original_index": 11
   },
   "12": {
     "model_name": "Nanbeige-Plus-Chat-v0.1",
@@ -227,7 +400,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 12
   },
   "13": {
     "model_name": "Nanbeige2-8B-Chat",
@@ -244,7 +418,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 13
   },
   "14": {
     "model_name": "OpenHermes-2.5-Mistral-7B",
@@ -261,7 +436,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 14
   },
   "15": {
     "model_name": "Qwen-14B-Chat",
@@ -278,7 +454,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 15
   },
   "16": {
     "model_name": "Qwen1.5-1.8B-Chat",
@@ -295,7 +472,8 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 16
   },
   "17": {
     "model_name": "Qwen1.5-110B-Chat",
@@ -312,7 +490,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 17
   },
   "18": {
     "model_name": "Qwen1.5-14B-Chat",
@@ -329,7 +508,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 18
   },
   "19": {
     "model_name": "Qwen1.5-72B-Chat",
@@ -346,7 +526,8 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 19
   },
   "20": {
     "model_name": "Qwen1.5-7B-Chat",
@@ -363,7 +544,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 20
   },
   "21": {
     "model_name": "Samba-CoE-v0.1",
@@ -380,7 +562,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 21
   },
   "22": {
     "model_name": "Samba-CoE-v0.2-best-of-16",
@@ -397,7 +580,8 @@
     "input_cost_per_1m_tokens": 3.2,
     "output_cost_per_1m_tokens": 3.2,
     "estimated_cost_per_1m_input_tokens": 28.8,
-    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 22
   },
   "23": {
     "model_name": "Samba-CoE-v0.2",
@@ -414,7 +598,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 23
   },
   "24": {
     "model_name": "Snorkel-Mistral-PairRM-DPO-best-of-16",
@@ -431,7 +616,8 @@
     "input_cost_per_1m_tokens": 3.2,
     "output_cost_per_1m_tokens": 3.2,
     "estimated_cost_per_1m_input_tokens": 28.8,
-    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 24
   },
   "25": {
     "model_name": "Snorkel-Mistral-PairRM-DPO",
@@ -448,7 +634,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 25
   },
   "26": {
     "model_name": "Starling-LM-7B-alpha",
@@ -465,7 +652,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 26
   },
   "27": {
     "model_name": "TempNet-LLaMA2-Chat-13B-v0.1",
@@ -482,7 +670,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 27
   },
   "28": {
     "model_name": "TempNet-LLaMA2-Chat-70B-v0.1",
@@ -499,7 +688,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 28
   },
   "29": {
     "model_name": "TempNet-LLaMA2-Chat-7B-v0.1",
@@ -516,7 +706,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 29
   },
   "30": {
     "model_name": "Yi-34B-Chat",
@@ -533,7 +724,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 30
   },
   "31": {
     "model_name": "airoboros-33b",
@@ -550,7 +742,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 31
   },
   "32": {
     "model_name": "airoboros-65b",
@@ -567,7 +760,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 32
   },
   "33": {
     "model_name": "aligner-2b_claude-3-opus-20240229",
@@ -584,7 +778,8 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 33
   },
   "34": {
     "model_name": "aligner-2b_qwen1.5-72b-chat",
@@ -601,7 +796,8 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 34
   },
   "35": {
     "model_name": "llama7B_freelb_lr5e-5_AdvLr0_InitAdvMax10_AdvStep1_Projl2_MaxNorm0_yuxinRun",
@@ -618,7 +814,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 35
   },
   "36": {
     "model_name": "alpaca-7b",
@@ -635,7 +832,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 36
   },
   "37": {
     "model_name": "alpaca-7b_concise",
@@ -652,7 +850,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 37
   },
   "38": {
     "model_name": "alpaca-7b_verbose",
@@ -669,7 +868,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 38
   },
   "39": {
     "model_name": "alpaca-farm-ppo-human",
@@ -686,7 +886,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 39
   },
   "40": {
     "model_name": "alpaca-farm-ppo-sim-gpt4-20k",
@@ -703,7 +904,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 40
   },
   "41": {
     "model_name": "baichuan-13b-chat",
@@ -720,7 +922,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 41
   },
   "42": {
     "model_name": "baize-v2-13b",
@@ -737,7 +940,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 42
   },
   "43": {
     "model_name": "baize-v2-7b",
@@ -754,7 +958,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 43
   },
   "44": {
     "model_name": "causallm-14b",
@@ -771,7 +976,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 44
   },
   "45": {
     "model_name": "chatglm2-6b",
@@ -788,7 +994,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 45
   },
   "46": {
     "model_name": "claude-2.1",
@@ -805,7 +1012,8 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF",
+    "original_index": 46
   },
   "47": {
     "model_name": "claude-2.1_concise",
@@ -822,7 +1030,8 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF",
+    "original_index": 47
   },
   "48": {
     "model_name": "claude-2.1_verbose",
@@ -839,7 +1048,8 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF",
+    "original_index": 48
   },
   "49": {
     "model_name": "claude-2",
@@ -856,7 +1066,8 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF",
+    "original_index": 49
   },
   "50": {
     "model_name": "claude-3-opus-20240229",
@@ -873,7 +1084,8 @@
     "input_cost_per_1m_tokens": 15.0,
     "output_cost_per_1m_tokens": 75.0,
     "estimated_cost_per_1m_input_tokens": 615.0,
-    "sources": "Historical/legacy Claude 3 Opus pricing. Anthropic pricing"
+    "sources": "Historical/legacy Claude 3 Opus pricing. Anthropic pricing",
+    "original_index": 50
   },
   "51": {
     "model_name": "claude-3-sonnet-20240229",
@@ -890,7 +1102,8 @@
     "input_cost_per_1m_tokens": 3.0,
     "output_cost_per_1m_tokens": 15.0,
     "estimated_cost_per_1m_input_tokens": 123.0,
-    "sources": "Claude 3 Sonnet pricing. Anthropic pricing"
+    "sources": "Claude 3 Sonnet pricing. Anthropic pricing",
+    "original_index": 51
   },
   "52": {
     "model_name": "claude-instant-1.2",
@@ -907,7 +1120,8 @@
     "input_cost_per_1m_tokens": 0.8,
     "output_cost_per_1m_tokens": 2.4,
     "estimated_cost_per_1m_input_tokens": 20.0,
-    "sources": "Historical Anthropic Claude Instant pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude Instant pricing. Anthropic PDF",
+    "original_index": 52
   },
   "53": {
     "model_name": "claude",
@@ -924,7 +1138,8 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF"
+    "sources": "Historical Anthropic Claude 2.x pricing. Anthropic PDF",
+    "original_index": 53
   },
   "54": {
     "model_name": "claude2-alpaca-13b",
@@ -941,7 +1156,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 54
   },
   "55": {
     "model_name": "cohere",
@@ -958,7 +1174,8 @@
     "input_cost_per_1m_tokens": 1.0,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.0,
-    "sources": "Cohere Command pricing. Cohere pricing"
+    "sources": "Cohere Command pricing. Cohere pricing",
+    "original_index": 55
   },
   "56": {
     "model_name": "cut-13b",
@@ -975,7 +1192,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 56
   },
   "57": {
     "model_name": "dbrx-instruct",
@@ -992,7 +1210,8 @@
     "input_cost_per_1m_tokens": 1.2,
     "output_cost_per_1m_tokens": 1.2,
     "estimated_cost_per_1m_input_tokens": 10.8,
-    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks MoE 56.1B-176B tier. Fireworks pricing",
+    "original_index": 57
   },
   "58": {
     "model_name": "deepseek-llm-67b-chat",
@@ -1009,7 +1228,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy for open-source 67B dense model; not current DeepSeek API endpoint. Fireworks pricing"
+    "sources": "Proxy for open-source 67B dense model; not current DeepSeek API endpoint. Fireworks pricing",
+    "original_index": 58
   },
   "59": {
     "model_name": "deita-7b-v1.0",
@@ -1026,7 +1246,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 59
   },
   "60": {
     "model_name": "dolphin-2.2.1-mistral-7b",
@@ -1043,7 +1264,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 60
   },
   "61": {
     "model_name": "evo-7b",
@@ -1060,7 +1282,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 61
   },
   "62": {
     "model_name": "evo-v2-7b",
@@ -1077,7 +1300,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 62
   },
   "63": {
     "model_name": "falcon-40b-instruct",
@@ -1094,7 +1318,8 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 63
   },
   "64": {
     "model_name": "falcon-7b-instruct",
@@ -1111,7 +1336,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 64
   },
   "65": {
     "model_name": "gemini-pro",
@@ -1128,7 +1354,8 @@
     "input_cost_per_1m_tokens": 0.5,
     "output_cost_per_1m_tokens": 1.5,
     "estimated_cost_per_1m_input_tokens": 12.5,
-    "sources": "Historical Google Gemini Pro pricing. Gemini pricing"
+    "sources": "Historical Google Gemini Pro pricing. Gemini pricing",
+    "original_index": 65
   },
   "66": {
     "model_name": "gemma-2b-it",
@@ -1145,7 +1372,8 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 66
   },
   "67": {
     "model_name": "gemma-7b-it",
@@ -1162,7 +1390,8 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 67
   },
   "68": {
     "model_name": "gpt-3.5-turbo-0301",
@@ -1179,7 +1408,8 @@
     "input_cost_per_1m_tokens": 1.5,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.5,
-    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing",
+    "original_index": 68
   },
   "69": {
     "model_name": "gpt-3.5-turbo-0613",
@@ -1196,7 +1426,8 @@
     "input_cost_per_1m_tokens": 1.5,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.5,
-    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-3.5 Turbo 0301/0613 pricing. OpenAI pricing",
+    "original_index": 69
   },
   "70": {
     "model_name": "gpt-3.5-turbo-1106",
@@ -1213,7 +1444,8 @@
     "input_cost_per_1m_tokens": 1.0,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.0,
-    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing",
+    "original_index": 70
   },
   "71": {
     "model_name": "gpt-3.5-turbo-1106_concise",
@@ -1230,7 +1462,8 @@
     "input_cost_per_1m_tokens": 1.0,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.0,
-    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing",
+    "original_index": 71
   },
   "72": {
     "model_name": "gpt-3.5-turbo-1106_verbose",
@@ -1247,7 +1480,8 @@
     "input_cost_per_1m_tokens": 1.0,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.0,
-    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-3.5 Turbo 1106 pricing. OpenAI pricing",
+    "original_index": 72
   },
   "73": {
     "model_name": "gpt-4-0125-preview",
@@ -1264,7 +1498,8 @@
     "input_cost_per_1m_tokens": 10.0,
     "output_cost_per_1m_tokens": 30.0,
     "estimated_cost_per_1m_input_tokens": 250.0,
-    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck",
+    "original_index": 73
   },
   "74": {
     "model_name": "gpt35_turbo_instruct",
@@ -1281,7 +1516,8 @@
     "input_cost_per_1m_tokens": 1.5,
     "output_cost_per_1m_tokens": 2.0,
     "estimated_cost_per_1m_input_tokens": 17.5,
-    "sources": "Historical OpenAI GPT-3.5 Turbo Instruct pricing. OpenRouter"
+    "sources": "Historical OpenAI GPT-3.5 Turbo Instruct pricing. OpenRouter",
+    "original_index": 74
   },
   "75": {
     "model_name": "gpt4",
@@ -1298,7 +1534,8 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 75
   },
   "76": {
     "model_name": "gpt4_0314",
@@ -1315,7 +1552,8 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 76
   },
   "77": {
     "model_name": "gpt4_0613",
@@ -1332,7 +1570,8 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 77
   },
   "78": {
     "model_name": "gpt4_0613_concise",
@@ -1349,7 +1588,8 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 78
   },
   "79": {
     "model_name": "gpt4_0613_verbose",
@@ -1366,7 +1606,8 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 79
   },
   "80": {
     "model_name": "gpt4_1106_preview",
@@ -1383,7 +1624,8 @@
     "input_cost_per_1m_tokens": 10.0,
     "output_cost_per_1m_tokens": 30.0,
     "estimated_cost_per_1m_input_tokens": 250.0,
-    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck",
+    "original_index": 80
   },
   "81": {
     "model_name": "gpt4_1106_preview_concise",
@@ -1400,26 +1642,10 @@
     "input_cost_per_1m_tokens": 10.0,
     "output_cost_per_1m_tokens": 30.0,
     "estimated_cost_per_1m_input_tokens": 250.0,
-    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
+    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck",
+    "original_index": 81
   },
   "82": {
-    "model_name": "gpt4_1106_preview_verbose",
-    "in_no_rounding_debias": false,
-    "num_instructions": 805,
-    "dataset_name": "alpaca_eval",
-    "pricing_assumption": {
-      "input_to_output_token_ratio": "1:8",
-      "unit": "USD_per_1M_input_tokens",
-      "formula": "input_cost + 8*output_cost",
-      "note": "Prices from alpaca_154_models_pricing_fixed.docx; combined via input + 8*output using AlpacaEval avg token ratio 1:8."
-    },
-    "model_cost_key": "gpt4_1106_preview_verbose",
-    "input_cost_per_1m_tokens": 10.0,
-    "output_cost_per_1m_tokens": 30.0,
-    "estimated_cost_per_1m_input_tokens": 250.0,
-    "sources": "Historical OpenAI GPT-4 Turbo preview pricing. LLMPriceCheck"
-  },
-  "83": {
     "model_name": "gpt4_gamed",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1434,9 +1660,10 @@
     "input_cost_per_1m_tokens": 30.0,
     "output_cost_per_1m_tokens": 60.0,
     "estimated_cost_per_1m_input_tokens": 510.0,
-    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing"
+    "sources": "Historical OpenAI GPT-4 8K pricing. OpenAI pricing",
+    "original_index": 83
   },
-  "84": {
+  "83": {
     "model_name": "guanaco-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1451,9 +1678,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 84
   },
-  "85": {
+  "84": {
     "model_name": "guanaco-33b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1468,9 +1696,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 85
   },
-  "86": {
+  "85": {
     "model_name": "guanaco-65b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1485,9 +1714,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 86
   },
-  "87": {
+  "86": {
     "model_name": "guanaco-7b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1502,9 +1732,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 87
   },
-  "88": {
+  "87": {
     "model_name": "humpback-llama-65b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1519,9 +1750,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 88
   },
-  "89": {
+  "88": {
     "model_name": "humpback-llama2-70b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1536,9 +1768,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 89
   },
-  "90": {
+  "89": {
     "model_name": "internlm2-chat-20b-ppo",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1553,9 +1786,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 90
   },
-  "91": {
+  "90": {
     "model_name": "jina-chat",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1570,9 +1804,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 91
   },
-  "92": {
+  "91": {
     "model_name": "llama-2-13b-chat-hf",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1587,9 +1822,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 92
   },
-  "93": {
+  "92": {
     "model_name": "llama-2-70b-chat-hf",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1604,9 +1840,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 93
   },
-  "94": {
+  "93": {
     "model_name": "llama-2-7b-chat-hf",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1621,9 +1858,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 94
   },
-  "95": {
+  "94": {
     "model_name": "llama-2-chat-7b-evol70k-neft",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1638,9 +1876,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 95
   },
-  "96": {
+  "95": {
     "model_name": "minichat-1.5-3b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1655,9 +1894,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 96
   },
-  "97": {
+  "96": {
     "model_name": "minichat-3b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1672,9 +1912,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 97
   },
-  "98": {
+  "97": {
     "model_name": "minotaur-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1689,9 +1930,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 98
   },
-  "99": {
+  "98": {
     "model_name": "mistral-large-2402",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1706,9 +1948,10 @@
     "input_cost_per_1m_tokens": 8.0,
     "output_cost_per_1m_tokens": 24.0,
     "estimated_cost_per_1m_input_tokens": 200.0,
-    "sources": "Historical Mistral Large 2402 pricing. Holori pricing"
+    "sources": "Historical Mistral Large 2402 pricing. Holori pricing",
+    "original_index": 99
   },
-  "100": {
+  "99": {
     "model_name": "mistral-medium",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1723,9 +1966,10 @@
     "input_cost_per_1m_tokens": 2.7,
     "output_cost_per_1m_tokens": 8.1,
     "estimated_cost_per_1m_input_tokens": 67.5,
-    "sources": "Historical Mistral Medium pricing. Lago pricing"
+    "sources": "Historical Mistral Medium pricing. Lago pricing",
+    "original_index": 100
   },
-  "101": {
+  "100": {
     "model_name": "mistral-orpo-beta",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1740,9 +1984,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 101
   },
-  "102": {
+  "101": {
     "model_name": "nous-hermes-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1757,9 +2002,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 102
   },
-  "103": {
+  "102": {
     "model_name": "oasst-rlhf-llama-33b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1774,9 +2020,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 103
   },
-  "104": {
+  "103": {
     "model_name": "oasst-sft-llama-33b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1791,9 +2038,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 104
   },
-  "105": {
+  "104": {
     "model_name": "oasst-sft-pythia-12b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1808,9 +2056,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 105
   },
-  "106": {
+  "105": {
     "model_name": "openbuddy-falcon-40b-v9",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1825,9 +2074,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 106
   },
-  "107": {
+  "106": {
     "model_name": "openbuddy-falcon-7b-v6",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1842,9 +2092,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 107
   },
-  "108": {
+  "107": {
     "model_name": "openbuddy-llama-30b-v7.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1859,9 +2110,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 108
   },
-  "109": {
+  "108": {
     "model_name": "openbuddy-llama-65b-v8",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1876,9 +2128,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 109
   },
-  "110": {
+  "109": {
     "model_name": "openbuddy-llama2-13b-v11.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1893,9 +2146,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 110
   },
-  "111": {
+  "110": {
     "model_name": "openbuddy-llama2-70b-v10.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1910,9 +2164,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 111
   },
-  "112": {
+  "111": {
     "model_name": "openchat-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1927,9 +2182,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 112
   },
-  "113": {
+  "112": {
     "model_name": "openchat-v2-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1944,9 +2200,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 113
   },
-  "114": {
+  "113": {
     "model_name": "openchat-v2-w-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1961,9 +2218,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 114
   },
-  "115": {
+  "114": {
     "model_name": "openchat-v3.1-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1978,9 +2236,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 115
   },
-  "116": {
+  "115": {
     "model_name": "openchat8192-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -1995,9 +2254,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 116
   },
-  "117": {
+  "116": {
     "model_name": "opencoderplus-15b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2012,9 +2272,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 117
   },
-  "118": {
+  "117": {
     "model_name": "pairrm-Yi-34B-Chat",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2029,9 +2290,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 118
   },
-  "119": {
+  "118": {
     "model_name": "pairrm-tulu-2-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2046,9 +2308,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 119
   },
-  "120": {
+  "119": {
     "model_name": "pairrm-tulu-2-70b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2063,9 +2326,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 120
   },
-  "121": {
+  "120": {
     "model_name": "pairrm-zephyr-7b-beta",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2080,9 +2344,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 121
   },
-  "122": {
+  "121": {
     "model_name": "phi-2-dpo",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2097,9 +2362,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 122
   },
-  "123": {
+  "122": {
     "model_name": "phi-2-sft",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2114,9 +2380,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 123
   },
-  "124": {
+  "123": {
     "model_name": "phi-2",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2131,9 +2398,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 124
   },
-  "125": {
+  "124": {
     "model_name": "platolm-7b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2148,9 +2416,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 125
   },
-  "126": {
+  "125": {
     "model_name": "pythia-12b-mix-sft",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2165,9 +2434,10 @@
     "input_cost_per_1m_tokens": 0.1,
     "output_cost_per_1m_tokens": 0.1,
     "estimated_cost_per_1m_input_tokens": 0.9,
-    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks <4B size tier. Fireworks pricing",
+    "original_index": 126
   },
-  "127": {
+  "126": {
     "model_name": "recycled-wizardlm-7b-v1.0",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2182,9 +2452,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 127
   },
-  "128": {
+  "127": {
     "model_name": "recycled-wizardlm-7b-v2.0",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2199,9 +2470,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 128
   },
-  "129": {
+  "128": {
     "model_name": "text_davinci_001",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2216,9 +2488,10 @@
     "input_cost_per_1m_tokens": 20.0,
     "output_cost_per_1m_tokens": 20.0,
     "estimated_cost_per_1m_input_tokens": 180.0,
-    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing"
+    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing",
+    "original_index": 129
   },
-  "130": {
+  "129": {
     "model_name": "text_davinci_003",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2233,9 +2506,10 @@
     "input_cost_per_1m_tokens": 20.0,
     "output_cost_per_1m_tokens": 20.0,
     "estimated_cost_per_1m_input_tokens": 180.0,
-    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing"
+    "sources": "Historical OpenAI legacy completion pricing. OpenAI pricing",
+    "original_index": 130
   },
-  "131": {
+  "130": {
     "model_name": "tulu-2-dpo-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2250,9 +2524,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 131
   },
-  "132": {
+  "131": {
     "model_name": "tulu-2-dpo-70b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2267,9 +2542,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 132
   },
-  "133": {
+  "132": {
     "model_name": "tulu-2-dpo-7b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2284,9 +2560,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 133
   },
-  "134": {
+  "133": {
     "model_name": "ultralm-13b-best-of-16",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2301,9 +2578,10 @@
     "input_cost_per_1m_tokens": 3.2,
     "output_cost_per_1m_tokens": 3.2,
     "estimated_cost_per_1m_input_tokens": 28.8,
-    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 134
   },
-  "135": {
+  "134": {
     "model_name": "ultralm-13b-v2.0-best-of-16",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2318,9 +2596,10 @@
     "input_cost_per_1m_tokens": 3.2,
     "output_cost_per_1m_tokens": 3.2,
     "estimated_cost_per_1m_input_tokens": 28.8,
-    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: 16x base generation cost; reranker cost not included. Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 135
   },
-  "136": {
+  "135": {
     "model_name": "ultralm-13b-v2.0",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2335,9 +2614,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 136
   },
-  "137": {
+  "136": {
     "model_name": "ultralm-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2352,9 +2632,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 137
   },
-  "138": {
+  "137": {
     "model_name": "vicuna-13b-v1.3",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2369,9 +2650,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 138
   },
-  "139": {
+  "138": {
     "model_name": "vicuna-13b-v1.5",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2386,9 +2668,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 139
   },
-  "140": {
+  "139": {
     "model_name": "vicuna-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2403,9 +2686,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 140
   },
-  "141": {
+  "140": {
     "model_name": "vicuna-33b-v1.3",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2420,9 +2704,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 141
   },
-  "142": {
+  "141": {
     "model_name": "vicuna-7b-v1.3",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2437,9 +2722,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 142
   },
-  "143": {
+  "142": {
     "model_name": "vicuna-7b-v1.5",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2454,9 +2740,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 143
   },
-  "144": {
+  "143": {
     "model_name": "vicuna-7b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2471,9 +2758,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 144
   },
-  "145": {
+  "144": {
     "model_name": "wizardlm-13b-v1.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2488,9 +2776,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 145
   },
-  "146": {
+  "145": {
     "model_name": "wizardlm-13b-v1.2",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2505,9 +2794,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 146
   },
-  "147": {
+  "146": {
     "model_name": "wizardlm-13b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2522,9 +2812,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 147
   },
-  "148": {
+  "147": {
     "model_name": "wizardlm-70b",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2539,9 +2830,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 148
   },
-  "149": {
+  "148": {
     "model_name": "xwinlm-13b-v0.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2556,9 +2848,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 149
   },
-  "150": {
+  "149": {
     "model_name": "xwinlm-70b-v0.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2573,9 +2866,10 @@
     "input_cost_per_1m_tokens": 0.9,
     "output_cost_per_1m_tokens": 0.9,
     "estimated_cost_per_1m_input_tokens": 8.1,
-    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks >16B dense tier. Fireworks pricing",
+    "original_index": 150
   },
-  "151": {
+  "150": {
     "model_name": "xwinlm-7b-v0.1",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2590,9 +2884,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 151
   },
-  "152": {
+  "151": {
     "model_name": "zephyr-7b-alpha",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2607,9 +2902,10 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 152
   },
-  "153": {
+  "152": {
     "model_name": "zephyr-7b-beta",
     "in_no_rounding_debias": true,
     "num_instructions": 805,
@@ -2624,6 +2920,7 @@
     "input_cost_per_1m_tokens": 0.2,
     "output_cost_per_1m_tokens": 0.2,
     "estimated_cost_per_1m_input_tokens": 1.8,
-    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing"
+    "sources": "Proxy: Fireworks 4B-16B dense tier. Fireworks pricing",
+    "original_index": 153
   }
 }

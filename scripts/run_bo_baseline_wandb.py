@@ -62,6 +62,7 @@ DOMINANT_DIM_COL_BY_DATASET: dict[str, int] = {
     "gsm8k": 0,  # model_id
     "piqa": 0,  # model_id
     "mmlu": 1,  # prompt_idx
+    "alpaca": 0,  # model_idx
 }
 INIT_BUDGET_FRACTION = 0.5
 
