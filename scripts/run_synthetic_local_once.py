@@ -13,7 +13,7 @@ For each synthetic matrix, plot three curves:
 
 Conventions used here:
   - UCB and Gittins use the SAME batch size for a fair comparison.
-  - GSM8K / PIQA synthetic:
+  - GSM8K / PIQA / Alpaca synthetic:
       UCB B8 and Gittins B8.
       Unit mode uses ucb_B8 and gittins_unit_B8_...
       Cost mode uses ucb_cost_B8 and gittins_cost_B8_... with a cost vector.
@@ -90,12 +90,12 @@ def dataset_gittins_batch_size(dataset_tag: str, n_examples: int | None = None) 
     """Requested synthetic convention for BOTH UCB and Gittins.
 
     UCB and Gittins use the same batch size:
-      - GSM8K / PIQA: B=8
+      - GSM8K / PIQA / Alpaca: B=8
       - MMLU small / medium / large: B=2 / 4 / 8
     LRF is not included here; LRF stays B32 in the main experiments.
     """
     ds = str(dataset_tag).lower()
-    if ds in {"gsm8k", "piqa"}:
+    if ds in {"gsm8k", "piqa", "alpaca"}:
         return 8
     if ds == "mmlu":
         if n_examples is None:
@@ -396,9 +396,16 @@ def parse_args() -> argparse.Namespace:
         default=Path("data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json"),
         help="Cost vector/config JSON for MMLU cost-aware synthetic runs, if needed.",
     )
+    p.add_argument(
+        "--alpaca-cost-vector",
+        type=Path,
+        default=Path("data_analysis/pricing/alpaca_153_models_no_rounding_debias_price_1to8.json"),
+        help="Cost vector/config JSON for Alpaca cost-aware synthetic runs, if needed.",
+    )
     p.add_argument("--mmlu-task-metadata", type=Path, default=Path("data/MMLU_matrices/task_metadata.json"))
     p.add_argument("--skip-gsm8k", action="store_true")
     p.add_argument("--skip-piqa", action="store_true")
+    p.add_argument("--skip-alpaca", action="store_true")
     p.add_argument("--skip-mmlu", action="store_true")
     p.add_argument("--reuse-existing", action="store_true")
     return p.parse_args()
@@ -434,6 +441,7 @@ def main() -> int:
             "gsm8k": args.gsm8k_cost_vector,
             "piqa": args.piqa_cost_vector,
             "mmlu": args.mmlu_cost_vector,
+            "alpaca": args.alpaca_cost_vector,
         }
 
         for matrix in files:
@@ -520,6 +528,15 @@ def main() -> int:
                 run_default_or_dataset_generated_setting(dataset_tag="piqa", setting_name=setting_name)
         if not any_piqa:
             print(f"No PIQA synthetic setting folders found under: {args.synthetic_root}")
+
+    if not args.skip_alpaca:
+        any_alpaca = False
+        for setting_name in ["alpaca_default", "alpaca_dataset", "alpaca"]:
+            if (args.synthetic_root / setting_name).exists():
+                any_alpaca = True
+                run_default_or_dataset_generated_setting(dataset_tag="alpaca", setting_name=setting_name)
+        if not any_alpaca:
+            print(f"No Alpaca synthetic setting folders found under: {args.synthetic_root}")
 
     if not args.skip_mmlu:
         mmlu_root = args.synthetic_root / "mmlu_high"

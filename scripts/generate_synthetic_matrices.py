@@ -15,7 +15,11 @@ Settings:
    shape copied from one real GSM8K matrix
    prior = dataset N(0.2, 0.01)
 
-3. MMLU high/easy-like:
+3. Optional Alpaca dataset-prior:
+   shape copied from the Alpaca no-rounding-debias matrix
+   prior = dataset N(0.1, 0.01)
+
+4. MMLU high/easy-like:
    one synthetic matrix per selected high/easy MMLU subject
    shape copied from the real MMLU subject matrix
    prior = high/easy N(0.75, 0.02)
@@ -32,6 +36,7 @@ import numpy as np
 
 DEFAULT_PRIOR = (0.5, 0.04)
 GSM8K_DATASET_PRIOR = (0.2, 0.01)
+ALPACA_DATASET_PRIOR = (0.1, 0.01)
 MMLU_HIGH_PRIOR = (0.75, 0.01)
 
 MMLU_HIGH_SUBJECTS = [
@@ -208,6 +213,14 @@ def parse_args() -> argparse.Namespace:
         default=Path("data/MMLU_matrices"),
     )
     parser.add_argument(
+        "--alpaca-reference",
+        type=Path,
+        default=Path(
+            "data/BanditEval_matrices/"
+            "alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy"
+        ),
+    )
+    parser.add_argument(
         "--mmlu-high-subjects",
         default="all",
         help="Use 'all' or comma-separated subjects, e.g. jurisprudence,marketing",
@@ -223,6 +236,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--include-gsm8k-dataset",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--include-alpaca-dataset",
         action="store_true",
     )
     parser.add_argument(
@@ -286,6 +303,28 @@ def main() -> int:
                     overwrite=args.overwrite,
                 )
                 total += 1
+
+        if args.include_alpaca_dataset:
+            mu, var = ALPACA_DATASET_PRIOR
+            out = (
+                args.out_dir
+                / "alpaca_dataset"
+                / seed_dir
+                / f"alpaca_dataset_synthetic_seed{matrix_seed}.npy"
+            )
+
+            write_synthetic_matrix(
+                reference_matrix=args.alpaca_reference,
+                output_matrix=out,
+                prior_mean=mu,
+                prior_variance=var,
+                base_seed=args.base_seed,
+                matrix_seed=matrix_seed,
+                setting="alpaca_dataset",
+                subject=None,
+                overwrite=args.overwrite,
+            )
+            total += 1
 
         if not args.skip_mmlu:
             mu, var = MMLU_HIGH_PRIOR
