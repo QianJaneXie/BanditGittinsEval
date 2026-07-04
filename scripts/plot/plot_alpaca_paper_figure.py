@@ -2,7 +2,6 @@
 """Paper-style AlpacaEval figure: unit-cost (top) + cost-aware (bottom).
 
 Reuses styling/aggregation from ``plot_gsm8k_piqa_paper_grid.py``.
-Alpaca sweeps only include Gittins with the default prior (no dataset-prior curve).
 """
 
 from __future__ import annotations
@@ -33,6 +32,7 @@ def alpaca_variant_names(
     lb = int(lrf_batch_size)
     if cost_mode == "unit":
         return {
+            "gittins_data": f"gittins_unit_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_unit_B{b}_scale{scale}_default",
             "ucb": f"ucb_B{b}",
             "lrf": f"lrf_B{lb}",
@@ -41,6 +41,7 @@ def alpaca_variant_names(
         }
     if cost_mode in {"aware", "cost"}:
         return {
+            "gittins_data": f"gittins_cost_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_cost_B{b}_scale{scale}_default",
             "ucb": f"ucb_cost_B{b}",
             "lrf": f"lrf_cost_B{lb}",
@@ -55,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--alpaca-dir",
         type=Path,
-        default=Path(r"outputs/wandb_downloads_new/ucb_gittins/alpaca"),
+        default=Path(r"outputs/wandb_downloads_new/ucb_gittins/alpaca_840"),
     )
     p.add_argument(
         "--alpaca-lrf-dir",
@@ -87,8 +88,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--stop-band", choices=["stderr", "std", "iqr", "none"], default="stderr")
     p.add_argument("--stop-alpha", type=float, default=0.12)
     p.add_argument("--stop-line-alpha", type=float, default=0.72)
-    p.add_argument("--fig-width", type=float, default=14.0)
-    p.add_argument("--fig-height", type=float, default=25.9)
+    p.add_argument("--fig-width", type=float, default=26.8)
+    p.add_argument("--fig-height", type=float, default=15.8)
     p.add_argument("--title-size", type=float, default=81)
     p.add_argument("--label-size", type=float, default=81)
     p.add_argument("--tick-size", type=float, default=57)
@@ -110,8 +111,8 @@ def main() -> int:
     stopping = pg.read_stoppings([args.alpaca_dir, args.alpaca_bo_dir])
 
     fig, axes = plt.subplots(
-        2,
         1,
+        2,
         figsize=(args.fig_width, args.fig_height),
         sharey=False,
         constrained_layout=False,
@@ -143,61 +144,54 @@ def main() -> int:
         )
     )
 
-    axes[0].set_title("AlpacaEval", fontsize=args.title_size, fontweight="normal", pad=8)
-    axes[0].set_ylabel("Simple regret", fontsize=args.label_size)
-    axes[1].set_ylabel("Simple regret", fontsize=args.label_size)
-    axes[0].set_xlabel("Cumulative evaluations", fontsize=args.label_size)
-    axes[1].set_xlabel("Cumulative cost", fontsize=args.label_size)
-
-    axes[0].text(
-        1.035,
-        0.5,
-        "Unit-cost",
-        transform=axes[0].transAxes,
-        rotation=-90,
-        va="center",
-        ha="left",
-        fontsize=args.row_label_size,
-        fontweight="normal",
-    )
-    axes[1].text(
-        1.035,
-        0.5,
-        "Cost-aware",
-        transform=axes[1].transAxes,
-        rotation=-90,
-        va="center",
-        ha="left",
-        fontsize=args.row_label_size,
-        fontweight="normal",
-    )
+    panel_title_size = args.title_size * 0.82
+    axis_label_size = args.title_size * 0.82
+    axes[0].set_title("Unit-cost", fontsize=panel_title_size, fontweight="normal", pad=8)
+    axes[1].set_title("Cost-aware", fontsize=panel_title_size, fontweight="normal", pad=8)
+    axes[0].set_ylabel("Simple regret", fontsize=axis_label_size)
+    axes[1].set_ylabel("")
+    axes[0].set_xlabel("Cumulative evaluations", fontsize=axis_label_size)
+    axes[1].set_xlabel("Cumulative cost", fontsize=axis_label_size)
 
     legend_order = [
+        "gittins_data",
         "gittins_default",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
         "bo_logei_unit",
-        "bo_pbgi_cost",
-        "bo_logeipc_cost",
     ]
     final_handles = [legend_handles[k] for k in legend_order if k in legend_handles]
     final_labels = [pg.STYLE_BY_KIND[k]["label"] for k in legend_order if k in legend_handles]
 
-    if args.show_stopping and "gittins_default" in legend_handles:
-        final_handles.append(
-            Line2D(
-                [0],
-                [0],
-                color=pg.COLOR_GITTINS_G,
-                linestyle="--",
-                linewidth=2.6 * float(pg.LINEWIDTH_MULT) * float(pg.GITTINS_LINE_EXTRA_MULT),
-                alpha=args.stop_line_alpha,
+    if args.show_stopping:
+        if "gittins_data" in legend_handles:
+            final_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=pg.COLOR_GITTINS_S,
+                    linestyle="--",
+                    linewidth=2.6 * float(pg.LINEWIDTH_MULT) * float(pg.GITTINS_LINE_EXTRA_MULT),
+                    alpha=args.stop_line_alpha,
+                )
             )
-        )
-        final_labels.append("Gittins-G mean stop")
+            final_labels.append("Gittins-S mean stop")
 
-        for kind in ["bo_pbgi_unit", "bo_logei_unit", "bo_pbgi_cost", "bo_logeipc_cost"]:
+        if "gittins_default" in legend_handles:
+            final_handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=pg.COLOR_GITTINS_G,
+                    linestyle="--",
+                    linewidth=2.6 * float(pg.LINEWIDTH_MULT) * float(pg.GITTINS_LINE_EXTRA_MULT),
+                    alpha=args.stop_line_alpha,
+                )
+            )
+            final_labels.append("Gittins-G mean stop")
+
+        for kind in ["bo_pbgi_unit", "bo_logei_unit"]:
             if kind not in legend_handles:
                 continue
             final_handles.append(
@@ -229,7 +223,7 @@ def main() -> int:
         loc="lower center",
         ncol=3,
         frameon=False,
-        bbox_to_anchor=(0.5, 0.045),
+        bbox_to_anchor=(0.5, 0.015),
         fontsize=args.legend_size,
         handlelength=2.0,
         handletextpad=0.35,
@@ -237,7 +231,7 @@ def main() -> int:
         borderpad=0.55,
     )
 
-    fig.subplots_adjust(left=0.14, right=0.88, top=0.92, bottom=0.30, hspace=0.35)
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.84, bottom=0.51, wspace=0.22)
 
     stem = (
         f"figure_alpaca_B{args.batch_size}_LRFB{args.lrf_batch_size}_scale{args.scale}".replace(".", "")

@@ -99,7 +99,7 @@ GITTINS_LINE_EXTRA_MULT = 1.2
 def clean_tick_label(value: float, _pos: int) -> str:
     if abs(float(value)) < 1e-12:
         return "0"
-    return f"{float(value):.2f}"
+    return f"{float(value):.2f}".rstrip("0").rstrip(".")
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
