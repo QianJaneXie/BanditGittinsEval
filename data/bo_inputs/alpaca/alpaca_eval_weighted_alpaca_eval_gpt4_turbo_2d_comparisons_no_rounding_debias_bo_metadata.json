@@ -1,0 +1,19 @@
+{
+  "dataset": "alpaca",
+  "matrix_seed": null,
+  "n_configs": 153,
+  "n_examples": 805,
+  "feature_names": [
+    "model_idx"
+  ],
+  "feature_definition": {
+    "X[:, 0]": "model_idx",
+    "Y[:, 0]": "average score over all examples for the same row/configuration"
+  },
+  "cost_multiplier_applied_to_bo_inputs": 805,
+  "cost_field_note": "cost is the estimated full-evaluation cost for this configuration, not a per-example evaluation cost. It is computed from estimated_cost_per_1m_input_tokens by multiplying by the number of examples in the source matrix.",
+  "matrix_path": "data\\BanditEval_matrices\\alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy",
+  "config_json_path": "data_analysis\\pricing\\alpaca_153_models_no_rounding_debias_price_1to8.json",
+  "source_description": "Converted from a BanditEval correctness matrix and its aligned configuration/pricing JSON. Rows are aligned by arm_id/index order. The per-example 0/1 matrix is compressed into Y by averaging across examples.",
+  "feature_note": "Alpaca rows are aligned by the filtered no_rounding_debias model order. X[:, 0] stores the contiguous filtered row/model index; original_index is preserved in the sidecar configs when available."
+}

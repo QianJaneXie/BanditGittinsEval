@@ -32,6 +32,7 @@ PROMPT_ID_MAP = {"empty": 0, "step_by_step": 1}
 PROMPT_NAME_TO_TYPE = {"empty": "direct", "step_by_step": "cot"}
 BANDITEVAL_FEATURE_NAMES = ["model_id", "temp_id", "max_len_id", "prompt_id"]
 MMLU_FEATURE_NAMES = ["model_idx", "prompt_idx"]
+ALPACA_FEATURE_NAMES = ["model_idx"]
 MODEL_ID_MAP_FIXED = {
     "gpt2": 0,
     "gpt2_large": 1,
@@ -91,10 +92,12 @@ def infer_dataset_and_seed(matrix_path: Path) -> tuple[str, int | None]:
         dataset = "gsm8k"
     elif stem.startswith("piqa_"):
         dataset = "piqa"
+    elif stem.startswith("alpaca_eval_"):
+        return "alpaca", None
     else:
         raise ValueError(
             "Unable to infer dataset from matrix filename. "
-            "Expected prefix 'gsm8k_' or 'piqa_'. "
+            "Expected prefix 'gsm8k_', 'piqa_', or 'alpaca_eval_'. "
             f"Got: {matrix_path.name}"
         )
 
@@ -133,6 +136,11 @@ def default_config_json_path(dataset: str) -> Path:
         )
     if dataset == "mmlu":
         return Path("data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json")
+    if dataset == "alpaca":
+        return Path(
+            "data_analysis/pricing/"
+            "alpaca_153_models_no_rounding_debias_price_1to8.json"
+        )
     raise ValueError(f"Unsupported dataset for default config JSON: {dataset}")
 
 
@@ -162,10 +170,14 @@ def load_and_validate_configs(config_json_path: Path, n_configs: int, dataset: s
     if not isinstance(data, dict):
         raise ValueError("Config JSON must be a dict keyed by string indices: '0', '1', ...")
 
+    numeric_items: dict[str, dict] = {}
     keys_int: list[int] = []
-    for key in data.keys():
+    for key, value in data.items():
+        if str(key).startswith("_"):
+            continue
         try:
             keys_int.append(int(key))
+            numeric_items[str(int(key))] = value
         except ValueError as exc:
             raise ValueError(f"Config JSON key is not an integer string: {key!r}") from exc
 
@@ -177,9 +189,9 @@ def load_and_validate_configs(config_json_path: Path, n_configs: int, dataset: s
             f"Got first keys {keys_sorted[:10]}, expected first keys {expected_keys[:10]}"
         )
 
-    if len(data) != n_configs:
+    if len(numeric_items) != n_configs:
         raise ValueError(
-            f"Config row count mismatch: len(configs)={len(data)}, "
+            f"Config row count mismatch: len(configs)={len(numeric_items)}, "
             f"but matrix has n_configs={n_configs}"
         )
 
@@ -188,6 +200,11 @@ def load_and_validate_configs(config_json_path: Path, n_configs: int, dataset: s
             "model_name",
             "model_idx",
             "prompt_idx",
+            "estimated_cost_per_1m_input_tokens",
+        ]
+    elif dataset == "alpaca":
+        required_fields = [
+            "model_name",
             "estimated_cost_per_1m_input_tokens",
         ]
     else:
@@ -201,7 +218,7 @@ def load_and_validate_configs(config_json_path: Path, n_configs: int, dataset: s
 
     rows: list[dict] = []
     for i in range(n_configs):
-        row = data.get(str(i))
+        row = numeric_items.get(str(i))
         if not isinstance(row, dict):
             raise ValueError(f"Config row {i} is missing or not a dict.")
 
@@ -273,7 +290,12 @@ def construct_arrays(
     list[str],
 ]:
     n_configs, n_examples = matrix.shape
-    feature_names = MMLU_FEATURE_NAMES if dataset == "mmlu" else BANDITEVAL_FEATURE_NAMES
+    if dataset == "mmlu":
+        feature_names = MMLU_FEATURE_NAMES
+    elif dataset == "alpaca":
+        feature_names = ALPACA_FEATURE_NAMES
+    else:
+        feature_names = BANDITEVAL_FEATURE_NAMES
 
     X = np.empty((n_configs, len(feature_names)), dtype=np.int64)
     Y = matrix.mean(axis=1, keepdims=True).astype(np.float64)
@@ -313,6 +335,25 @@ def construct_arrays(
                 ),
                 "average_score": float(Y[i, 0]),
             }
+        elif dataset == "alpaca":
+            model_idx = int(row.get("model_idx", i))
+            X[i, 0] = model_idx
+            temperatures[i] = np.nan
+            max_tokens_values[i] = -1
+            prompt_names.append("")
+            prompt_types.append("")
+            csv_row = {
+                "arm_id": int(arm_ids[i]),
+                "model_idx": model_idx,
+                "model_name": model_name,
+                "cost": float(cost[i]),
+                "raw_estimated_cost_per_1m_input_tokens": float(
+                    row["estimated_cost_per_1m_input_tokens"]
+                ),
+                "average_score": float(Y[i, 0]),
+            }
+            if "original_index" in row:
+                csv_row["original_index"] = int(row["original_index"])
         else:
             temperature = to_float_temperature(row["temperature"], i)
             max_tokens = to_int_max_tokens(row["max_tokens"], i)
@@ -422,6 +463,12 @@ def build_metadata(
     }
     if dataset == "mmlu":
         metadata["feature_note"] = "MMLU rows are aligned by model_idx and prompt_idx."
+    elif dataset == "alpaca":
+        metadata["feature_note"] = (
+            "Alpaca rows are aligned by the filtered no_rounding_debias model order. "
+            "X[:, 0] stores the contiguous filtered row/model index; original_index is "
+            "preserved in the sidecar configs when available."
+        )
     else:
         model_id_to_name = [None] * len(model_id_map)
         for name, idx in model_id_map.items():
@@ -537,7 +584,7 @@ def main() -> int:
         n_configs=int(matrix.shape[0]),
         dataset=dataset,
     )
-    model_id_map = {} if dataset == "mmlu" else build_model_id_map(config_rows)
+    model_id_map = {} if dataset in {"mmlu", "alpaca"} else build_model_id_map(config_rows)
 
     (
         X,

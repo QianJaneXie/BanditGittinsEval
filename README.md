@@ -132,18 +132,18 @@ BayesOpt runs on configuration-level inputs (`data/bo_inputs/*.npz`), not matrix
 **Random initialization.** Unless `--n-init` is set, the number of initial arms is
 
 \[
-n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.4 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
+n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.5 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
 \]
 
-where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
+where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. With the default `eval_budget_fraction = 0.1`, the budget cap is **5%** of \(n_{\mathrm{configs}}\). Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
 
 At the default 10% budget:
 
 | Dataset | \(d\) | \(n_{\mathrm{configs}}\) | Default \(n_{\mathrm{init}}\) | BO steps after init |
 |---------|------|---------------------------|-------------------------------|---------------------|
-| GSM8K | 11 models | 122 | 5 | 7 |
-| PIQA | 11 models | 103 | 4 | 6 |
-| MMLU | 100 prompts | 1500 | 60 | 90 |
+| GSM8K | 11 models | 122 | 6 | 6 |
+| PIQA | 11 models | 103 | 5 | 5 |
+| MMLU | 100 prompts | 1500 | 75 | 75 |
 
 Override with `--n-init`. See **Examples** above for GSM8K and MMLU commands.
 

@@ -700,7 +700,7 @@ def scan_history_with_retry(run: wandb.apis.public.Run, *, page_size: int, retri
     last_err: Exception | None = None
     for attempt in range(1, int(retries) + 1):
         try:
-            return [dict(h) for h in run.scan_history(keys=HISTORY_KEYS, page_size=page_size)]
+            return [dict(h) for h in run.scan_history(page_size=page_size)]
         except Exception as e:
             last_err = e
             wait = float(sleep_s) * attempt
