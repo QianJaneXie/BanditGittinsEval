@@ -211,11 +211,10 @@ def main() -> int:
         k = float(args.stderr_k)
         if args.range == "stderr" or args.stop_band == "stderr":
             k_txt = str(int(k)) if abs(k - round(k)) < 1e-9 else f"{k:g}"
-            final_labels.append(f"±{k_txt} SE band")
+            final_labels.append(rf"$\pm${k_txt} SE band")
         else:
-            final_labels.append("±1 std band")
+            final_labels.append(r"$\pm$1 std band")
 
-    final_labels = [label.replace("卤", "±") for label in final_labels]
 
     fig.legend(
         final_handles,

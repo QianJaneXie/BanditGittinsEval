@@ -152,7 +152,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--crop-bo-random-init", action="store_true", default=False)
 
     p.add_argument("--range", choices=["stderr", "std", "none"], default="stderr")
-    p.add_argument("--stderr-k", type=float, default=2.0)
+    p.add_argument("--stderr-k", type=float, default=1.0)
 
     p.add_argument("--include-small-lrf", action="store_true", default=True)
     p.add_argument("--no-include-small-lrf", dest="include_small_lrf", action="store_false")
@@ -166,7 +166,7 @@ def parse_args() -> argparse.Namespace:
 
     # Paper-style layout, matching the GSM8K/PIQA figure family.
     p.add_argument("--fig-width", type=float, default=26.8)
-    p.add_argument("--fig-height", type=float, default=25.9)
+    p.add_argument("--fig-height", type=float, default=30.223417)
     p.add_argument("--title-size", type=float, default=81)
     p.add_argument("--label-size", type=float, default=81)
     p.add_argument("--tick-size", type=float, default=57)
@@ -179,7 +179,7 @@ def parse_args() -> argparse.Namespace:
     # plot_gsm8k_piqa_paper_grid.py (matching the paper's main figure).
     p.add_argument("--shared-x-label-size", type=float, default=81)
     p.add_argument("--shared-y-label-size", type=float, default=81)
-    p.add_argument("--shared-x-label-y", type=float, default=0.205)
+    p.add_argument("--shared-x-label-y", type=float, default=0.270)
     p.add_argument("--shared-y-label-x", type=float, default=-0.023)
 
     p.add_argument("--y-limit-min", type=float, default=None)
@@ -194,8 +194,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--wspace", type=float, default=0.24)
     p.add_argument("--hspace", type=float, default=0.34)
 
-    p.add_argument("--legend-y", type=float, default=0.020)
-    p.add_argument("--legend-ncol", type=int, default=4)
+    p.add_argument("--legend-y", type=float, default=0.055)
+    p.add_argument("--legend-ncol", type=int, default=3)
     p.add_argument("--dpi", type=int, default=260)
     p.add_argument("--show-stopping", action="store_true", default=True)
     p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
