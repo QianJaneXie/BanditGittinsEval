@@ -1,0 +1,401 @@
+{
+  "college_mathematics": {
+    "display_name": "College Math",
+    "full_name": "College Mathematics",
+    "bucket": "low",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "miscellaneous": {
+    "display_name": "Misc",
+    "full_name": "Miscellaneous",
+    "bucket": "high",
+    "n_questions": 783,
+    "size": "large"
+  },
+  "moral_disputes": {
+    "display_name": "Moral Disputes",
+    "full_name": "Moral Disputes",
+    "bucket": "medium",
+    "n_questions": 346,
+    "size": "medium"
+  },
+  "jurisprudence": {
+    "display_name": "Jurisprudence",
+    "full_name": "Jurisprudence",
+    "bucket": "high",
+    "n_questions": 108,
+    "size": "small"
+  },
+  "moral_scenarios": {
+    "display_name": "Moral Scenarios",
+    "full_name": "Moral Scenarios",
+    "bucket": "low",
+    "n_questions": 895,
+    "size": "large"
+  },
+  "college_chemistry": {
+    "display_name": "College Chem",
+    "full_name": "College Chemistry",
+    "bucket": "low",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "professional_medicine": {
+    "display_name": "Prof Medicine",
+    "full_name": "Professional Medicine",
+    "bucket": "medium",
+    "n_questions": 272,
+    "size": "medium"
+  },
+  "clinical_knowledge": {
+    "display_name": "Clinical Know.",
+    "full_name": "Clinical Knowledge",
+    "bucket": "medium",
+    "n_questions": 265,
+    "size": "medium"
+  },
+  "abstract_algebra": {
+    "display_name": "Abstract Alg.",
+    "full_name": "Abstract Algebra",
+    "bucket": "low",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "nutrition": {
+    "display_name": "Nutrition",
+    "full_name": "Nutrition",
+    "bucket": "medium",
+    "n_questions": 306,
+    "size": "medium"
+  },
+  "professional_psychology": {
+    "display_name": "Prof Psychology",
+    "full_name": "Professional Psychology",
+    "bucket": "medium",
+    "n_questions": 612,
+    "size": "large"
+  },
+  "high_school_government_and_politics": {
+    "display_name": "HS Gov & Pol",
+    "full_name": "High School Government and Politics",
+    "bucket": "high",
+    "n_questions": 193,
+    "size": "medium"
+  },
+  "high_school_us_history": {
+    "display_name": "HS US Hist",
+    "full_name": "High School US History",
+    "bucket": "high",
+    "n_questions": 204,
+    "size": "medium"
+  },
+  "high_school_chemistry": {
+    "display_name": "HS Chem",
+    "full_name": "High School Chemistry",
+    "bucket": "low",
+    "n_questions": 203,
+    "size": "medium"
+  },
+  "high_school_macroeconomics": {
+    "display_name": "HS Macroecon",
+    "full_name": "High School Macroeconomics",
+    "bucket": "medium",
+    "n_questions": 390,
+    "size": "medium"
+  },
+  "management": {
+    "display_name": "Management",
+    "full_name": "Management",
+    "bucket": "high",
+    "n_questions": 103,
+    "size": "small"
+  },
+  "conceptual_physics": {
+    "display_name": "Conceptual Phys",
+    "full_name": "Conceptual Physics",
+    "bucket": "medium",
+    "n_questions": 235,
+    "size": "medium"
+  },
+  "philosophy": {
+    "display_name": "Philosophy",
+    "full_name": "Philosophy",
+    "bucket": "medium",
+    "n_questions": 311,
+    "size": "medium"
+  },
+  "electrical_engineering": {
+    "display_name": "Electrical Eng",
+    "full_name": "Electrical Engineering",
+    "bucket": "medium",
+    "n_questions": 145,
+    "size": "small"
+  },
+  "high_school_psychology": {
+    "display_name": "HS Psychology",
+    "full_name": "High School Psychology",
+    "bucket": "high",
+    "n_questions": 545,
+    "size": "large"
+  },
+  "medical_genetics": {
+    "display_name": "Medical Genetics",
+    "full_name": "Medical Genetics",
+    "bucket": "medium",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "high_school_geography": {
+    "display_name": "HS Geography",
+    "full_name": "High School Geography",
+    "bucket": "high",
+    "n_questions": 198,
+    "size": "medium"
+  },
+  "high_school_statistics": {
+    "display_name": "HS Statistics",
+    "full_name": "High School Statistics",
+    "bucket": "low",
+    "n_questions": 216,
+    "size": "medium"
+  },
+  "international_law": {
+    "display_name": "Int'l Law",
+    "full_name": "International Law",
+    "bucket": "high",
+    "n_questions": 121,
+    "size": "small"
+  },
+  "elementary_mathematics": {
+    "display_name": "Elementary Math",
+    "full_name": "Elementary Mathematics",
+    "bucket": "low",
+    "n_questions": 378,
+    "size": "medium"
+  },
+  "high_school_physics": {
+    "display_name": "HS Physics",
+    "full_name": "High School Physics",
+    "bucket": "low",
+    "n_questions": 151,
+    "size": "medium"
+  },
+  "world_religions": {
+    "display_name": "World Religions",
+    "full_name": "World Religions",
+    "bucket": "high",
+    "n_questions": 171,
+    "size": "medium"
+  },
+  "high_school_european_history": {
+    "display_name": "HS Euro Hist",
+    "full_name": "High School European History",
+    "bucket": "medium",
+    "n_questions": 165,
+    "size": "medium"
+  },
+  "formal_logic": {
+    "display_name": "Formal Logic",
+    "full_name": "Formal Logic",
+    "bucket": "low",
+    "n_questions": 126,
+    "size": "small"
+  },
+  "security_studies": {
+    "display_name": "Security Studies",
+    "full_name": "Security Studies",
+    "bucket": "medium",
+    "n_questions": 245,
+    "size": "medium"
+  },
+  "sociology": {
+    "display_name": "Sociology",
+    "full_name": "Sociology",
+    "bucket": "high",
+    "n_questions": 201,
+    "size": "medium"
+  },
+  "high_school_biology": {
+    "display_name": "HS Biology",
+    "full_name": "High School Biology",
+    "bucket": "high",
+    "n_questions": 310,
+    "size": "medium"
+  },
+  "us_foreign_policy": {
+    "display_name": "US Foreign Policy",
+    "full_name": "US Foreign Policy",
+    "bucket": "high",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "high_school_microeconomics": {
+    "display_name": "HS Microecon",
+    "full_name": "High School Microeconomics",
+    "bucket": "medium",
+    "n_questions": 238,
+    "size": "medium"
+  },
+  "college_medicine": {
+    "display_name": "College Medicine",
+    "full_name": "College Medicine",
+    "bucket": "medium",
+    "n_questions": 173,
+    "size": "medium"
+  },
+  "college_computer_science": {
+    "display_name": "College CS",
+    "full_name": "College Computer Science",
+    "bucket": "low",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "logical_fallacies": {
+    "display_name": "Logical Fallacies",
+    "full_name": "Logical Fallacies",
+    "bucket": "high",
+    "n_questions": 163,
+    "size": "medium"
+  },
+  "high_school_computer_science": {
+    "display_name": "HS CS",
+    "full_name": "High School Computer Science",
+    "bucket": "medium",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "anatomy": {
+    "display_name": "Anatomy",
+    "full_name": "Anatomy",
+    "bucket": "medium",
+    "n_questions": 135,
+    "size": "small"
+  },
+  "econometrics": {
+    "display_name": "Econometrics",
+    "full_name": "Econometrics",
+    "bucket": "low",
+    "n_questions": 114,
+    "size": "small"
+  },
+  "astronomy": {
+    "display_name": "Astronomy",
+    "full_name": "Astronomy",
+    "bucket": "medium",
+    "n_questions": 152,
+    "size": "medium"
+  },
+  "college_biology": {
+    "display_name": "College Biology",
+    "full_name": "College Biology",
+    "bucket": "medium",
+    "n_questions": 144,
+    "size": "small"
+  },
+  "virology": {
+    "display_name": "Virology",
+    "full_name": "Virology",
+    "bucket": "low",
+    "n_questions": 166,
+    "size": "medium"
+  },
+  "professional_accounting": {
+    "display_name": "Prof Accounting",
+    "full_name": "Professional Accounting",
+    "bucket": "low",
+    "n_questions": 282,
+    "size": "medium"
+  },
+  "college_physics": {
+    "display_name": "College Physics",
+    "full_name": "College Physics",
+    "bucket": "low",
+    "n_questions": 102,
+    "size": "small"
+  },
+  "high_school_world_history": {
+    "display_name": "HS World Hist",
+    "full_name": "High School World History",
+    "bucket": "high",
+    "n_questions": 237,
+    "size": "medium"
+  },
+  "business_ethics": {
+    "display_name": "Business Ethics",
+    "full_name": "Business Ethics",
+    "bucket": "medium",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "global_facts": {
+    "display_name": "Global Facts",
+    "full_name": "Global Facts",
+    "bucket": "low",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "public_relations": {
+    "display_name": "Public Relations",
+    "full_name": "Public Relations",
+    "bucket": "medium",
+    "n_questions": 110,
+    "size": "small"
+  },
+  "marketing": {
+    "display_name": "Marketing",
+    "full_name": "Marketing",
+    "bucket": "high",
+    "n_questions": 234,
+    "size": "medium"
+  },
+  "human_aging": {
+    "display_name": "Human Aging",
+    "full_name": "Human Aging",
+    "bucket": "medium",
+    "n_questions": 223,
+    "size": "medium"
+  },
+  "professional_law": {
+    "display_name": "Prof Law",
+    "full_name": "Professional Law",
+    "bucket": "low",
+    "n_questions": 1534,
+    "size": "large"
+  },
+  "high_school_mathematics": {
+    "display_name": "HS Math",
+    "full_name": "High School Mathematics",
+    "bucket": "low",
+    "n_questions": 270,
+    "size": "medium"
+  },
+  "prehistory": {
+    "display_name": "Prehistory",
+    "full_name": "Prehistory",
+    "bucket": "medium",
+    "n_questions": 324,
+    "size": "medium"
+  },
+  "machine_learning": {
+    "display_name": "Machine Learning",
+    "full_name": "Machine Learning",
+    "bucket": "low",
+    "n_questions": 112,
+    "size": "small"
+  },
+  "computer_security": {
+    "display_name": "Comp Security",
+    "full_name": "Computer Security",
+    "bucket": "high",
+    "n_questions": 100,
+    "size": "small"
+  },
+  "human_sexuality": {
+    "display_name": "Human Sexuality",
+    "full_name": "Human Sexuality",
+    "bucket": "high",
+    "n_questions": 131,
+    "size": "small"
+  }
+}
