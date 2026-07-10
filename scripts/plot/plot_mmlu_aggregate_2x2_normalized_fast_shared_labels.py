@@ -14,7 +14,7 @@ Layout:
 Default:
   x-axis: normalized cumulative evaluations/cost
   y-axis: normalized simple regret = r(t) / mean first simple regret of bandit methods
-  band:   mean ± 2 SE
+  band:   mean ± 1 SE
   no stopping lines
 
 Difficulty mapping:

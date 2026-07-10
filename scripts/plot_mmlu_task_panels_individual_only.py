@@ -103,7 +103,7 @@ def parse_args() -> argparse.Namespace:
 
     # Curve uncertainty band.
     p.add_argument("--range", choices=["stderr", "std", "iqr", "none"], default="stderr")
-    p.add_argument("--se-mult", type=float, default=2.0, help="Multiplier for SE bands when --range stderr.")
+    p.add_argument("--se-mult", type=float, default=1.0, help="Multiplier for SE bands when --range stderr.")
     p.add_argument("--curve-alpha", type=float, default=0.15)
 
     # Backward-compatible no-op flags. MMLU dense task grids intentionally do not draw stopping.

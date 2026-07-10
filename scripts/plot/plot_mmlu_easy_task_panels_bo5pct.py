@@ -328,7 +328,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--x-start-zero", action="store_true", help="Force individual panel x-axis to start at 0.")
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
-    p.add_argument("--se-mult", type=float, default=2.0)
+    p.add_argument("--se-mult", type=float, default=1.0)
     p.add_argument("--range", choices=["stderr", "none"], default="stderr")
     p.add_argument("--curve-alpha", type=float, default=0.15)
     p.add_argument("--show-stopping", action="store_true", default=True)

@@ -46,8 +46,8 @@ STYLE_BY_KIND = {
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 2.1, "z": 3},
 }
 
-# We standardize uncertainty visualization to ±2×SE when using standard-error bands.
-SE_BAND_MULT = 2.0
+# We standardize uncertainty visualization to ±1×SE when using standard-error bands.
+SE_BAND_MULT = 1.0
 
 
 def safe_token(s: str) -> str:
@@ -328,7 +328,7 @@ def draw_stopping(ax: plt.Axes, history: pd.DataFrame, stopping: pd.DataFrame, v
             else:
                 band_value = 0.0
 
-        # Apply the standardized ±2×SE band multiplier to fallback stopping SE as well.
+        # Apply the standardized ±1×SE band multiplier to fallback stopping SE as well.
         if (arr is None or len(arr) == 0) and args.stop_band == "stderr":
             band_value = float(SE_BAND_MULT) * float(band_value)
 
@@ -446,7 +446,7 @@ def legend_handles_labels(args: argparse.Namespace) -> tuple[list[object], list[
     ]
     if args.range != "none" or (args.show_stopping and args.stop_band != "none"):
         handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
-        labels.append("±2 SE band" if args.range == "stderr" and args.stop_band == "stderr" else "Uncertainty band")
+        labels.append("±1 SE band" if args.range == "stderr" and args.stop_band == "stderr" else "Uncertainty band")
     if args.show_stopping:
         handles.append(Line2D([0], [0], color=COLOR_GITTINS_S, linestyle="--", linewidth=2.0, alpha=args.stop_line_alpha))
         labels.append("Gittins-S mean stop")

@@ -11,7 +11,7 @@ So the script writes 6 PNG files and 6 CSV files:
   OUT_ROOT/aware/gsm8k_aware_B16_scale1e-4_iter_step_median_s_timing.png
   ...
 
-Default error bars are black ±2 SE across completed runs, matching the paper
+Default error bars are black ±1 SE across completed runs, matching the paper
 simple-regret convention.
 
 Input layouts supported:
@@ -78,8 +78,8 @@ def parse_args() -> argparse.Namespace:
         help="Timing field in runs_summary.csv.",
     )
 
-    # Default paper style: black ±2 SE error bars.
-    p.add_argument("--se-mult", type=float, default=2.0)
+    # Default paper style: black ±1 SE error bars.
+    p.add_argument("--se-mult", type=float, default=1.0)
     p.add_argument("--skip-empty-methods", action="store_true", default=True)
     p.add_argument("--no-skip-empty-methods", dest="skip_empty_methods", action="store_false")
 

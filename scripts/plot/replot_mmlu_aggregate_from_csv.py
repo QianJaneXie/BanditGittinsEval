@@ -178,7 +178,7 @@ def main() -> int:
             handles.append(Line2D([0], [0], color=color, linestyle="--", linewidth=2.6 * LINEWIDTH_MULT, alpha=0.72))
             labels.append(label)
     handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
-    labels.append("±2 SE band")
+    labels.append("±1 SE band")
     fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 0.045), fontsize=58, handlelength=2.0, handletextpad=0.35, columnspacing=1.15)
 
     fig.subplots_adjust(left=0.045, right=0.995, top=0.765, bottom=0.375, wspace=0.24, hspace=0.34)

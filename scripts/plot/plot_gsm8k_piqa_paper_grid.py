@@ -160,7 +160,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--stderr-k",
         type=float,
-        default=2.0,
+        default=1.0,
         help="Multiplier for standard-error bands when using stderr-based ranges/stop bands.",
     )
 

@@ -17,7 +17,7 @@ Designed for paper appendix/grid use:
   from task_display_names.json; each row fits up to 4 datasets by default
 - ``--bandit-eval``: GSM8K/PIQA matrices ``*_1_samples_various_models_seed*.npy``
   under ``data/BanditEval_matrices`` (configurable): prior mean 0.2 (GSM8K) /
-  0.3 (PIQA) per panel.
+  0.4 (PIQA) per panel.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ BANDITEVAL_ALPACA_FILE = (
 )
 
 BANDITEVAL_PRIOR_MEAN_GSM8K = 0.2
-BANDITEVAL_PRIOR_MEAN_PIQA = 0.3
+BANDITEVAL_PRIOR_MEAN_PIQA = 0.4
 BANDITEVAL_PRIOR_MEAN_ALPACA = 0.1
 
 # Vertical reference aesthetics: (color, linestyle).
@@ -389,7 +389,12 @@ def save_single_plot(
 
     fig.tight_layout(pad=0.25)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, bbox_inches="tight")
+    try:
+        fig.savefig(out_path, bbox_inches="tight")
+    except PermissionError:
+        fallback = out_path.with_name(f"{out_path.stem}_current{out_path.suffix}")
+        fig.savefig(fallback, bbox_inches="tight")
+        print(f"WARNING: grid image is locked; wrote fallback: {fallback}")
     plt.close(fig)
 
 
@@ -479,46 +484,53 @@ def save_grid_plot(
     fig.subplots_adjust(bottom=0.12)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_path, bbox_inches="tight")
+    try:
+        fig.savefig(out_path, bbox_inches="tight")
+    except PermissionError:
+        fallback = out_path.with_name(f"{out_path.stem}_current{out_path.suffix}")
+        fig.savefig(fallback, bbox_inches="tight")
+        print(f"WARNING: grid image is locked; wrote fallback: {fallback}")
     plt.close(fig)
 
 
 def save_summary_csv(rows: list[dict], out_path: Path) -> None:
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with out_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "task",
-                "display_name",
-                "prior_bucket",
-                "informative_prior_mean",
-                "file",
-                "n_arms",
-                "n_questions",
-                "empirical_mean",
-                "best_arm",
-            ],
-        )
-        writer.writeheader()
-
-        for row in rows:
-            ipp = row.get("panel_prior_mean")
-            ipp_s = "" if ipp is None else f"{float(ipp):.6f}"
-            writer.writerow(
-                {
-                    "task": row["task"],
-                    "display_name": row["display_name"],
-                    "prior_bucket": row.get("prior_bucket", ""),
-                    "informative_prior_mean": ipp_s,
-                    "file": row["file"],
-                    "n_arms": row["n_arms"],
-                    "n_questions": row["n_questions"],
-                    "empirical_mean": f"{row['empirical_mean']:.6f}",
-                    "best_arm": f"{row['best_arm']:.6f}",
-                }
+    try:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with out_path.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "task",
+                    "display_name",
+                    "prior_bucket",
+                    "informative_prior_mean",
+                    "file",
+                    "n_arms",
+                    "n_questions",
+                    "empirical_mean",
+                    "best_arm",
+                ],
             )
+            writer.writeheader()
+
+            for row in rows:
+                ipp = row.get("panel_prior_mean")
+                ipp_s = "" if ipp is None else f"{float(ipp):.6f}"
+                writer.writerow(
+                    {
+                        "task": row["task"],
+                        "display_name": row["display_name"],
+                        "prior_bucket": row.get("prior_bucket", ""),
+                        "informative_prior_mean": ipp_s,
+                        "file": row["file"],
+                        "n_arms": row["n_arms"],
+                        "n_questions": row["n_questions"],
+                        "empirical_mean": f"{row['empirical_mean']:.6f}",
+                        "best_arm": f"{row['best_arm']:.6f}",
+                    }
+                )
+    except PermissionError:
+        print(f"WARNING: summary CSV is locked; skipped writing: {out_path}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -553,7 +565,7 @@ def parse_args() -> argparse.Namespace:
             "Plot GSM8K/PIQA matrices matching "
             f"{BANDITEVAL_GLOB_GSM8K!r} and {BANDITEVAL_GLOB_PIQA!r}, plus the "
             "Alpaca no-rounding-debias matrix, under --bandit-eval-data-dir "
-            "(informative prior 0.2 GSM8K, 0.3 PIQA, 0.1 Alpaca per panel). "
+            "(informative prior 0.2 GSM8K, 0.4 PIQA, 0.1 Alpaca per panel). "
             "Ignores MMLU --manifest / --task / --tasks / --all."
         ),
     )

@@ -125,7 +125,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--shared-x-label-x-offset", type=float, default=0.01, help="Move shared x-label right (+) / left (-).")
     p.add_argument("--shared-y-label-y-offset", type=float, default=0.01, help="Move shared y-label up (+) / down (-).")
 
-    p.add_argument("--se-mult", type=float, default=2.0, help="Only used in legend label, e.g. ±2 SE band.")
+    p.add_argument("--se-mult", type=float, default=1.0, help="Only used in legend label, e.g. ±1 SE band.")
     p.add_argument("--check-same-size", action="store_true", default=True)
     p.add_argument("--no-check-same-size", dest="check_same_size", action="store_false")
     return p.parse_args()

@@ -81,7 +81,7 @@ def parse_args() -> argparse.Namespace:
             "lookup_table_s",
         ],
     )
-    p.add_argument("--se-mult", type=float, default=2.0)
+    p.add_argument("--se-mult", type=float, default=1.0)
 
     # Figure layout.
     p.add_argument("--fig-width", type=float, default=12.0)
