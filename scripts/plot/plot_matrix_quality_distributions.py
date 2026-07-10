@@ -52,7 +52,7 @@ BANDITEVAL_ALPACA_FILE = (
 
 BANDITEVAL_PRIOR_MEAN_GSM8K = 0.2
 BANDITEVAL_PRIOR_MEAN_PIQA = 0.4
-BANDITEVAL_PRIOR_MEAN_ALPACA = 0.1
+BANDITEVAL_PRIOR_MEAN_ALPACA = 0.2
 
 # Vertical reference aesthetics: (color, linestyle).
 REF_EMPIRICAL_STYLE = ("#D62728", "-")  # red solid
@@ -565,7 +565,7 @@ def parse_args() -> argparse.Namespace:
             "Plot GSM8K/PIQA matrices matching "
             f"{BANDITEVAL_GLOB_GSM8K!r} and {BANDITEVAL_GLOB_PIQA!r}, plus the "
             "Alpaca no-rounding-debias matrix, under --bandit-eval-data-dir "
-            "(informative prior 0.2 GSM8K, 0.4 PIQA, 0.1 Alpaca per panel). "
+            "(informative prior 0.2 GSM8K, 0.4 PIQA, 0.2 Alpaca per panel). "
             "Ignores MMLU --manifest / --task / --tasks / --all."
         ),
     )
