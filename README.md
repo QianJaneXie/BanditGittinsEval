@@ -27,10 +27,11 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | Policy | Selection | Recommendation |
 |--------|-----------|----------------|
 | UCB-E | UCB bound | Empirical mean |
+| SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
 | Gittins | Gittins index | Posterior mean \(E[\theta_k \mid D_t]\) |
 
-`simulate_simple_regret.py` runs UCB-E and Gittins (`--algorithms ucb gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`).
+`simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
 
 **Common flags** — run any script with `--help` for the full list:
 
@@ -113,7 +114,7 @@ Combine bandit and BayesOpt traces with `plot_bandit_bo_comparison.py` (pass `--
 |--------|---------|
 | `simulate_simple_regret.py` | Run UCB-E / Gittins; save trace `.npz` |
 | `plot_simple_regret_results.py` | Plot regret from a trace bundle |
-| `plot_arm_eval_rollouts.py` | Per-arm batch-pull rollouts (re-simulates from traces) |
+| `plot_arm_eval_rollouts.py` | Per-arm batch-pull rollouts for UCB-E / SySRs / Gittins (re-simulates from traces) |
 | `run_bo_baseline.py` | BayesOpt baselines on `data/bo_inputs/*.npz` |
 | `plot_bandit_bo_comparison.py` | Overlay bandit + BO curves |
 | `convert_matrix_to_bo_inputs.py` | Build BO input files from a matrix |
