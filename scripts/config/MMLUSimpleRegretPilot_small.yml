@@ -62,7 +62,9 @@ parameters:
   experiment_variant:
     values:
     - ucb_B2
+    - sysrs
     - ucb_cost_B2
+    - sysrs_cost
     - ucb_B4
     - ucb_cost_B4
     - ucb_B8

@@ -79,6 +79,8 @@ def derive_method_label_row(row: pd.Series) -> str:
         return "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
     if family == "lrf":
         return "Bandit UCB-E-LRF (cost)" if "cost" in variant else "Bandit UCB-E-LRF"
+    if family == "sysrs" or variant.startswith("sysrs"):
+        return "Bandit SySRs (cost)" if "cost" in variant else "Bandit SySRs"
     if family == "ucb" or variant.startswith("ucb"):
         return "Bandit UCB-E (cost)" if "cost" in variant else "Bandit UCB-E"
     return variant or family or "unknown"
