@@ -108,7 +108,12 @@ def reallocate_budget_across_rounds(
 
 
 def adjust_sysrs_budget(n_items: int, n_arms: int, n_examples: int) -> int:
-    """Clamp the planned pull budget to a feasible SR size."""
+    """Cap the planned pull budget at the SR maximum safe budget.
+
+    Matches ``cap_and_adjust_budgets`` in llm-bandits-sysrs: the maximum safe
+    budget is computed from the SR schedule so that no phase requires more tasks
+    than are available (``n_examples``).
+    """
     n_items = max(int(n_items), int(n_arms))
     logbar = _logbar(n_arms)
     max_theoretical = int((n_examples - 1) * logbar + n_arms) if n_examples >= 1 else n_arms
