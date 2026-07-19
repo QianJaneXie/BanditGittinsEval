@@ -2,10 +2,11 @@
 
 Ported from https://github.com/zifanlyu/llm-bandits-sysrs (Smart-SR):
 fixed-budget successive rejects with a shared without-replacement task sequence
-across active arms, plus budget reallocation when late phases would exceed the
-number of available tasks.
+across active arms. When late phases would need more than ``L`` tasks, the
+schedule caps ``n_k`` at ``L`` and reallocates the freed-up budget to earlier
+phases (same total budget ``n`` as UCB-E / other baselines).
 
-Hyperparameter-free aside from the fixed pull budget used to build the SR
+Hyperparameter-free aside from the fixed pull budget ``n`` used to build the SR
 schedule (supplied by the experiment as ``eval_budget_fraction`` of the matrix).
 
 Adapted to the local step API: each call returns a synchronized batch that
@@ -105,20 +106,6 @@ def reallocate_budget_across_rounds(
 
     nk_reallocated = np.ceil(nk_current).astype(int)
     return np.maximum.accumulate(nk_reallocated)
-
-
-def adjust_sysrs_budget(n_items: int, n_arms: int, n_examples: int) -> int:
-    """Cap the planned pull budget at the SR maximum safe budget.
-
-    Matches ``cap_and_adjust_budgets`` in llm-bandits-sysrs: the maximum safe
-    budget is computed from the SR schedule so that no phase requires more tasks
-    than are available (``n_examples``).
-    """
-    n_items = max(int(n_items), int(n_arms))
-    logbar = _logbar(n_arms)
-    max_theoretical = int((n_examples - 1) * logbar + n_arms) if n_examples >= 1 else n_arms
-    max_budget = max(n_arms, (max_theoretical // n_arms) * n_arms)
-    return int(min(n_items, max_budget))
 
 
 @dataclass
@@ -245,12 +232,17 @@ def make_sysrs_policy(
     Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]],
     SySRsState,
 ]:
-    """Build SySRs ``step_fn`` / ``recommend_fn`` closed over a shared state."""
+    """Build SySRs ``step_fn`` / ``recommend_fn`` closed over a shared state.
+
+    Uses the requested budget ``planned_budget`` as ``n`` (same as UCB-E). Does
+    **not** pre-shrink ``n`` via maximum safe budget; late-phase overflow is
+    handled only by capping ``n_k`` at ``n_examples`` and reallocating.
+    """
     rng = np.random.default_rng(None if seed is None else int(seed))
 
     n_arms = int(n_arms)
     n_examples = int(n_examples)
-    planned = adjust_sysrs_budget(int(planned_budget), n_arms, n_examples)
+    planned = max(int(n_arms), int(planned_budget))
     nk_original = successive_rejects_schedule(planned, n_arms)
     nk = reallocate_budget_across_rounds(planned, nk_original, n_examples, n_arms)
     max_tasks = int(min(n_examples, int(nk[-1]) if nk.size else 0))
