@@ -7,7 +7,7 @@ and plots per-arm cumulative **batch pulls**:
 - x-axis: batch iteration index (1..T)
 - y-axis: cumulative number of batches in which each arm was selected
 
-Only UCB-E and Gittins are supported (no LRF).
+Supports UCB-E, SySRs, and Gittins (no LRF).
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ if str(_repo_root / "src") not in sys.path:
 from gittins_policy import gittins_index_exploration  # noqa: E402
 from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from sysrs_policy import make_sysrs_policy  # noqa: E402
 
 
 def simulate_with_batch_pull_snapshots(
@@ -73,10 +74,8 @@ def simulate_with_batch_pull_snapshots(
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
         if per_arm_original_cost is not None:
-            pulled_arm = int(row_idx[0].item())
-            total_original_cost += (
-                float(per_arm_original_cost[pulled_arm].item()) * float(n_batch)
-            )
+            rows = row_idx.to(dtype=torch.long)
+            total_original_cost += float(per_arm_original_cost[rows].sum().item())
 
         if batch_pull_snapshots is not None:
             distinct_arms = {int(x) for x in row_idx.reshape(-1).tolist()}
@@ -176,76 +175,110 @@ def main() -> int:
 
     panels: list[tuple[str, list[int], np.ndarray]] = []
 
+    def _has_trace(prefix: str) -> bool:
+        key = f"{prefix}_regret"
+        return key in z.files and np.asarray(z[key]).size > 0
+
     # UCB-E rollout.
-    snaps: list[np.ndarray] = []
-    simulate_with_batch_pull_snapshots(
-        ground_truth,
-        upper_confidence_bound_exploration,
-        step_kwargs={"a": ucb_a, "batch_size": ucb_batch_size, "return_mus": False},
-        seed=seed,
-        max_evaluations=budget_evals,
-        per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
-        max_original_cost=max_original_cost,
-        batch_pull_snapshots=snaps,
-    )
-    if snaps:
-        it = list(range(1, len(snaps) + 1))
-        panels.append(("UCB-E", it, np.stack(snaps, axis=0)))
+    if _has_trace("ucb"):
+        snaps: list[np.ndarray] = []
+        simulate_with_batch_pull_snapshots(
+            ground_truth,
+            upper_confidence_bound_exploration,
+            step_kwargs={"a": ucb_a, "batch_size": ucb_batch_size, "return_mus": False},
+            seed=seed,
+            max_evaluations=budget_evals,
+            per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
+            max_original_cost=max_original_cost,
+            batch_pull_snapshots=snaps,
+        )
+        if snaps:
+            it = list(range(1, len(snaps) + 1))
+            panels.append(("UCB-E", it, np.stack(snaps, axis=0)))
+
+    # SySRs rollout (hyperparameter-free; schedule budget from trace / cell budget).
+    if _has_trace("sysrs"):
+        snaps = []
+        planned_budget = (
+            int(np.asarray(z["sysrs_planned_budget"]).reshape(()))
+            if "sysrs_planned_budget" in z.files
+            else budget_evals
+        )
+        sysrs_step, _sysrs_recommend, _sysrs_state = make_sysrs_policy(
+            n_arms=n_arms,
+            n_examples=int(ground_truth.shape[1]),
+            planned_budget=planned_budget,
+            seed=seed,
+        )
+        simulate_with_batch_pull_snapshots(
+            ground_truth,
+            sysrs_step,
+            step_kwargs={},
+            seed=seed,
+            max_evaluations=budget_evals,
+            per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
+            max_original_cost=max_original_cost,
+            batch_pull_snapshots=snaps,
+        )
+        if snaps:
+            it = list(range(1, len(snaps) + 1))
+            panels.append(("SySRs", it, np.stack(snaps, axis=0)))
 
     # Gittins rollout (per-cell DP with batch-observation model).
-    snaps = []
-    B = int(gittins_batch_size)
-    tau_sq_cell = float(tau_sq_batch) * float(B)
-    transition_stds = transition_stds_shrinking_gaussian_posterior(
-        np.float32(prior_variance), np.float32(tau_sq_cell), int(ground_truth.shape[1])
-    )
-    dp_costs_per_arm = np.asarray(cost_per_arm_original * cost_scaling_factor, dtype=np.float32)
-    roots = compute_roots_lookup_table(
-        transition_stds=transition_stds,
-        costs_per_arm=dp_costs_per_arm,
-        n_points=int(2**10 + 1),
-    )
-    roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
-    cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
-    prev_arm: int | None = None
-
-    def gittins_step(obs: torch.Tensor, **_) -> torch.Tensor | None:
-        nonlocal prev_arm
-        recompute = None if prev_arm is None else [prev_arm]
-        batch = gittins_index_exploration(
-            obs,
-            prior_mean=prior_mean,
-            prior_variance=prior_variance,
-            obs_noise_variance=tau_sq_batch,
-            cost_per_transition=cost_tensor,
-            cost_scaling_factor=cost_scaling_factor,
-            n_gittins_grid_points=int(2**10 + 1),
-            batch_size=B,
-            return_mus=False,
-            use_batch_mean_gittins_dp=False,
-            batch_observation_model=True,
-            allow_early_stop=False,
-            roots_lookup_table=roots_torch,
-            cached_scores=cached_scores,
-            recompute_arms=recompute,
+    if _has_trace("gittins"):
+        snaps = []
+        B = int(gittins_batch_size)
+        tau_sq_cell = float(tau_sq_batch) * float(B)
+        transition_stds = transition_stds_shrinking_gaussian_posterior(
+            np.float32(prior_variance), np.float32(tau_sq_cell), int(ground_truth.shape[1])
         )
-        if batch is not None:
-            prev_arm = int(batch[0, 0].item())
-        return batch
+        dp_costs_per_arm = np.asarray(cost_per_arm_original * cost_scaling_factor, dtype=np.float32)
+        roots = compute_roots_lookup_table(
+            transition_stds=transition_stds,
+            costs_per_arm=dp_costs_per_arm,
+            n_points=int(2**10 + 1),
+        )
+        roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
+        cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
+        prev_arm: int | None = None
 
-    simulate_with_batch_pull_snapshots(
-        ground_truth,
-        gittins_step,
-        step_kwargs={},
-        seed=seed,
-        max_evaluations=budget_evals,
-        per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
-        max_original_cost=max_original_cost,
-        batch_pull_snapshots=snaps,
-    )
-    if snaps:
-        it = list(range(1, len(snaps) + 1))
-        panels.append(("Gittins", it, np.stack(snaps, axis=0)))
+        def gittins_step(obs: torch.Tensor, **_) -> torch.Tensor | None:
+            nonlocal prev_arm
+            recompute = None if prev_arm is None else [prev_arm]
+            batch = gittins_index_exploration(
+                obs,
+                prior_mean=prior_mean,
+                prior_variance=prior_variance,
+                obs_noise_variance=tau_sq_batch,
+                cost_per_transition=cost_tensor,
+                cost_scaling_factor=cost_scaling_factor,
+                n_gittins_grid_points=int(2**10 + 1),
+                batch_size=B,
+                return_mus=False,
+                use_batch_mean_gittins_dp=False,
+                batch_observation_model=True,
+                allow_early_stop=False,
+                roots_lookup_table=roots_torch,
+                cached_scores=cached_scores,
+                recompute_arms=recompute,
+            )
+            if batch is not None:
+                prev_arm = int(batch[0, 0].item())
+            return batch
+
+        simulate_with_batch_pull_snapshots(
+            ground_truth,
+            gittins_step,
+            step_kwargs={},
+            seed=seed,
+            max_evaluations=budget_evals,
+            per_arm_original_cost=cost_tensor if max_original_cost is not None else None,
+            max_original_cost=max_original_cost,
+            batch_pull_snapshots=snaps,
+        )
+        if snaps:
+            it = list(range(1, len(snaps) + 1))
+            panels.append(("Gittins", it, np.stack(snaps, axis=0)))
 
     if not panels:
         print("No algorithms in meta to plot.", file=sys.stderr)

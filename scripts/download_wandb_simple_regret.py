@@ -246,6 +246,18 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
             prior_type="default",
         )
         return out
+    if v in {"sysrs", "sysrs_cost", "sysrs_aware"}:
+        cost_mode = "cost" if v != "sysrs" else "baseline"
+        out.update(
+            policy_variant="sysrs_cost" if cost_mode == "cost" else "sysrs",
+            policy_family="sysrs",
+            cost_mode=cost_mode if cost_mode == "cost" else "baseline",
+            batch_size=0,
+            gittins_batch_size=0,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+        return out
     m = re.fullmatch(r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
         cost_mode = m.group(1)

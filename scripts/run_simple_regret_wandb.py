@@ -37,6 +37,7 @@ from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
+from sysrs_policy import make_sysrs_policy  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
 DEFAULT_PRIOR_VARIANCE = 0.04
@@ -78,6 +79,12 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
     if m:
         policy, b = m.group(1), int(m.group(2))
         return VariantConfig(v, policy, policy, "unit", b, b, 1e-4, "default")
+
+    # SySRs is hyperparameter-free (no batch size); only unit vs cost stopping.
+    if v in {"sysrs_cost", "sysrs_aware"}:
+        return VariantConfig(v, "sysrs_cost", "sysrs", "cost", 0, 0, 1e-4, "default")
+    if v == "sysrs":
+        return VariantConfig(v, "sysrs", "sysrs", "unit", 0, 0, 1e-4, "default")
 
     m = re.fullmatch(r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
@@ -208,6 +215,20 @@ def build_policy(
             )
 
         return step_fn, empirical_incumbent, None, lookup_table_s
+
+    if variant.policy_family == "sysrs":
+        planned_budget = int(max(1, round(float(args.eval_budget_fraction) * n_cells)))
+        sysrs_step, sysrs_recommend, _state = make_sysrs_policy(
+            n_arms=n_arms,
+            n_examples=int(ground_truth.shape[1]),
+            planned_budget=planned_budget,
+            seed=int(args.run_seed),
+        )
+
+        def step_fn(obs: torch.Tensor, _sim_cum_eval: int):
+            return sysrs_step(obs)
+
+        return step_fn, sysrs_recommend, None, lookup_table_s
 
     if variant.policy_family == "lrf":
         if upper_confidence_bound_exploration_low_rank_factorization is None:
@@ -393,13 +414,16 @@ def run_simple_regret_experiment(
         if n_batch <= 0:
             break
 
-        pulled_arm = int(row_idx[0].item())
+        rows = row_idx.to(dtype=torch.long)
+        pulled_arms = sorted({int(x) for x in rows.tolist()})
+        pulled_arm = int(pulled_arms[0])
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
-        total_cost += float(original_cost_per_arm[pulled_arm].item()) * float(n_batch)
+        total_cost += float(original_cost_per_arm[rows].sum().item())
 
         gittins_diag: dict[str, float] | None = None
         if post_pull_fn is not None:
+            # Gittins pulls a single arm per step; recompute that arm only.
             gittins_diag = post_pull_fn(obs, pulled_arm, int(evaluated))
 
         if natural_stop_holder[0] == int(evaluated):
@@ -430,6 +454,8 @@ def run_simple_regret_experiment(
                 "recommended_arm": int(arm),
                 "recommended_mean": history["recommended_mean"][-1],
                 "pulled_arm": int(pulled_arm),
+                "pulled_arms_json": json.dumps(pulled_arms),
+                "n_pulled_arms": int(len(pulled_arms)),
             }
             if gittins_diag is not None:
                 payload["gittins_index_pulled"] = float(gittins_diag["gittins_index_pulled"])

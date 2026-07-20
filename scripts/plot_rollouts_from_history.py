@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -60,7 +60,7 @@ def main() -> int:
     p.add_argument("--dataset", default=None)
     p.add_argument("--matrix-seed", default=None)
     p.add_argument("--run-seed", default=None)
-    p.add_argument("--variant-regex", default="ucb|gittins")
+    p.add_argument("--variant-regex", default="ucb|sysrs|gittins")
     p.add_argument("--max-runs", type=int, default=20)
     args = p.parse_args()
 

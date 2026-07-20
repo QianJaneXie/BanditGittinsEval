@@ -30,19 +30,26 @@ def main() -> int:
 
     z = np.load(args.traces)
 
-    def _plot(x_key: str, y_key: str, label: str) -> None:
+    def _plot(x_key: str, y_key: str, label: str, *, color: str) -> None:
         if x_key in z.files and y_key in z.files:
             x = z[x_key]
             y = z[y_key]
             if x.size and y.size:
-                plt.plot(x, y, label=label, linewidth=1.6)
+                plt.plot(x, y, label=label, color=color, linewidth=1.6)
 
     x_ucb = "ucb_x" if args.x_axis == "evals" else "ucb_x_original_cost"
+    x_sysrs = "sysrs_x" if args.x_axis == "evals" else "sysrs_x_original_cost"
     x_gittins = "gittins_x" if args.x_axis == "evals" else "gittins_x_original_cost"
 
+    # Stable colors: UCB blue, Gittins orange, SySRs green.
+    color_ucb = "C0"
+    color_gittins = "C1"
+    color_sysrs = "C2"
+
     plt.figure(figsize=(8, 5))
-    _plot(x_ucb, "ucb_regret", "UCB-E (recommend: empirical mean)")
-    _plot(x_gittins, "gittins_regret", "Gittins (recommend: posterior mean)")
+    _plot(x_ucb, "ucb_regret", "UCB-E (recommend: empirical mean)", color=color_ucb)
+    _plot(x_sysrs, "sysrs_regret", "SySRs (recommend: active empirical mean)", color=color_sysrs)
+    _plot(x_gittins, "gittins_regret", "Gittins (recommend: posterior mean)", color=color_gittins)
     if args.x_axis == "original_cost":
         plt.xlabel("Cumulative cost (original units of cost vector)")
     else:
@@ -57,7 +64,6 @@ def main() -> int:
     plt.title(title)
 
     plt.grid(True, alpha=0.3)
-    plt.legend()
 
     def _gittins_stop_vline(
         eval_key: str,
@@ -86,19 +92,12 @@ def main() -> int:
             label=label,
         )
 
-    # Index-induced stop: argmax (Γ on incomplete, μ on complete) is a complete arm.
+    # Index-induced stop only: argmax (Γ on incomplete, μ on complete) is a complete arm.
     _gittins_stop_vline(
         "gittins_stop_cum_eval",
         "gittins_stop_cum_original_cost",
-        color="C1",
+        color=color_gittins,
         label="Gittins index-induced stop",
-    )
-    # Recommendation-aware stop: max incomplete Γ < max μ.
-    _gittins_stop_vline(
-        "gittins_recommendation_aware_stop_cum_eval",
-        "gittins_recommendation_aware_stop_cum_original_cost",
-        color="C4",
-        label="Gittins recommendation-aware stop",
     )
     plt.legend()
     plt.tight_layout()
