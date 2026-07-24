@@ -1,0 +1,58 @@
+program: scripts/run_simple_regret_wandb.py
+name: GSM8KSimpleRegretSweep_sysrs
+method: grid
+command:
+- ${env}
+- /scratch/yh6415/conda_envs/gittins/bin/python
+- ${program}
+- --log-step-metrics
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  dataset_tag:
+    value: gsm8k
+  matrix:
+    values:
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed2.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed3.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed4.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed5.npy
+  run_seed:
+    values:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+    - 11
+    - 12
+    - 13
+    - 14
+    - 15
+    - 16
+    - 17
+    - 18
+    - 19
+  experiment_variant:
+    values:
+    - sysrs
+    - sysrs_cost
+  eval_budget_fraction:
+    value: 0.1
+  cost_vector:
+    value: data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: gsm8k_simple_regret_sweep_sysrs
+  wandb_mode:
+    value: online
