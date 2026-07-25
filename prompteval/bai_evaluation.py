@@ -34,6 +34,9 @@ def budgets_from_y(Y: np.ndarray, max_fraction: float = OBSERVATION_BUDGET_MAX_F
 # Used by run_bai_evaluation() when no tasks= / tasks_csv / only_task / max_tasks / all_tasks / default_task_subset.
 DEFAULT_TASK_SUBSET = ("abstract_algebra", "professional_law")
 
+# BanditEval GSM8K/PIQA pickles from build_banditeval_pickle.py (no prompt-template covariates).
+DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/pickle/"
+
 # python bai_evaluation.py  # runs main(): torch+GPU, combine_models, two MMLU tasks (edit main() to change).
 
 
@@ -467,6 +470,10 @@ def main() -> Dict[str, Any]:
     """
     Local test entry: set all ``run_bai_evaluation`` arguments here.
     CLI parsing can be added later (e.g. argparse → same kwargs).
+
+    MMLU (PromptEval templates): ``data_path="prompteval/data/"``, ``combine_models=True``.
+    GSM8K/PIQA (BanditEval): run ``build_banditeval_pickle.py``, then
+    ``data_path=DEFAULT_BANDITEVAL_PICKLE_DIR``, ``combine_models=False``.
     """
     return run_bai_evaluation(
         data_path="prompteval/data/",
