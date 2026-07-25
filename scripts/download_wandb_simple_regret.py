@@ -1106,7 +1106,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--entity", required=True)
     p.add_argument("--project", required=True)
     p.add_argument("--sweep-id", required=True)
-    p.add_argument("--dataset", choices=["auto", "gsm8k", "piqa", "mmlu"], default="auto")
+    p.add_argument(
+        "--dataset",
+        choices=["auto", "gsm8k", "piqa", "alpaca", "mmlu"],
+        default="auto",
+    )
     p.add_argument("--mmlu-size-bucket", choices=["all", "small", "medium", "large"], default="all")
     p.add_argument("--task-metadata", type=Path, default=None)
     p.add_argument("--raw-dir", "--out-dir", dest="raw_dir", required=True, type=Path)
