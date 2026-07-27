@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Paper-style 2x3 figure for GSM8K, PIQA, and AlpacaEval.
+"""Paper-style 2x3 figure for GSM8K, PIQA, and AlpacaEval, including SySRs.
 
 Figure layout:
   columns: GSM8K, PIQA, AlpacaEval
@@ -13,9 +13,12 @@ directories. Alpaca defaults to the var0.02 Gittins-S download.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -25,19 +28,22 @@ import plot_gsm8k_piqa_paper_grid as pg
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
 
-    p.add_argument("--gsm8k-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/ucb_gittins/gsm8k"))
+    p.add_argument("--gsm8k-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/gittins_prior_new/merged_latest_Gs_for_2x3/gsm8k"))
     p.add_argument("--gsm8k-lrf-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/lrf/gsm8k_lrf"))
     p.add_argument("--gsm8k-bo-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/bo_baseline_5pct/gsm8k_bo"))
+    p.add_argument("--gsm8k-sysrs-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/sysrs/gsm8k"))
 
-    p.add_argument("--piqa-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/ucb_gittins/piqa"))
+    p.add_argument("--piqa-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/gittins_prior_new/merged_latest_Gs_for_2x3/piqa"))
     p.add_argument("--piqa-lrf-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/lrf/piqa_lrf"))
     p.add_argument("--piqa-bo-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/bo_baseline_5pct/piqa_bo"))
+    p.add_argument("--piqa-sysrs-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/sysrs/piqa"))
 
-    p.add_argument("--alpaca-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/ucb_gittins/alpaca_var0.02"))
+    p.add_argument("--alpaca-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/gittins_prior_new/merged_latest_Gs_for_2x3/alpaca"))
     p.add_argument("--alpaca-lrf-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/lrf/alpaca_lrf"))
     p.add_argument("--alpaca-bo-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/bo_baseline_5pct/alpaca_bo"))
+    p.add_argument("--alpaca-sysrs-dir", type=Path, default=Path(r"outputs/wandb_downloads_new/sysrs/alpaca"))
 
-    p.add_argument("--out-dir", type=Path, default=Path(r"outputs/figure/new_figure/final/gsm8k_piqa_alpaca_2x3"))
+    p.add_argument("--out-dir", type=Path, default=Path(r"outputs/figure/new_figure/final/gsm8k_piqa_alpaca_2x3_latest_Gs_sysrs"))
 
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--lrf-batch-size", type=int, default=32)
@@ -71,6 +77,133 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+CURVE_ORDER = [
+    "gittins_data",
+    "gittins_default",
+    "sysrs",
+    "ucb",
+    "lrf",
+    "bo_pbgi_unit",
+    "bo_logei_unit",
+    "bo_pbgi_cost",
+    "bo_logeipc_cost",
+]
+
+
+def collect_panel_data(
+    history: pd.DataFrame,
+    stopping: pd.DataFrame,
+    *,
+    dataset: str,
+    dataset_title: str,
+    cost_mode: str,
+    x_axis: str,
+    args: argparse.Namespace,
+) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    """Collect the exact aggregate values used to draw one panel."""
+    variants = pg.variant_names(
+        args.batch_size, args.lrf_batch_size, args.scale, cost_mode, args
+    )
+    panel_df = pg.prepare_panel_df(history, dataset, variants)
+    curves: list[dict[str, object]] = []
+
+    for kind in CURVE_ORDER:
+        if kind not in variants:
+            continue
+        variant = variants[kind]
+        vg = panel_df[panel_df["experiment_variant"].astype(str) == variant].copy()
+        if kind.startswith("bo_") and not vg.empty:
+            vg = pg.bo_post_init_aligned_to_average_start(
+                vg, x_col=x_axis, y_col="simple_regret"
+            )
+        if vg.empty:
+            continue
+        x, mean, std, stderr, n = pg.aggregate_variant(
+            vg,
+            x_axis,
+            "simple_regret",
+            args.grid_size,
+            extend_right=kind.startswith("bo_"),
+        )
+        if x.size == 0:
+            continue
+        band = (
+            stderr * float(args.stderr_k)
+            if args.range == "stderr"
+            else std
+            if args.range == "std"
+            else np.zeros_like(mean)
+        )
+        for values in zip(x, mean, std, stderr, n, mean - band, mean + band, strict=True):
+            xi, yi, stdi, sei, ni, lo, hi = values
+            curves.append(
+                {
+                    "dataset": dataset,
+                    "dataset_title": dataset_title,
+                    "cost_mode": cost_mode,
+                    "x_axis": x_axis,
+                    "kind": kind,
+                    "variant": variant,
+                    "label": pg.STYLE_BY_KIND[kind]["label"],
+                    "x": float(xi),
+                    "mean": float(yi),
+                    "std": float(stdi),
+                    "stderr": float(sei),
+                    "n": int(ni),
+                    "band_lo": float(lo),
+                    "band_hi": float(hi),
+                }
+            )
+
+    stops: list[dict[str, object]] = []
+    stop_kinds = [
+        "gittins_data",
+        "gittins_default",
+        "bo_pbgi_unit",
+        "bo_logei_unit",
+        "bo_pbgi_cost",
+        "bo_logeipc_cost",
+    ]
+    for kind in stop_kinds:
+        if kind not in variants or stopping.empty:
+            continue
+        variant = variants[kind]
+        sdf = stopping[stopping["experiment_variant"].astype(str) == variant]
+        vals = pd.Series(dtype=float)
+        used_col = ""
+        for stop_col in pg.stopping_cols_for_kind(kind, x_axis):
+            if stop_col not in sdf.columns:
+                continue
+            vals = pd.to_numeric(sdf[stop_col], errors="coerce")
+            vals = vals[np.isfinite(vals) & (vals >= 0)]
+            if not vals.empty:
+                used_col = stop_col
+                break
+        if vals.empty:
+            continue
+        arr = vals.to_numpy(dtype=float)
+        std_stop = float(np.std(arr, ddof=1)) if len(arr) > 1 else 0.0
+        stops.append(
+            {
+                "dataset": dataset,
+                "dataset_title": dataset_title,
+                "cost_mode": cost_mode,
+                "x_axis": x_axis,
+                "kind": kind,
+                "variant": variant,
+                "label": pg.STYLE_BY_KIND[kind]["label"],
+                "stop_column": used_col,
+                "n": int(len(arr)),
+                "mean_stop": float(np.mean(arr)),
+                "std_stop": std_stop,
+                "stderr_stop": std_stop / float(np.sqrt(len(arr))),
+                "q25_stop": float(np.quantile(arr, 0.25)),
+                "q75_stop": float(np.quantile(arr, 0.75)),
+            }
+        )
+    return curves, stops
+
+
 def make_legend(
     fig: plt.Figure,
     legend_handles: dict[str, plt.Line2D],
@@ -79,6 +212,7 @@ def make_legend(
     legend_order = [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
@@ -176,25 +310,64 @@ def main() -> int:
         {
             "key": "gsm8k",
             "title": "GSM8K",
-            "history_dirs": [args.gsm8k_dir, args.gsm8k_lrf_dir, args.gsm8k_bo_dir],
+            "history_dirs": [
+                args.gsm8k_dir,
+                args.gsm8k_lrf_dir,
+                args.gsm8k_bo_dir,
+                args.gsm8k_sysrs_dir,
+            ],
             "stopping_dirs": [args.gsm8k_dir, args.gsm8k_bo_dir],
         },
         {
             "key": "piqa",
             "title": "PIQA",
-            "history_dirs": [args.piqa_dir, args.piqa_lrf_dir, args.piqa_bo_dir],
+            "history_dirs": [
+                args.piqa_dir,
+                args.piqa_lrf_dir,
+                args.piqa_bo_dir,
+                args.piqa_sysrs_dir,
+            ],
             "stopping_dirs": [args.piqa_dir, args.piqa_bo_dir],
         },
         {
             "key": "alpaca",
             "title": "AlpacaEval",
-            "history_dirs": [args.alpaca_dir, args.alpaca_lrf_dir, args.alpaca_bo_dir],
+            "history_dirs": [
+                args.alpaca_dir,
+                args.alpaca_lrf_dir,
+                args.alpaca_bo_dir,
+                args.alpaca_sysrs_dir,
+            ],
             "stopping_dirs": [args.alpaca_dir, args.alpaca_bo_dir],
         },
     ]
 
     histories = {d["key"]: pg.read_histories(d["history_dirs"]) for d in datasets}
     stoppings = {d["key"]: pg.read_stoppings(d["stopping_dirs"]) for d in datasets}
+
+    curve_rows: list[dict[str, object]] = []
+    stop_rows: list[dict[str, object]] = []
+    for d in datasets:
+        for cost_mode, x_axis in [
+            ("unit", "cum_eval"),
+            ("aware", "cum_original_cost"),
+        ]:
+            panel_curves, panel_stops = collect_panel_data(
+                histories[d["key"]],
+                stoppings[d["key"]],
+                dataset=d["key"],
+                dataset_title=d["title"],
+                cost_mode=cost_mode,
+                x_axis=x_axis,
+                args=args,
+            )
+            curve_rows.extend(panel_curves)
+            stop_rows.extend(panel_stops)
+
+    curves_path = args.out_dir / "plot_data_curves.csv"
+    stops_path = args.out_dir / "plot_data_stopping.csv"
+    pd.DataFrame(curve_rows).to_csv(curves_path, index=False)
+    pd.DataFrame(stop_rows).to_csv(stops_path, index=False)
 
     fig, axes = plt.subplots(
         2,
@@ -274,7 +447,7 @@ def main() -> int:
 
     stem = (
         f"figure_gsm8k_piqa_alpaca_2x3_B{args.batch_size}_"
-        f"LRFB{args.lrf_batch_size}_scale{args.scale}_alpaca_var0p02"
+        f"LRFB{args.lrf_batch_size}_scale{args.scale}_sysrs"
     ).replace(".", "")
     out_png = args.out_dir / f"{stem}.png"
     out_pdf = args.out_dir / f"{stem}.pdf"
@@ -282,8 +455,38 @@ def main() -> int:
     fig.savefig(out_pdf, bbox_inches="tight", pad_inches=0.20)
     plt.close(fig)
 
+    metadata_path = args.out_dir / "plot_metadata.json"
+    metadata = {
+        "figure": {"png": str(out_png), "pdf": str(out_pdf)},
+        "plot_data": {"curves": str(curves_path), "stopping": str(stops_path)},
+        "paper_settings": {
+            "batch_size": args.batch_size,
+            "lrf_batch_size": args.lrf_batch_size,
+            "gittins_scale": args.scale,
+            "curve_range": args.range,
+            "stderr_k": args.stderr_k,
+            "grid_size": args.grid_size,
+            "show_stopping": args.show_stopping,
+            "stop_band": args.stop_band,
+            "bo_random_init_removed": True,
+            "lrf_warmup_removed": True,
+        },
+        "source_directories": {
+            d["key"]: [str(path) for path in d["history_dirs"]] for d in datasets
+        },
+        "colors": {
+            kind: pg.STYLE_BY_KIND[kind]["color"]
+            for kind in CURVE_ORDER
+            if kind in pg.STYLE_BY_KIND
+        },
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+
     print(f"Wrote {out_png}")
     print(f"Wrote {out_pdf}")
+    print(f"Wrote {curves_path}")
+    print(f"Wrote {stops_path}")
+    print(f"Wrote {metadata_path}")
     return 0
 
 

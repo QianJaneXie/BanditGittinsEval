@@ -63,6 +63,12 @@ STYLE_BY_KIND = {
         "linewidth": 3.2,
         "zorder": 4,
     },
+    "sysrs": {
+        "color": "tab:pink",
+        "label": "SySRs",
+        "linewidth": 3.0,
+        "zorder": 4,
+    },
     "ucb": {
         "color": "tab:blue",
         "label": "UCB-E",
@@ -128,6 +134,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out-dir", type=Path, default=Path(r"outputs\wandb_plots\paper_figures"))
     p.add_argument("--cache-curves-only", action="store_true", help="Write aggregated curve/stopping cache, but do not save figures.")
     p.add_argument("--plot-from-cache", action="store_true", help="Replot from existing aggregated curve/stopping cache without reading raw histories.")
+    p.add_argument("--cache-curve-path", type=Path, default=None, help="Optional aggregate CSV used with --plot-from-cache.")
+    p.add_argument("--cache-stop-path", type=Path, default=None, help="Optional stopping CSV used with --plot-from-cache.")
+    p.add_argument("--output-suffix", default="", help="Suffix appended to cached-plot PNG/PDF names.")
 
     p.add_argument("--cost-mode", choices=["unit", "aware"], default="unit")
     p.add_argument("--small-batch-size", type=int, default=4)
@@ -201,6 +210,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
     p.add_argument("--stop-alpha", type=float, default=0.12)
     p.add_argument("--stop-line-alpha", type=float, default=0.72)
+    p.add_argument("--sysrs-color", default="tab:pink")
 
     return p.parse_args()
 
@@ -976,6 +986,7 @@ def plot_group_panel(
     for kind in [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
@@ -1108,6 +1119,7 @@ def draw_cached_panel(
     order = [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
@@ -1253,6 +1265,7 @@ def finalize_figure(
     legend_order = [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
@@ -1328,8 +1341,8 @@ def finalize_figure(
 
 def plot_from_cache(args: argparse.Namespace) -> int:
     stem = output_stem(args)
-    curve_path = args.out_dir / f"{stem}_aggregated.csv"
-    stop_path = args.out_dir / f"{stem}_stops.csv"
+    curve_path = args.cache_curve_path or args.out_dir / f"{stem}_aggregated.csv"
+    stop_path = args.cache_stop_path or args.out_dir / f"{stem}_stops.csv"
     if not curve_path.is_file():
         raise FileNotFoundError(f"missing cache curve CSV: {curve_path}")
 
@@ -1363,8 +1376,8 @@ def plot_from_cache(args: argparse.Namespace) -> int:
             if r == 0:
                 axes[r, c].set_title(size, fontsize=args.title_size, fontweight="normal", pad=8)
 
-    out_png = args.out_dir / f"{stem}.png"
-    out_pdf = args.out_dir / f"{stem}.pdf"
+    out_png = args.out_dir / f"{stem}{args.output_suffix}.png"
+    out_pdf = args.out_dir / f"{stem}{args.output_suffix}.pdf"
     finalize_figure(fig, axes, args=args, legend_handles=legend_handles, out_png=out_png, out_pdf=out_pdf)
     plt.close(fig)
     return 0
@@ -1373,6 +1386,7 @@ def plot_from_cache(args: argparse.Namespace) -> int:
 def main() -> int:
     args = parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    STYLE_BY_KIND["sysrs"]["color"] = str(args.sysrs_color)
     setup_matplotlib(args)
 
     if args.plot_from_cache:
@@ -1547,6 +1561,7 @@ def main() -> int:
     legend_order = [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",

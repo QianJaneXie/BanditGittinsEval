@@ -37,6 +37,7 @@ COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
 COLOR_GITTINS_S = "tab:orange"
 COLOR_GITTINS_G = "tab:green"
+COLOR_SYSRS = "tab:pink"
 COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
@@ -51,6 +52,12 @@ STYLE_BY_KIND = {
         "color": COLOR_GITTINS_G,
         "label": "Gittins-G",
         "linewidth": 3.2,
+        "zorder": 4,
+    },
+    "sysrs": {
+        "color": COLOR_SYSRS,
+        "label": "SySRs",
+        "linewidth": 3.0,
         "zorder": 4,
     },
     "ucb": {
@@ -276,6 +283,7 @@ def variant_names(
         return {
             "gittins_data": f"gittins_unit_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_unit_B{b}_scale{scale}_default",
+            "sysrs": "sysrs",
             "ucb": f"ucb_B{b}",
             "lrf": f"lrf_B{lb}",
             "bo_pbgi_unit": str(args.bo_pbgi_unit_variant),
@@ -285,6 +293,7 @@ def variant_names(
         return {
             "gittins_data": f"gittins_cost_B{b}_scale{scale}_dataset",
             "gittins_default": f"gittins_cost_B{b}_scale{scale}_default",
+            "sysrs": "sysrs_cost",
             "ucb": f"ucb_cost_B{b}",
             "lrf": f"lrf_cost_B{lb}",
             "bo_pbgi_cost": str(args.bo_pbgi_cost_variant),
@@ -612,6 +621,7 @@ def plot_panel(
     order = [
         "gittins_data",
         "gittins_default",
+        "sysrs",
         "ucb",
         "lrf",
         "bo_pbgi_unit",
