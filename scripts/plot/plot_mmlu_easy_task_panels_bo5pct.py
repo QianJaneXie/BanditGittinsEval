@@ -233,12 +233,14 @@ COLOR_UCB = "tab:blue"
 COLOR_LRF = "tab:purple"
 COLOR_GITTINS_S = "tab:orange"
 COLOR_GITTINS_G = "tab:green"
+COLOR_SYSRS = "tab:pink"
 COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
     "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.88, "z": 6},
     "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.88, "z": 5},
+    "sysrs": {"color": COLOR_SYSRS, "label": "SySRs", "lw": 1.8, "z": 4.5},
     "ucb": {"color": COLOR_UCB, "label": "UCB-E", "lw": 1.8, "z": 4},
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 1.8, "z": 3},
     "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 1.9, "z": 3.5},
@@ -248,6 +250,7 @@ STYLE_BY_KIND = {
 LEGEND_BASE_LINEWIDTH_BY_KIND = {
     "gittins_data": 2.4,
     "gittins_default": 2.4,
+    "sysrs": 1.8,
     "ucb": 1.8,
     "lrf": 1.8,
     "bo_pbgi": 1.9,
@@ -351,10 +354,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--top", type=float, default=0.965)
     p.add_argument("--shared-y-label-x", type=float, default=0.042)
     p.add_argument("--shared-x-label-pad-in", type=float, default=0.48)
-    p.add_argument("--legend-pad-in", type=float, default=0.95)
-    p.add_argument("--bottom-floor-in", type=float, default=0.75)
+    p.add_argument("--legend-pad-in", type=float, default=1.20)
+    p.add_argument("--bottom-floor-in", type=float, default=1.25)
     p.add_argument("--shared-x-label-x-offset", type=float, default=0.01)
     p.add_argument("--shared-y-label-y-offset", type=float, default=0.01)
+    p.add_argument("--output-suffix", default="")
+    p.add_argument("--sysrs-color", default="tab:pink")
     return p.parse_args()
 
 
@@ -931,7 +936,7 @@ def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Pat
 
 
 def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[object], list[str]]:
-    kinds = ["gittins_data", "gittins_default", "ucb", "lrf", "bo_pbgi", "bo_logei"]
+    kinds = ["gittins_data", "gittins_default", "sysrs", "ucb", "lrf", "bo_pbgi", "bo_logei"]
     handles: list[object] = [
         Line2D(
             [0],
@@ -1054,7 +1059,8 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
         columnspacing=1.0,
     )
 
-    out = args.out_root / f"mmlu_{args.prior_bucket}_{mode}_bo5pct.png"
+    suffix = str(args.output_suffix)
+    out = args.out_root / f"mmlu_{args.prior_bucket}_{mode}{suffix}.png"
     fig.savefig(out, dpi=int(args.dpi))
     fig.savefig(out.with_suffix(".pdf"))
     plt.close(fig)
@@ -1063,6 +1069,7 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
 
 def main() -> int:
     args = parse_args()
+    STYLE_BY_KIND["sysrs"]["color"] = str(args.sysrs_color)
     setup_matplotlib(args)
     args.out_root.mkdir(parents=True, exist_ok=True)
     if bool(args.cache_curves_only) and bool(args.plot_from_cache):

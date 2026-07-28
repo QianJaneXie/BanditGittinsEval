@@ -14,10 +14,11 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import MaxNLocator
 
 
-METHOD_ORDER = ["Gittins-S", "Gittins-G", "UCB-E", "LRF", "BO-PBGI", "BO-LogEI"]
+METHOD_ORDER = ["Gittins-S", "Gittins-G", "SySRs", "UCB-E", "LRF", "BO-PBGI", "BO-LogEI"]
 METHOD_COLOR = {
     "Gittins-S": "tab:orange",
     "Gittins-G": "tab:green",
+    "SySRs": "tab:pink",
     "UCB-E": "tab:blue",
     "LRF": "tab:purple",
     "BO-PBGI": "tab:olive",
@@ -33,7 +34,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alpaca-bandit-root", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\alpaca_0.1_0.02"))
     p.add_argument("--alpaca-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\alpaca_lrf"))
     p.add_argument("--alpaca-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\alpaca_bo"))
-    p.add_argument("--out-dir", type=Path, default=Path(r"outputs\figure\new_figure\final\timing_with_alpaca"))
+    p.add_argument("--sysrs-root", type=Path, default=Path(r"outputs\wandb_downloads_new\sysrs"))
+    p.add_argument("--out-dir", type=Path, default=Path(r"outputs\figure\new_figure\final\timing_with_alpaca_sysrs"))
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--lrf-batch-size", type=int, default=32)
     p.add_argument("--scale", default="1e-4")
@@ -130,6 +132,34 @@ def alpaca_final_rows(args: argparse.Namespace, mode: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def sysrs_final_rows(args: argparse.Namespace, mode: str) -> pd.DataFrame:
+    variant = "sysrs" if mode == "unit" else "sysrs_cost"
+    roots = {
+        "GSM8K": args.sysrs_root / "gsm8k",
+        "PIQA": args.sysrs_root / "piqa",
+        "AlpacaEval": args.sysrs_root / "alpaca",
+        "MMLU-small": args.sysrs_root / "mmlu_small",
+        "MMLU-medium": args.sysrs_root / "mmlu_medium",
+        "MMLU-large": args.sysrs_root / "mmlu_large",
+    }
+    rows = []
+    for group, root in roots.items():
+        df = read_summary(root)
+        sub = df[df["experiment_variant"].astype(str).eq(variant)]
+        med, se, n = center_se(sub["total_wall_time_s"], float(args.se_mult))
+        rows.append({
+            "mode": mode,
+            "group": group,
+            "batch_for_ucb_gittins": 0,
+            "method": "SySRs",
+            "variant": variant,
+            "median_s": med,
+            "se_s": se,
+            "n_runs": n,
+        })
+    return pd.DataFrame(rows)
+
+
 def stop_wall_rows(args: argparse.Namespace, mode: str, stop_family: str) -> pd.DataFrame:
     b = int(args.batch_size)
     scale = str(args.scale)
@@ -186,6 +216,7 @@ def load_mode_stats(args: argparse.Namespace, mode: str) -> tuple[pd.DataFrame, 
     gs = pd.read_csv(base / f"total_wall_time_{mode}_minbatch_5groups_1se_gittins_stop_wall_stats.csv")
     bo = pd.read_csv(base / f"total_wall_time_{mode}_minbatch_5groups_1se_bo_stop_wall_stats.csv")
     final = pd.concat([final, alpaca_final_rows(args, mode)], ignore_index=True)
+    final = pd.concat([final, sysrs_final_rows(args, mode)], ignore_index=True)
     gs = pd.concat([gs, stop_wall_rows(args, mode, "gittins")], ignore_index=True)
     bo = pd.concat([bo, stop_wall_rows(args, mode, "bo")], ignore_index=True)
     return final, gs, bo
@@ -277,6 +308,7 @@ def plot_mode(args: argparse.Namespace, mode: str) -> None:
     handles: list[object] = [
         Patch(facecolor=METHOD_COLOR["Gittins-S"], edgecolor="black", label="Gittins-S"),
         Patch(facecolor=METHOD_COLOR["Gittins-G"], edgecolor="black", label="Gittins-G"),
+        Patch(facecolor=METHOD_COLOR["SySRs"], edgecolor="black", label="SySRs"),
         Patch(facecolor=METHOD_COLOR["UCB-E"], edgecolor="black", label="UCB-E"),
         Patch(facecolor=METHOD_COLOR["LRF"], edgecolor="black", label="LRF"),
         Patch(facecolor=METHOD_COLOR["BO-PBGI"], edgecolor="black", label="BO-PBGI"),
@@ -290,7 +322,7 @@ def plot_mode(args: argparse.Namespace, mode: str) -> None:
     fig.subplots_adjust(left=0.050, right=0.995, top=0.80, bottom=0.28, wspace=0.34, hspace=0.07)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"total_wall_time_{mode}_minbatch_6groups_1se_with_bo_stops"
+    stem = f"total_wall_time_{mode}_minbatch_6groups_1se_with_bo_stops_sysrs"
     png = args.out_dir / f"{stem}.png"
     pdf = args.out_dir / f"{stem}.pdf"
     csv = args.out_dir / f"{stem}_final_stats.csv"
