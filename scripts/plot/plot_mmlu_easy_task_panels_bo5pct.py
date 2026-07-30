@@ -27,13 +27,23 @@ import pandas as pd
 from PIL import Image
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from matplotlib.ticker import FuncFormatter, MaxNLocator
+from matplotlib.ticker import FuncFormatter, MaxNLocator, PercentFormatter
 
 from plot_mmlu_aggregate_2x2_normalized_fast_shared_labels import (
     normalize_task_name,
     read_filtered_history,
     task_column,
 )
+
+DEFAULT_MATRIX_DIR = Path("data/MMLU_matrices")
+DEFAULT_COST_VECTOR = Path(
+    "data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json"
+)
+# Match the 2x3 / 2x4 paper figures: show 0–10% of exhaustive evaluation cost.
+PERCENT_XTICKS = (0.0, 5.0, 10.0)
+PERCENT_X_RIGHT = 10.5
+PERCENT_X_PAD = 0.25
+SHARED_X_LABEL_PERCENT = "Exhaustive Evaluation Cost (%)"
 
 
 TASKS_BY_BUCKET: dict[str, list[str]] = {
@@ -238,27 +248,45 @@ COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
 
 STYLE_BY_KIND = {
-    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.88, "z": 6},
-    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.88, "z": 5},
-    "sysrs": {"color": COLOR_SYSRS, "label": "SySRs", "lw": 1.8, "z": 4.5},
-    "ucb": {"color": COLOR_UCB, "label": "UCB-E", "lw": 1.8, "z": 4},
-    "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 1.8, "z": 3},
-    "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 1.9, "z": 3.5},
-    "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI", "lw": 1.9, "z": 3.4},
+    # Match the main paper figures (2x3 / MMLU combined).
+    "gittins_data": {"color": COLOR_GITTINS_S, "label": "Gittins-S", "lw": 2.55, "z": 7},
+    "gittins_default": {"color": COLOR_GITTINS_G, "label": "Gittins-G", "lw": 2.45, "z": 6},
+    "sysrs": {"color": COLOR_SYSRS, "label": "SySRs", "lw": 2.25, "z": 5},
+    "ucb": {"color": COLOR_UCB, "label": "UCB-E", "lw": 2.15, "z": 4},
+    "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 2.1, "z": 3.8},
+    "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 2.1, "z": 3.4},
+    "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI(PC)", "lw": 2.05, "z": 3.2},
 }
 
-LEGEND_BASE_LINEWIDTH_BY_KIND = {
-    "gittins_data": 2.4,
-    "gittins_default": 2.4,
-    "sysrs": 1.8,
-    "ucb": 1.8,
-    "lrf": 1.8,
-    "bo_pbgi": 1.9,
-    "bo_logei": 1.9,
+# Bottom legend: 4 rows x 3 columns.
+# Matplotlib fills legends column-major, so list Col1 (top→bottom), then Col2, then Col3:
+#   Col1: Gittins-S, Gittins-G, BO-PBGI, BO-LogEI(PC)
+#   Col2: matching mean stops
+#   Col3: UCB-E, LRF, SySRs, ±SE
+LEGEND_ENTRIES = [
+    ("method", "gittins_data"),
+    ("method", "gittins_default"),
+    ("method", "bo_pbgi"),
+    ("method", "bo_logei"),
+    ("stop", "gittins_data"),
+    ("stop", "gittins_default"),
+    ("stop", "bo_pbgi"),
+    ("stop", "bo_logei"),
+    ("method", "ucb"),
+    ("method", "lrf"),
+    ("method", "sysrs"),
+    ("band", None),
+]
+
+STOP_LABELS = {
+    "gittins_data": "Gittins-S mean stop",
+    "gittins_default": "Gittins-G mean stop",
+    "bo_pbgi": "BO-PBGI mean stop",
+    "bo_logei": "BO-LogEI(PC) mean stop",
 }
-LEGEND_LINEWIDTH_MULT = 1.8
-LEGEND_STOP_BASE_LINEWIDTH = 1.9
+
 X_START_ZERO_LEFT_PAD_FRAC = 0.02
+LEGEND_LINE_MULT = 1.35
 
 
 def cache_method_kind(kind: str, mode: str) -> str:
@@ -283,16 +311,13 @@ def style_kind_from_cache(method_kind: str) -> str:
 
 
 def method_label_for_kind(kind: str, mode: str) -> str:
-    label = STYLE_BY_KIND[kind]["label"]
-    if mode == "aware" and label == "BO-LogEI":
-        return "BO-LogEIPC"
-    return label
+    return str(STYLE_BY_KIND[kind]["label"])
 
 
 def clean_tick_label(value: float, _pos: int) -> str:
     if abs(float(value)) < 1e-12:
         return "0"
-    return f"{float(value):.2f}"
+    return f"{float(value):g}"
 
 
 def clean_x_tick_label(value: float, _pos: int) -> str:
@@ -303,6 +328,61 @@ def clean_x_tick_label(value: float, _pos: int) -> str:
 
 def safe_token(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "_", str(s))
+
+
+_COST_VECTOR_CACHE: np.ndarray | None = None
+_FULL_COST_CACHE: dict[tuple[str, str], float] = {}
+
+
+def load_mmlu_cost_vector(path: Path) -> np.ndarray:
+    global _COST_VECTOR_CACHE
+    if _COST_VECTOR_CACHE is not None:
+        return _COST_VECTOR_CACHE
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    n = len(payload)
+    costs = np.asarray(
+        [float(payload[str(i)]["estimated_cost_per_1m_input_tokens"]) for i in range(n)],
+        dtype=float,
+    )
+    _COST_VECTOR_CACHE = costs
+    return costs
+
+
+def full_evaluation_cost(task: str, mode: str, args: argparse.Namespace) -> float:
+    key = (str(task), str(mode))
+    if key in _FULL_COST_CACHE:
+        return _FULL_COST_CACHE[key]
+    matrix_path = Path(args.matrix_dir) / f"{task}.npy"
+    if not matrix_path.is_file():
+        raise FileNotFoundError(f"Missing MMLU matrix for percentage x-axis: {matrix_path}")
+    arr = np.load(matrix_path)
+    if arr.ndim != 2:
+        raise ValueError(f"Expected 2D matrix at {matrix_path}, got shape {arr.shape}")
+    n_arms, n_examples = int(arr.shape[0]), int(arr.shape[1])
+    if mode == "unit":
+        denom = float(n_arms * n_examples)
+    else:
+        costs = load_mmlu_cost_vector(Path(args.cost_vector))
+        if costs.size != n_arms:
+            raise ValueError(
+                f"Cost vector length {costs.size} != n_arms {n_arms} for {task}"
+            )
+        denom = float(n_examples) * float(costs.sum())
+    if not np.isfinite(denom) or denom <= 0:
+        raise ValueError(f"Invalid full-evaluation denominator for {task}/{mode}: {denom}")
+    _FULL_COST_CACHE[key] = denom
+    return denom
+
+
+def as_full_cost_percentage(
+    values: float | np.ndarray | list[float],
+    task: str,
+    mode: str,
+    args: argparse.Namespace,
+) -> float | np.ndarray:
+    denom = full_evaluation_cost(task, mode, args)
+    converted = np.asarray(values, dtype=float) / denom * 100.0
+    return float(converted) if converted.ndim == 0 else converted
 
 
 def cache_curve_path(args: argparse.Namespace, task: str, mode: str) -> Path:
@@ -329,6 +409,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cache-curves-only", action="store_true", help="Write processed curve CSV/JSON files and do not plot panels or assemble grids.")
     p.add_argument("--plot-from-cache", action="store_true", help="Plot individual panels from processed_curves without reading raw history.")
     p.add_argument("--x-start-zero", action="store_true", help="Force individual panel x-axis to start at 0.")
+    p.add_argument(
+        "--x-as-percent",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Display x as %% of exhaustive evaluation cost with ticks at 0/5/10 (default: on).",
+    )
+    p.add_argument("--matrix-dir", type=Path, default=DEFAULT_MATRIX_DIR)
+    p.add_argument("--cost-vector", type=Path, default=DEFAULT_COST_VECTOR)
+    p.add_argument("--percent-x-right", type=float, default=PERCENT_X_RIGHT)
+    p.add_argument("--percent-x-pad", type=float, default=PERCENT_X_PAD)
     p.add_argument("--scale", default="1e-4")
     p.add_argument("--grid-size", type=int, default=320)
     p.add_argument("--se-mult", type=float, default=1.0)
@@ -337,7 +427,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--show-stopping", action="store_true", default=True)
     p.add_argument("--no-show-stopping", dest="show_stopping", action="store_false")
     p.add_argument("--stop-alpha", type=float, default=0.12)
-    p.add_argument("--stop-line-alpha", type=float, default=0.72)
+    p.add_argument("--stop-line-alpha", type=float, default=0.70)
     p.add_argument("--font-family", default="Times New Roman")
     p.add_argument("--single-width", type=float, default=2.25)
     p.add_argument("--single-height", type=float, default=1.65)
@@ -345,8 +435,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--title-size", type=float, default=14.5)
     p.add_argument("--tick-size", type=float, default=14)
     p.add_argument("--shared-label-size", type=float, default=35)
-    p.add_argument("--legend-size", type=float, default=30)
-    p.add_argument("--legend-ncol", type=int, default=4)
+    p.add_argument("--legend-size", type=float, default=26)
+    p.add_argument("--legend-ncol", type=int, default=3)
     p.add_argument("--fig-width", type=float, default=18.0)
     p.add_argument("--grid-cols", type=int, default=4)
     p.add_argument("--left", type=float, default=0.058)
@@ -354,8 +444,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--top", type=float, default=0.965)
     p.add_argument("--shared-y-label-x", type=float, default=0.042)
     p.add_argument("--shared-x-label-pad-in", type=float, default=0.48)
-    p.add_argument("--legend-pad-in", type=float, default=1.20)
-    p.add_argument("--bottom-floor-in", type=float, default=1.25)
+    # Smaller pad pulls the legend closer to the x-label (slightly upward).
+    p.add_argument("--legend-pad-in", type=float, default=1.55)
+    p.add_argument("--bottom-floor-in", type=float, default=1.70)
     p.add_argument("--shared-x-label-x-offset", type=float, default=0.01)
     p.add_argument("--shared-y-label-y-offset", type=float, default=0.01)
     p.add_argument("--output-suffix", default="")
@@ -710,7 +801,7 @@ def draw_cached_stopping(ax: plt.Axes, stop_lines: list[dict[str, object]], args
             mean_stop,
             color=STYLE_BY_KIND[kind]["color"],
             linestyle="--",
-            linewidth=max(1.1, float(STYLE_BY_KIND[kind]["lw"]) * 0.9),
+            linewidth=float(STYLE_BY_KIND[kind]["lw"]),
             alpha=float(args.stop_line_alpha),
             zorder=2,
         )
@@ -813,16 +904,44 @@ def compute_panel_payload(
     return curves, meta
 
 
-def apply_panel_axes_style(ax: plt.Axes, task: str, args: argparse.Namespace) -> None:
+def apply_panel_axes_style(
+    ax: plt.Axes,
+    task: str,
+    args: argparse.Namespace,
+    *,
+    x_as_percent: bool,
+) -> None:
     ax.set_title(panel_title(task), fontsize=float(args.title_size), pad=3)
     ax.grid(True, alpha=0.18, linewidth=0.8)
     ax.tick_params(axis="both", labelsize=float(args.tick_size), width=0.9, length=3)
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=3))
-    ax.xaxis.set_major_formatter(FuncFormatter(clean_x_tick_label))
     ax.yaxis.set_major_formatter(FuncFormatter(clean_tick_label))
+    if x_as_percent:
+        ax.set_xticks(list(PERCENT_XTICKS))
+        ax.xaxis.set_major_formatter(PercentFormatter(xmax=100, decimals=0))
+    else:
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
+        ax.xaxis.set_major_formatter(FuncFormatter(clean_x_tick_label))
     for spine in ax.spines.values():
         spine.set_linewidth(0.9)
+
+
+def convert_stop_lines_to_percent(
+    stop_lines: list[dict[str, object]],
+    task: str,
+    mode: str,
+    args: argparse.Namespace,
+) -> list[dict[str, object]]:
+    out: list[dict[str, object]] = []
+    for stop in stop_lines:
+        converted = dict(stop)
+        for key in ("x", "lo", "hi"):
+            if key in converted and converted[key] is not None:
+                converted[key] = float(
+                    as_full_cost_percentage(float(converted[key]), task, mode, args)
+                )
+        out.append(converted)
+    return out
 
 
 def draw_panel_payload(
@@ -833,8 +952,20 @@ def draw_panel_payload(
     args: argparse.Namespace,
 ) -> Path:
     fig, ax = plt.subplots(figsize=(args.single_width, args.single_height))
+    x_as_percent = bool(args.x_as_percent)
+    plot_curves = curves
+    stop_lines = list(meta.get("stop_lines", []))
+    if x_as_percent and not curves.empty:
+        plot_curves = curves.copy()
+        plot_curves["x"] = as_full_cost_percentage(
+            pd.to_numeric(plot_curves["x"], errors="coerce").to_numpy(dtype=float),
+            task,
+            mode,
+            args,
+        )
+        stop_lines = convert_stop_lines_to_percent(stop_lines, task, mode, args)
 
-    for method_kind, cg in curves.groupby("method_kind", sort=False):
+    for method_kind, cg in plot_curves.groupby("method_kind", sort=False):
         kind = style_kind_from_cache(str(method_kind))
         if kind not in STYLE_BY_KIND:
             continue
@@ -846,11 +977,22 @@ def draw_panel_payload(
         hi = pd.to_numeric(cg["hi"], errors="coerce").to_numpy(dtype=float)
         ax.plot(x, mean, color=style["color"], linewidth=style["lw"], zorder=style["z"])
         if args.range != "none":
-            ax.fill_between(x, lo, hi, color=style["color"], alpha=float(args.curve_alpha), linewidth=0, zorder=style["z"] - 0.5)
+            band_alpha = 0.10 if kind.startswith("gittins_") else 0.065
+            ax.fill_between(
+                x,
+                lo,
+                hi,
+                color=style["color"],
+                alpha=band_alpha,
+                linewidth=0,
+                zorder=style["z"] - 0.5,
+            )
 
-    draw_cached_stopping(ax, list(meta.get("stop_lines", [])), args)
-    apply_panel_axes_style(ax, task, args)
-    if bool(args.x_start_zero):
+    draw_cached_stopping(ax, stop_lines, args)
+    apply_panel_axes_style(ax, task, args, x_as_percent=x_as_percent)
+    if x_as_percent:
+        ax.set_xlim(-float(args.percent_x_pad), float(args.percent_x_right))
+    elif bool(args.x_start_zero):
         if meta.get("xlim") is not None:
             right = float(list(meta["xlim"])[1])
         else:
@@ -869,7 +1011,8 @@ def draw_panel_payload(
         ax.set_ylim(*meta["ylim"])
     else:
         meta["ylim"] = [float(v) for v in ax.get_ylim()]
-    fig.subplots_adjust(left=0.20, right=0.90, bottom=0.17, top=0.82)
+    bottom = 0.20 if x_as_percent else 0.17
+    fig.subplots_adjust(left=0.20, right=0.90, bottom=bottom, top=0.82)
 
     out = panel_path(args, task, mode)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -936,31 +1079,41 @@ def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Pat
 
 
 def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[object], list[str]]:
-    kinds = ["gittins_data", "gittins_default", "sysrs", "ucb", "lrf", "bo_pbgi", "bo_logei"]
-    handles: list[object] = [
-        Line2D(
-            [0],
-            [0],
-            color=STYLE_BY_KIND[k]["color"],
-            linewidth=float(LEGEND_BASE_LINEWIDTH_BY_KIND[k]) * float(LEGEND_LINEWIDTH_MULT),
-        )
-        for k in kinds
-    ]
-    labels = [STYLE_BY_KIND[k]["label"] for k in kinds]
-    if mode == "aware":
-        labels = ["BO-LogEIPC" if label == "BO-LogEI" else label for label in labels]
-    if args.range != "none":
-        handles.append(Patch(facecolor="0.75", edgecolor="none", alpha=0.18))
-        labels.append(f"\u00b1{args.se_mult:g} SE band")
-    if args.show_stopping:
-        handles.append(Line2D(
-            [0],
-            [0],
-            color="0.35",
-            linestyle="--",
-            linewidth=float(LEGEND_STOP_BASE_LINEWIDTH) * float(LEGEND_LINEWIDTH_MULT),
-        ))
-        labels.append("Mean stop")
+    handles: list[object] = []
+    labels: list[str] = []
+    for entry_type, kind in LEGEND_ENTRIES:
+        if entry_type == "method":
+            assert kind is not None
+            handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=STYLE_BY_KIND[kind]["color"],
+                    linewidth=float(STYLE_BY_KIND[kind]["lw"]) * float(LEGEND_LINE_MULT),
+                    linestyle="-",
+                )
+            )
+            labels.append(str(STYLE_BY_KIND[kind]["label"]))
+        elif entry_type == "stop":
+            assert kind is not None
+            if not bool(args.show_stopping):
+                continue
+            handles.append(
+                Line2D(
+                    [0],
+                    [0],
+                    color=STYLE_BY_KIND[kind]["color"],
+                    linewidth=float(STYLE_BY_KIND[kind]["lw"]) * float(LEGEND_LINE_MULT),
+                    linestyle="--",
+                    alpha=float(args.stop_line_alpha),
+                )
+            )
+            labels.append(STOP_LABELS[kind])
+        elif entry_type == "band":
+            if args.range == "none":
+                continue
+            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.14))
+            labels.append(rf"$\pm${args.se_mult:g} SE band")
     return handles, labels
 
 
@@ -989,6 +1142,7 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
     bottom_in = float(args.shared_x_label_pad_in) + float(args.legend_pad_in) + float(args.bottom_floor_in)
     fig_height = (panel_area_height_in + bottom_in) / float(args.top)
     bottom_frac = bottom_in / fig_height
+    panel_top = float(args.top)
 
     panel_paths = [panel_path(args, task, mode) for task in tasks]
     panel_sizes = []
@@ -1022,11 +1176,15 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
     for idx in range(n, nrows * ncols):
         axes[idx // ncols][idx % ncols].axis("off")
 
-    fig.subplots_adjust(left=float(args.left), right=float(args.right), top=float(args.top), bottom=bottom_frac, wspace=0.0, hspace=0.0)
+    fig.subplots_adjust(left=float(args.left), right=float(args.right), top=panel_top, bottom=bottom_frac, wspace=0.0, hspace=0.0)
     panel_center_x = 0.5 * (float(args.left) + float(args.right))
-    panel_center_y = 0.5 * (bottom_frac + float(args.top))
+    panel_center_y = 0.5 * (bottom_frac + panel_top)
     shared_x_y = bottom_frac - float(args.shared_x_label_pad_in) / fig_height
     legend_y = shared_x_y - float(args.legend_pad_in) / fig_height
+    if bool(args.x_as_percent):
+        shared_x_label = SHARED_X_LABEL_PERCENT
+    else:
+        shared_x_label = "Cumulative evaluations" if mode == "unit" else "Cumulative cost"
 
     fig.text(
         float(args.shared_y_label_x),
@@ -1040,7 +1198,7 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
     fig.text(
         panel_center_x + float(args.shared_x_label_x_offset),
         shared_x_y,
-        "Cumulative evaluations" if mode == "unit" else "Cumulative cost",
+        shared_x_label,
         ha="center",
         va="center",
         fontsize=float(args.shared_label_size),
@@ -1054,9 +1212,10 @@ def assemble_grid(mode: str, args: argparse.Namespace) -> Path:
         frameon=False,
         bbox_to_anchor=(0.5, legend_y),
         fontsize=float(args.legend_size),
-        handlelength=2.1,
-        handletextpad=0.6,
-        columnspacing=1.0,
+        handlelength=3.0,
+        handletextpad=0.5,
+        columnspacing=1.35,
+        labelspacing=0.45,
     )
 
     suffix = str(args.output_suffix)
@@ -1082,9 +1241,10 @@ def main() -> int:
         modes.append("aware")
     for mode in modes:
         if bool(args.plot_from_cache):
-            for task in selected_tasks(args):
-                plot_panel_from_cache(task, mode, args)
-            if bool(args.assemble_only):
+            if not bool(args.assemble_only):
+                for task in selected_tasks(args):
+                    plot_panel_from_cache(task, mode, args)
+            if not bool(args.individual_only):
                 grid = assemble_grid(mode, args)
                 print(f"[ASSEMBLE] wrote {grid}")
             continue
