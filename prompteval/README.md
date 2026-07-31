@@ -4,6 +4,107 @@ Welcome to the [*PromptEval* GitHub repository](https://github.com/felipemaiapol
 
 [Maia Polo, Felipe, Ronald Xu, Lucas Weber, Mírian Silva, Onkar Bhardwaj, Leshem Choshen, Allysson Flavio Melo de Oliveira, Yuekai Sun, and Mikhail Yurochkin. "Efficient multi-prompt evaluation of LLMs." arXiv preprint arXiv:2405.17202 (2024).](https://arxiv.org/abs/2405.17202)
 
+## Running BAI (this repo)
+
+Best-arm identification (BAI): successive halfing + L2-regularized logistic regression, under a 10% observation budget. Supported benchmarks: **MMLU**, **GSM8K**, and **PIQA**.
+
+Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`, `scikit-learn`, `joblib`, `matplotlib` (for plotting).
+
+### MMLU
+
+**Prerequisites**
+
+- `prompteval/data/Ys.pickle` — correctness matrices (15 LLMs × 100 prompt templates per subject)
+- `prompteval/data/Xs.pickle` — prompt covariates (discrete features, sentence-transformer PCA, fine-tuned BERT PCA)
+
+Pickles keep **15 separate** `(100 × n_questions)` matrices per subject. At runtime with the default `--combine-models`, they are stacked into **1500 arms** (each arm = one `(LLM, prompt template)` pair).
+
+```bash
+# Default: abstract_algebra + professional_law, 20 sampling seeds, combine_models=True, sklearn
+python prompteval/bai_evaluation.py --bench MMLU
+
+# Chosen subjects
+python prompteval/bai_evaluation.py --bench MMLU --tasks abstract_algebra,anatomy,professional_law
+
+# All 57 MMLU subjects
+python prompteval/bai_evaluation.py --bench MMLU --all-tasks
+
+# Cost accounting (sampling unchanged; x-axis later in cost units)
+python prompteval/bai_evaluation.py --bench MMLU --cost-aware
+
+python prompteval/bai_evaluation.py --bench MMLU --random-seeds 20 --n-jobs 4
+python prompteval/bai_evaluation.py --help
+```
+
+| Setting | Default (`--bench MMLU`) |
+|--------|--------|
+| Data | `prompteval/data/` |
+| Tasks | `abstract_algebra`, `professional_law` |
+| Arms | 1500 stacked `(LLM, template)` pairs (`--combine-models`) |
+| Budget | 10% of matrix cells, ≤ 5 successive-halving rounds |
+| Backend | `sklearn` |
+| Seeds | `--random-seeds 20` (observation-sampling repeats; averaged in processed results) |
+
+Use `--no-combine-models` for 100 template arms **per LLM** (then average over LLMs).
+
+**Outputs** under `prompteval/results/`:
+
+| File | Contents |
+|------|----------|
+| `bai_results_MMLU_combined.npy` | Raw nested results |
+| `bai_processed_results_MMLU_combined.npy` | Seed-averaged `(n_tasks, n_budgets, n_blocks, 2, n_phases)` |
+
+Channel `0` = simple regret, `1` = cumulative spend. `n_blocks = 4` (one-hot + 3 embedding views). With `--cost-aware`, filenames include `_costaware`.
+
+**Plot** (one panel per MMLU subject):
+
+```bash
+python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra,professional_law
+python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra,professional_law --cost-aware
+```
+
+### GSM8K and PIQA
+
+BanditEval matrices: rows = **models** (arms), columns = i.i.d. samples. No prompt templates, so only the one-hot (baseline) covariate block runs.
+
+**Build pickles once** from `data/BanditEval_matrices/`:
+
+```bash
+python prompteval/build_banditeval_pickle.py
+# writes prompteval/pickle/Ys.pickle and Xs.pickle
+```
+
+Each benchmark has five tasks `various_models_seed1`…`seed5` (same questions, different LLM-query seeds).
+
+```bash
+# Defaults: all 5 data seeds, combine_models=False, tag _banditeval
+python prompteval/bai_evaluation.py --bench GSM8K
+python prompteval/bai_evaluation.py --bench PIQA
+
+python prompteval/bai_evaluation.py --bench GSM8K --cost-aware
+python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1 --random-seeds 20
+```
+
+| Setting | Default (`--bench GSM8K` / `PIQA`) |
+|--------|--------|
+| Data | `prompteval/pickle/` |
+| Tasks | all `various_models_seed1`…`seed5` |
+| Arms | 122 (GSM8K) or 103 (PIQA) models; **no** LLM×template stacking |
+| Covariates | one-hot baseline only (`Xs` views are empty) |
+| Results tag | `_banditeval` (e.g. `bai_processed_results_GSM8K_banditeval.npy`) |
+
+**Plot** (average the 5 data seeds into **one** curve — they are repeated measurements, not different datasets):
+
+```bash
+python prompteval/plot_bai_regret.py --bench GSM8K
+python prompteval/plot_bai_regret.py --bench PIQA
+python prompteval/plot_bai_regret.py --bench GSM8K --cost-aware
+```
+
+Figures go to `prompteval/outputs/bai_regret_plots/`. Use `--per-task` only if you want one panel per data seed.
+
+---
+
 ## Overview
 
 Most popular benchmarks for comparing LLMs rely on a limited set of prompt templates, which may not fully capture the LLMs’ abilities and can affect the reproducibility of results on leaderboards. This repository introduces our implementation of *PromptEval*, a method for estimating performance across a large set of prompts by borrowing strength across prompts and examples to produce accurate estimates under practical evaluation budgets.
