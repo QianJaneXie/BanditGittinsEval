@@ -5,11 +5,9 @@ import warnings
 from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
-from joblib import Parallel, delayed
 from sklearn.exceptions import ConvergenceWarning
 
 from methods import LogReg, StratSample
-from utils import flatten
 
 try:
     from methods_gpu import LogRegTorch
@@ -88,24 +86,143 @@ DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/pickle/"
 
 # CLI: python prompteval/bai_evaluation.py --bench {MMLU,GSM8K,PIQA} [--tasks ...] (see parse_args / --help).
 
+UPDATE_FIELDS = [
+    "phase",
+    "budget",
+    "chosen_arm",
+    "chosen_mean",
+    "oracle_mean",
+    "simple_regret",
+    "n_active",
+]
+
+
+def results_file_stem(bench: str, tag: str, task: Optional[str] = None) -> str:
+    """Filename stem after ``bai_results_`` / ``bai_processed_results_`` (no extension)."""
+    if task is not None:
+        return f"{bench}_{task}{tag}"
+    return f"{bench}{tag}"
+
+
+def save_bai_raw(
+    path: str,
+    *,
+    out: list,
+    jobs: list,
+    tasks: Sequence[str],
+    seeds: Sequence[int],
+    bench: str,
+    combine_models: bool,
+    cost_aware: bool,
+    n_models_stacked: int,
+    out_by_task: Optional[list] = None,
+) -> None:
+    payload: Dict[str, Any] = {
+        "out": out,
+        "jobs": jobs,
+        "combine_models": combine_models,
+        "n_models_stacked": n_models_stacked,
+        "tasks": list(tasks),
+        "seeds": list(seeds),
+        "bench": bench,
+        "cost_aware": cost_aware,
+        "update_fields": UPDATE_FIELDS,
+    }
+    if out_by_task is not None:
+        payload["out_by_task"] = out_by_task
+    np.save(path, payload)
+
+
+def save_bai_processed(
+    path: str,
+    *,
+    curves: np.ndarray,
+    tasks: Sequence[str],
+    seeds: Sequence[int],
+    bench: str,
+    combine_models: bool,
+    cost_aware: bool,
+    n_models_stacked: int,
+    raw_path: str,
+) -> None:
+    if cost_aware:
+        note = (
+            "cost-aware: spends differ across seeds; at each cost on the shared grid, "
+            "each seed contributes its last evaluated simple regret (hold-last / step; "
+            "the chosen arm is unchanged until the next phase), then nanmean. "
+            "Per-update chosen_arm / chosen_mean live in the raw file "
+            f"({raw_path}) under out[*][budget][block][phase]."
+        )
+        aggregation = "cost_grid_hold_last"
+    else:
+        note = (
+            "unit-cost: curves average simple_regret and budget over seeds at each phase "
+            "(observation counts align across seeds). "
+            "Per-update chosen_arm / chosen_mean live in the raw file "
+            f"({raw_path}) under out[*][budget][block][phase]."
+        )
+        aggregation = "phase_mean"
+    np.save(
+        path,
+        {
+            "curves": curves,  # (n_tasks, n_budgets, n_blocks, 2, n_points)
+            "channels": ["simple_regret", "budget"],
+            "tasks": list(tasks),
+            "seeds": list(seeds),
+            "bench": bench,
+            "combine_models": combine_models,
+            "cost_aware": cost_aware,
+            "aggregation": aggregation,
+            "n_models_stacked": n_models_stacked,
+            "update_fields": UPDATE_FIELDS,
+            "note": note,
+        },
+    )
+
+
+def evaluate_bai_combined_one_seed(
+    Y_cat,
+    xs_cat,
+    task: str,
+    random_seed: int,
+    backend,
+    torch_device,
+    torch_fit_log_interval: int = 0,
+    costs=None,
+):
+    """One parallel worker job: BAI on an already-stacked (LLM×template) matrix for a single seed."""
+    print(f"[BAI] start task={task!r} seed={random_seed}", flush=True)
+    out = evaluate_bai(
+        Y_cat,
+        xs_cat,
+        random_seed,
+        backend=backend,
+        torch_device=torch_device,
+        torch_fit_log_interval=torch_fit_log_interval,
+        costs=costs,
+    )
+    print(f"[BAI] done  task={task!r} seed={random_seed}", flush=True)
+    return out
+
 
 def evaluate_bai_combined_one_task(
     Ys, Xs, bench: str, task: str, random_seeds, backend, torch_device, torch_fit_log_interval: int = 0, costs=None
 ):
-    """Stack all models for one benchmark task, then run evaluate_bai for each seed (one worker job)."""
+    """Stack all models for one benchmark task, then run evaluate_bai for each seed (serial helper)."""
     Y_cat, xs_cat = combine_models_y_xs(Ys, Xs, bench, task)
     if costs is not None and costs.shape[0] != Y_cat.shape[0]:
         raise ValueError(
             f"{bench}/{task}: cost vector has {costs.shape[0]} entries but stacked Y has {Y_cat.shape[0]} arms."
         )
     return [
-        evaluate_bai(
+        evaluate_bai_combined_one_seed(
             Y_cat,
             xs_cat,
+            task,
             random_seed,
-            backend=backend,
-            torch_device=torch_device,
-            torch_fit_log_interval=torch_fit_log_interval,
+            backend,
+            torch_device,
+            torch_fit_log_interval,
             costs=costs,
         )
         for random_seed in random_seeds
@@ -199,20 +316,22 @@ def compute_regrets(
     backend (str): "sklearn" (default) or "torch" for PyTorch logistic regression.
     torch_device (str): "auto", "cpu", or "cuda" when backend is "torch".
     torch_fit_log_interval (int): When ``backend=="torch"``, print training loss every this many
-        epochs inside ``TorchLogisticRegression`` (0 = silent). Use e.g. 100 with ``n_jobs=1`` to
-        avoid interleaved logs from parallel workers.
+        epochs inside ``TorchLogisticRegression`` (0 = silent).
     costs (numpy.ndarray, optional): Per-arm cost of one observation, used for **accounting
         only**. Sampling and the observation budget are identical with or without costs; the
         recorded per-phase spend is the cost-weighted sum of observations when costs are given,
         otherwise the plain observation count.
 
     Returns:
-    list: ``[phase_regrets, phase_spends]``, each of length
-          ``n_phases = min(ceil(log2(n_formats)), MAX_BAI_PHASES)``.
-          ``phase_regrets[p]`` is the simple regret of the arm logreg ranks highest among
-          ``active_arms`` after sampling in phase ``p`` (``nan`` if that phase stopped before
-          fitting, e.g. all examples already seen for active arms). ``phase_spends[p]`` is the
-          cumulative budget spent through phase ``p`` (observations, or cost units with ``costs``).
+    list[dict]: One record per phase (length ``n_phases = min(ceil(log2(n_formats)), MAX_BAI_PHASES)``).
+        Each record has:
+        - ``phase`` (int)
+        - ``budget`` (float): cumulative spend after sampling this phase (observations, or cost units)
+        - ``chosen_arm`` (int | None): arm index returned by logreg (None if no fit this phase)
+        - ``chosen_mean`` (float | None): true mean reward of ``chosen_arm``
+        - ``oracle_mean`` (float): best arm's true mean
+        - ``simple_regret`` (float | None): ``oracle_mean - chosen_mean``
+        - ``n_active`` (int): number of arms still active before elimination this phase
     """
     del Z  # unused; kept in signature for call-site compatibility
     use_torch = backend == "torch"
@@ -231,10 +350,9 @@ def compute_regrets(
     active_arms = list(range(n_formats))
     random_column = True
     seen_examples = np.zeros(Y.shape).astype(bool)
-    phase_regrets: List[float] = [float("nan")] * n_phases
-    phase_spends: List[float] = [float("nan")] * n_phases
     oracle = float(Y.mean(-1).max())
     true_means = Y.mean(-1)
+    phase_updates: List[Dict[str, Any]] = []
 
     for phase in range(n_phases):
         if phase == 0:
@@ -247,11 +365,36 @@ def compute_regrets(
             )
 
         if costs is None:
-            phase_spends[phase] = float(seen_examples.sum())
+            budget_spent = float(seen_examples.sum())
         else:
-            phase_spends[phase] = float((seen_examples.sum(1) * costs).sum())
+            budget_spent = float((seen_examples.sum(1) * costs).sum())
+
+        update: Dict[str, Any] = {
+            "phase": phase,
+            "budget": budget_spent,
+            "chosen_arm": None,
+            "chosen_mean": None,
+            "oracle_mean": oracle,
+            "simple_regret": None,
+            "n_active": len(active_arms),
+        }
 
         if seen_examples[active_arms].mean() == 1:
+            # No unseen labels left on active arms: cannot run a new fit. Keep the
+            # last identified arm's regret unchanged (do not clear it). If this is
+            # the first phase and everything is already observed, fall back to the
+            # empirical best among active arms.
+            if phase_updates and phase_updates[-1].get("simple_regret") is not None:
+                prev = phase_updates[-1]
+                update["chosen_arm"] = prev["chosen_arm"]
+                update["chosen_mean"] = prev["chosen_mean"]
+                update["simple_regret"] = prev["simple_regret"]
+            else:
+                ba = int(active_arms[int(np.argmax(true_means[active_arms]))])
+                update["chosen_arm"] = ba
+                update["chosen_mean"] = float(true_means[ba])
+                update["simple_regret"] = float(oracle - true_means[ba])
+            phase_updates.append(update)
             break
 
         if use_torch:
@@ -261,8 +404,12 @@ def compute_regrets(
         rasch_model.fit(seen_examples, Y, X)
         mu = np.asarray(rasch_model.thetas)[active_arms]
         best_local = int(np.argmax(mu))
-        ba_logreg = active_arms[best_local]
-        phase_regrets[phase] = float(oracle - float(true_means[ba_logreg]))
+        ba_logreg = int(active_arms[best_local])
+        chosen_mean = float(true_means[ba_logreg])
+        update["chosen_arm"] = ba_logreg
+        update["chosen_mean"] = chosen_mean
+        update["simple_regret"] = float(oracle - chosen_mean)
+        phase_updates.append(update)
 
         n_active = len(active_arms)
         n_eliminate = int(np.ceil(n_active / 2))
@@ -270,7 +417,205 @@ def compute_regrets(
             break
         active_arms = [active_arms[i] for i in np.argsort(mu)[n_eliminate:].tolist()]
 
-    return [phase_regrets, phase_spends]
+    # Run stopped before using all successive-halving rounds (exhausted labels,
+    # single arm left, etc.): later "phases" never reached a new evaluation budget,
+    # so budget and simple regret stay at the last evaluated values.
+    while len(phase_updates) < n_phases:
+        last = phase_updates[-1]
+        phase_updates.append(
+            {
+                "phase": len(phase_updates),
+                "budget": last["budget"],
+                "chosen_arm": last["chosen_arm"],
+                "chosen_mean": last["chosen_mean"],
+                "oracle_mean": last["oracle_mean"],
+                "simple_regret": last["simple_regret"],
+                "n_active": last["n_active"],
+            }
+        )
+
+    return phase_updates
+
+
+def updates_to_regret_spend(updates: List[Dict[str, Any]]) -> np.ndarray:
+    """Convert a list of phase update dicts to array shape ``(2, n_phases)``: regret, budget."""
+    n = len(updates)
+    out = np.full((2, n), np.nan, dtype=float)
+    for i, u in enumerate(updates):
+        r = u.get("simple_regret")
+        b = u.get("budget")
+        out[0, i] = float(r) if r is not None else np.nan
+        if b is None or (isinstance(b, float) and np.isnan(b)):
+            out[1, i] = np.nan
+        else:
+            out[1, i] = float(b)
+    return out
+
+
+def evaluate_bai_to_curves(eval_out: list) -> np.ndarray:
+    """
+    ``evaluate_bai`` output → ``(n_budgets, n_blocks, 2, n_phases)`` float array
+    (channel 0 = simple regret, 1 = cumulative budget).
+    """
+    n_budgets = len(eval_out)
+    n_blocks = len(eval_out[0]) if n_budgets else 0
+    n_phases = len(eval_out[0][0]) if n_blocks else 0
+    curves = np.full((n_budgets, n_blocks, 2, n_phases), np.nan, dtype=float)
+    for bi in range(n_budgets):
+        for bj in range(n_blocks):
+            curves[bi, bj] = updates_to_regret_spend(eval_out[bi][bj])
+    return curves
+
+
+# Cost-aware aggregation: if n_grid is None, use every distinct observed spend
+# (≈ n_seeds × n_phases). Pass an int to force a uniform linspace of that length.
+COST_AWARE_GRID_POINTS = None
+
+
+def _step_regret_on_grid(spend: np.ndarray, regret: np.ndarray, grid: np.ndarray) -> np.ndarray:
+    """
+    Map a single run's phase evaluations onto ``grid`` as a right-constant step.
+
+    Until the next evaluation, the chosen arm (and thus simple regret) is unchanged.
+    That includes: (1) costs between two evaluations of this seed, and (2) costs
+    beyond this seed's last evaluation when other seeds reached a higher spend —
+    this seed still contributes its last regret (does not drop out as NaN).
+
+    Points on ``grid`` before this seed's first evaluation are NaN.
+    """
+    order = np.argsort(spend, kind="mergesort")  # stable
+    xs = spend[order]
+    ys = regret[order]
+    if xs.size > 1:
+        # Identical spends (early-stop pads): keep the last copy.
+        keep = np.concatenate([np.diff(xs) > 0, [True]])
+        xs, ys = xs[keep], ys[keep]
+    # idx[j] = last phase with xs[idx] <= grid[j]; -1 if grid[j] < xs[0]
+    idx = np.searchsorted(xs, grid, side="right") - 1
+    out = np.full(grid.shape, np.nan, dtype=float)
+    valid = idx >= 0
+    out[valid] = ys[idx[valid]]
+    return out
+
+
+def _collect_eval_spends(curves_list: Sequence[np.ndarray]) -> np.ndarray:
+    """Finite spend values that accompany a finite regret, across all curves."""
+    spends: List[np.ndarray] = []
+    for c in curves_list:
+        arr = np.asarray(c, dtype=float)
+        # (n_budgets, n_blocks, 2, n_points)
+        x = arr[:, :, 1, :]
+        y = arr[:, :, 0, :]
+        m = np.isfinite(x) & np.isfinite(y)
+        if np.any(m):
+            spends.append(x[m])
+    if not spends:
+        return np.array([], dtype=float)
+    return np.concatenate(spends)
+
+
+def _regrid_curve(curve: np.ndarray, grid: np.ndarray) -> np.ndarray:
+    """Hold-last remap of one ``(n_budgets, n_blocks, 2, n_points)`` curve onto ``grid``."""
+    arr = np.asarray(curve, dtype=float)
+    n_budgets, n_blocks = arr.shape[0], arr.shape[1]
+    out = np.full((n_budgets, n_blocks, 2, grid.shape[0]), np.nan, dtype=float)
+    for bi in range(n_budgets):
+        for bl in range(n_blocks):
+            x = arr[bi, bl, 1, :]
+            y = arr[bi, bl, 0, :]
+            m = np.isfinite(x) & np.isfinite(y)
+            if not np.any(m):
+                continue
+            out[bi, bl, 0, :] = _step_regret_on_grid(x[m], y[m], grid)
+            out[bi, bl, 1, :] = grid
+    return out
+
+
+def stack_task_curves(curves_list: Sequence[np.ndarray], *, cost_aware: bool) -> np.ndarray:
+    """
+    Stack per-task curves into ``(n_tasks, n_budgets, n_blocks, 2, n_points)``.
+
+    Cost-aware tasks can have different spend grids; align them onto the union of
+    evaluation spends with hold-last before stacking.
+    """
+    if not curves_list:
+        raise ValueError("stack_task_curves: empty curves_list.")
+    arrays = [np.asarray(c, dtype=float) for c in curves_list]
+    if not cost_aware:
+        return np.stack(arrays, axis=0)
+    shapes = {a.shape for a in arrays}
+    if len(shapes) == 1:
+        return np.stack(arrays, axis=0)
+    spends = _collect_eval_spends(arrays)
+    if spends.size == 0:
+        raise ValueError("stack_task_curves: no finite evaluation spends to build a shared grid.")
+    grid = np.unique(spends.astype(float))
+    return np.stack([_regrid_curve(a, grid) for a in arrays], axis=0)
+
+
+def aggregate_curves(
+    curves_list: Sequence[np.ndarray],
+    *,
+    cost_aware: bool,
+    n_grid: Optional[int] = COST_AWARE_GRID_POINTS,
+) -> np.ndarray:
+    """
+    Combine several ``(n_budgets, n_blocks, 2, n_points)`` curves.
+
+    - Unit cost: phases share the same observation counts → ``nanmean`` over the list
+      (still one point per successive-halving phase). Early-stopped runs hold their
+      last regret in later phase slots, so they stay in the average.
+    - Cost-aware: x-grid = sorted unique evaluation spends across runs. At each cost,
+      each run contributes its last evaluated simple regret (hold-last). A run that
+      never reached a higher spend still contributes its last regret there.
+      Curves may have different ``n_points`` (different spend grids per task/seed).
+    """
+    if not curves_list:
+        raise ValueError("aggregate_curves: empty curves_list.")
+    arrays = [np.asarray(c, dtype=float) for c in curves_list]
+
+    if not cost_aware:
+        stacked = np.stack(arrays, axis=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice", category=RuntimeWarning)
+            return np.nanmean(stacked, axis=0)
+
+    spends = _collect_eval_spends(arrays)
+    if spends.size == 0:
+        # Fall back only if shapes already match.
+        stacked = np.stack(arrays, axis=0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice", category=RuntimeWarning)
+            return np.nanmean(stacked, axis=0)
+
+    b_min = float(spends.min())
+    b_max = float(spends.max())
+    if b_min == b_max:
+        grid = np.array([b_min], dtype=float)
+    elif n_grid is None:
+        grid = np.unique(spends.astype(float))
+    else:
+        grid = np.linspace(b_min, b_max, int(n_grid))
+
+    n_budgets, n_blocks = arrays[0].shape[0], arrays[0].shape[1]
+    out = np.full((n_budgets, n_blocks, 2, grid.shape[0]), np.nan, dtype=float)
+    for bi in range(n_budgets):
+        for bl in range(n_blocks):
+            stepped = []
+            for arr in arrays:
+                x = arr[bi, bl, 1, :]
+                y = arr[bi, bl, 0, :]
+                m = np.isfinite(x) & np.isfinite(y)
+                if not np.any(m):
+                    continue
+                stepped.append(_step_regret_on_grid(x[m], y[m], grid))
+            if not stepped:
+                continue
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="Mean of empty slice", category=RuntimeWarning)
+                out[bi, bl, 0, :] = np.nanmean(np.stack(stepped, axis=0), axis=0)
+            out[bi, bl, 1, :] = grid
+    return out
 
 
 def evaluate_bai(
@@ -294,8 +639,8 @@ def evaluate_bai(
         (sampling is unaffected; see ``compute_regrets``).
 
     Returns:
-    list: A nested list for each budget and covariate block. Each ``compute_regrets`` entry is
-          ``[phase_regrets, phase_spends]`` (see ``compute_regrets``).
+    list: Nested ``[budget][block]`` → list of phase update dicts from ``compute_regrets``
+          (each with ``budget``, ``chosen_arm``, ``simple_regret``, ...).
     """
 
     regrets = []
@@ -343,9 +688,9 @@ def run_bai_evaluation(
     results_path: str = "prompteval/results/",
     bench: str = "MMLU",
     random_seeds: int = 20,
+    seed: Optional[int] = None,
     backend: str = "sklearn",
     torch_device: str = "auto",
-    n_jobs: Optional[int] = None,
     tasks: Optional[Sequence[str]] = None,
     tasks_csv: Optional[str] = None,
     only_task: Optional[str] = None,
@@ -366,12 +711,14 @@ def run_bai_evaluation(
         from bai_evaluation import run_bai_evaluation
         run_bai_evaluation(bench="MMLU", random_seeds=5, tasks=["abstract_algebra"], combine_models=True)
 
+    ``seed``: if set, run exactly one repeat with that RNG seed (ignores ``random_seeds``).
+    Otherwise use seeds ``0 .. random_seeds-1``.
+
     Task selection priority: ``tasks`` → ``tasks_csv`` → ``only_task`` → ``max_tasks`` →
     ``all_tasks`` → ``default_task_subset`` (if not None) → module ``DEFAULT_TASK_SUBSET`` (if not None) → all tasks.
 
     ``torch_fit_log_interval``: if >0 and ``backend=="torch"``, prints logistic training loss every
-    that many epochs inside each ``TorchLogisticRegression`` fit. Prefer ``n_jobs=1`` when nonzero
-    so worker logs do not interleave.
+    that many epochs inside each ``TorchLogisticRegression`` fit.
 
     ``cost_aware``: if True, per-arm costs (from ``cost_file``, default
     ``DEFAULT_COST_FILES[bench]``) are **recorded** alongside regrets: each phase's cumulative
@@ -379,7 +726,10 @@ def run_bai_evaluation(
     the observation budget (10% of cells) are identical either way — costs never change the
     algorithm, only the recorded spend (e.g. for plotting regret vs dollars).
     """
-    random_seed_list = list(range(int(random_seeds)))
+    if seed is not None:
+        random_seed_list = [int(seed)]
+    else:
+        random_seed_list = list(range(int(random_seeds)))
     costs_full: Optional[np.ndarray] = None
     if cost_aware:
         cost_path = cost_file or DEFAULT_COST_FILES.get(bench)
@@ -388,14 +738,11 @@ def run_bai_evaluation(
         costs_full = load_arm_costs(cost_path)
         print(f"cost-aware: {len(costs_full)} arm costs from {cost_path} "
               f"(min={costs_full.min():.4g}, max={costs_full.max():.4g})")
-    n_jobs_eff = n_jobs if n_jobs is not None else (1 if backend == "torch" else 4)
     if backend == "torch" and torch_device == "cuda":
         import torch
 
         if not torch.cuda.is_available():
             raise ValueError("device=cuda requested but torch.cuda.is_available() is False.")
-    if backend == "torch" and torch_device == "cuda" and n_jobs_eff != 1:
-        print("Warning: backend=torch with device=cuda and n_jobs>1 can overload the GPU; prefer n_jobs=1.")
 
     with open(data_path + "Ys.pickle", "rb") as handle:
         Ys = pickle.load(handle)
@@ -443,33 +790,44 @@ def run_bai_evaluation(
         task_list = all_task_keys
 
     tag = (results_tag or "").strip()
-    if cost_aware:
+    # `_unitcost` and `_costaware` are mutually exclusive modes (not stacked).
+    if cost_aware and "_costaware" not in tag:
         tag = tag + "_costaware"
     if combine_models:
         tag = tag + "_combined"
 
     n_llm_ref = len(Ys[bench][task_list[0]]) if task_list else 0
+    # MMLU subjects are independent datasets → one result file per task so plotting
+    # can load a subject directly. GSM8K/PIQA keep a single multi-task file (tasks
+    # are repeated measurements of the same questions).
+    per_task_files = bench == "MMLU"
 
+    # Pre-stack once per combined-models task (ms), then run jobs serially.
+    combined_by_task: Dict[str, Any] = {}
     if combine_models:
-        jobs = list(task_list)
-    else:
-        jobs = flatten(
-            flatten(
-                [
-                    [[(llm, task, random_seed) for llm in range(len(Ys[bench][task]))] for task in task_list]
-                    for random_seed in random_seed_list
-                ]
+        for task in task_list:
+            Y_cat, xs_cat = combine_models_y_xs(Ys, Xs, bench, task)
+            if costs_full is not None and costs_full.shape[0] != Y_cat.shape[0]:
+                raise ValueError(
+                    f"{bench}/{task}: cost vector has {costs_full.shape[0]} entries "
+                    f"but stacked Y has {Y_cat.shape[0]} arms."
+                )
+            combined_by_task[task] = (Y_cat, xs_cat)
+            print(
+                f"stacked {bench}/{task}: Y={Y_cat.shape}, budget={budgets_from_y(Y_cat)[0]}, "
+                f"n_views={len(xs_cat)}",
+                flush=True,
             )
-        )
-
-    if combine_models:
+        n_work = len(task_list) * len(random_seed_list)
         job_desc = (
-            f"n_parallel_jobs (bench_task only): {len(jobs)} = {len(task_list)} tasks "
-            f"(each runs {len(random_seed_list)} seeds; {n_llm_ref} models stacked / task)"
+            f"n_work_items (task×seed): {n_work} = {len(task_list)}×{len(random_seed_list)} "
+            f"({n_llm_ref} models stacked / task)"
         )
     else:
+        n_work = sum(len(Ys[bench][t]) for t in task_list) * len(random_seed_list)
         job_desc = (
-            f"n_parallel_jobs (llm×bench_task×seed): {len(jobs)} = {len(task_list)}×{n_llm_ref}×{len(random_seed_list)}"
+            f"n_work_items (llm×bench_task×seed): {n_work} = "
+            f"{len(task_list)}×{n_llm_ref}×{len(random_seed_list)}"
         )
     print(
         "benchmark:",
@@ -480,89 +838,207 @@ def run_bai_evaluation(
         backend,
         "torch_device:",
         torch_device,
-        "parallel_n_jobs:",
-        n_jobs_eff,
+        "random_seeds:",
+        len(random_seed_list),
+        "per_task_files:",
+        per_task_files,
         job_desc,
+        flush=True,
     )
 
-    if combine_models:
-        results = Parallel(n_jobs=n_jobs_eff, verbose=10)(
-            delayed(evaluate_bai_combined_one_task)(
-                Ys,
-                Xs,
-                bench,
-                task,
-                random_seed_list,
-                backend,
-                torch_device,
-                torch_fit_log_interval,
-                costs=costs_full,
-            )
-            for task in jobs
-        )
-    else:
-        results = Parallel(n_jobs=n_jobs_eff, verbose=10)(
-            delayed(evaluate_bai)(
-                Ys[bench][job[1]][job[0]],
-                Xs[bench][job[1]][job[0]],
-                job[2],
-                backend=backend,
-                torch_device=torch_device,
-                torch_fit_log_interval=torch_fit_log_interval,
-                costs=slice_costs_for_llm(
-                    costs_full, np.asarray(Ys[bench][job[1]][job[0]]).shape[0], job[0]
-                ),
-            )
-            for job in jobs
-        )
-
-    raw_path = results_path + f"bai_results_{bench}{tag}.npy"
-    proc_path = results_path + f"bai_processed_results_{bench}{tag}.npy"
+    raw_paths: List[str] = []
+    proc_paths: List[str] = []
+    final_curves: List[np.ndarray] = []
 
     if combine_models:
-        results_flat = [r for per_task in results for r in per_task]
-        np.save(
-            raw_path,
-            {
-                "out": results_flat,
-                "out_by_task": results,
-                "combine_models": True,
-                "n_models_stacked": n_llm_ref,
-            },
-        )
-    else:
-        np.save(raw_path, {"out": results, "combine_models": False, "n_models_stacked": 1})
-
-    if combine_models:
-        results_dic = {task: results[ti] for ti, task in enumerate(task_list)}
-        final_results = np.stack(
-            [
-                np.mean(np.stack([np.asarray(r, dtype=float) for r in results_dic[task]]), axis=0)
-                for task in task_list
-            ]
-        )
-    else:
-        results_dic = {}
+        retained_out: Dict[str, list] = {}
+        retained_jobs: Dict[str, list] = {}
         for task in task_list:
-            results_dic[task] = []
-            for llm in range(len(Ys[bench][task])):
-                results_dic[task].append([])
-        for i, job in enumerate(jobs):
-            task = job[1]
-            llm = job[0]
-            results_dic[task][llm].append(results[i])
+            Y_cat, xs_cat = combined_by_task[task]
+            jobs = [(task, seed) for seed in random_seed_list]
+            results = [
+                evaluate_bai_combined_one_seed(
+                    Y_cat,
+                    xs_cat,
+                    task,
+                    seed,
+                    backend,
+                    torch_device,
+                    torch_fit_log_interval,
+                    costs=costs_full,
+                )
+                for _, seed in jobs
+            ]
+            retained_out[task] = results
+            retained_jobs[task] = jobs
+            curves = aggregate_curves(
+                [evaluate_bai_to_curves(r) for r in results],
+                cost_aware=cost_aware,
+            )
+            final_curves.append(curves)
 
-        final_results = np.stack([np.stack(results_dic[task]).mean(0).mean(0) for task in task_list])
+            if per_task_files:
+                stem = results_file_stem(bench, tag, task)
+                raw_path = results_path + f"bai_results_{stem}.npy"
+                proc_path = results_path + f"bai_processed_results_{stem}.npy"
+                save_bai_raw(
+                    raw_path,
+                    out=results,
+                    jobs=jobs,
+                    tasks=[task],
+                    seeds=random_seed_list,
+                    bench=bench,
+                    combine_models=True,
+                    cost_aware=cost_aware,
+                    n_models_stacked=n_llm_ref,
+                    out_by_task=[results],
+                )
+                save_bai_processed(
+                    proc_path,
+                    curves=curves[None, ...],
+                    tasks=[task],
+                    seeds=random_seed_list,
+                    bench=bench,
+                    combine_models=True,
+                    cost_aware=cost_aware,
+                    n_models_stacked=n_llm_ref,
+                    raw_path=raw_path,
+                )
+                raw_paths.append(raw_path)
+                proc_paths.append(proc_path)
+                print(f"saved {bench}/{task}: {proc_path}", flush=True)
 
-    np.save(proc_path, final_results)
+        if not per_task_files:
+            all_out = [r for task in task_list for r in retained_out[task]]
+            all_jobs = [j for task in task_list for j in retained_jobs[task]]
+            out_by_task = [retained_out[task] for task in task_list]
+            stem = results_file_stem(bench, tag)
+            raw_path = results_path + f"bai_results_{stem}.npy"
+            proc_path = results_path + f"bai_processed_results_{stem}.npy"
+            save_bai_raw(
+                raw_path,
+                out=all_out,
+                jobs=all_jobs,
+                tasks=task_list,
+                seeds=random_seed_list,
+                bench=bench,
+                combine_models=True,
+                cost_aware=cost_aware,
+                n_models_stacked=n_llm_ref,
+                out_by_task=out_by_task,
+            )
+            save_bai_processed(
+                proc_path,
+                curves=stack_task_curves(final_curves, cost_aware=cost_aware),
+                tasks=task_list,
+                seeds=random_seed_list,
+                bench=bench,
+                combine_models=True,
+                cost_aware=cost_aware,
+                n_models_stacked=n_llm_ref,
+                raw_path=raw_path,
+            )
+            raw_paths = [raw_path]
+            proc_paths = [proc_path]
+    else:
+        results_by_task: Dict[str, List] = {task: [] for task in task_list}
+        jobs_by_task: Dict[str, List] = {task: [] for task in task_list}
+        for task in task_list:
+            for random_seed in random_seed_list:
+                for llm in range(len(Ys[bench][task])):
+                    job = (llm, task, random_seed)
+                    jobs_by_task[task].append(job)
+                    results_by_task[task].append(
+                        evaluate_bai(
+                            Ys[bench][task][llm],
+                            Xs[bench][task][llm],
+                            random_seed,
+                            backend=backend,
+                            torch_device=torch_device,
+                            torch_fit_log_interval=torch_fit_log_interval,
+                            costs=slice_costs_for_llm(
+                                costs_full, np.asarray(Ys[bench][task][llm]).shape[0], llm
+                            ),
+                        )
+                    )
 
+            # Average all (llm, seed) runs together. Unit-cost: phase-aligned mean.
+            # Cost-aware: interpolate onto a shared spend grid (arms differ → spends differ).
+            curves_task = aggregate_curves(
+                [evaluate_bai_to_curves(r) for r in results_by_task[task]],
+                cost_aware=cost_aware,
+            )
+            final_curves.append(curves_task)
+
+            if per_task_files:
+                stem = results_file_stem(bench, tag, task)
+                raw_path = results_path + f"bai_results_{stem}.npy"
+                proc_path = results_path + f"bai_processed_results_{stem}.npy"
+                save_bai_raw(
+                    raw_path,
+                    out=results_by_task[task],
+                    jobs=jobs_by_task[task],
+                    tasks=[task],
+                    seeds=random_seed_list,
+                    bench=bench,
+                    combine_models=False,
+                    cost_aware=cost_aware,
+                    n_models_stacked=1,
+                )
+                save_bai_processed(
+                    proc_path,
+                    curves=curves_task[None, ...],
+                    tasks=[task],
+                    seeds=random_seed_list,
+                    bench=bench,
+                    combine_models=False,
+                    cost_aware=cost_aware,
+                    n_models_stacked=1,
+                    raw_path=raw_path,
+                )
+                raw_paths.append(raw_path)
+                proc_paths.append(proc_path)
+                print(f"saved {bench}/{task}: {proc_path}", flush=True)
+
+        if not per_task_files:
+            all_out = [r for task in task_list for r in results_by_task[task]]
+            all_jobs = [j for task in task_list for j in jobs_by_task[task]]
+            stem = results_file_stem(bench, tag)
+            raw_path = results_path + f"bai_results_{stem}.npy"
+            proc_path = results_path + f"bai_processed_results_{stem}.npy"
+            save_bai_raw(
+                raw_path,
+                out=all_out,
+                jobs=all_jobs,
+                tasks=task_list,
+                seeds=random_seed_list,
+                bench=bench,
+                combine_models=False,
+                cost_aware=cost_aware,
+                n_models_stacked=1,
+            )
+            save_bai_processed(
+                proc_path,
+                curves=stack_task_curves(final_curves, cost_aware=cost_aware),
+                tasks=task_list,
+                seeds=random_seed_list,
+                bench=bench,
+                combine_models=False,
+                cost_aware=cost_aware,
+                n_models_stacked=1,
+                raw_path=raw_path,
+            )
+            raw_paths = [raw_path]
+            proc_paths = [proc_path]
+
+    final_results = stack_task_curves(final_curves, cost_aware=cost_aware)
     return {
         "final_results": final_results,
         "tasks": task_list,
-        "raw_results_path": raw_path,
-        "processed_results_path": proc_path,
+        "raw_results_path": raw_paths[0] if len(raw_paths) == 1 else raw_paths,
+        "processed_results_path": proc_paths[0] if len(proc_paths) == 1 else proc_paths,
         "combine_models": combine_models,
-        "n_parallel_jobs": len(jobs),
+        "n_work_items": n_work,
     }
 
 
@@ -584,10 +1060,21 @@ def parse_args() -> argparse.Namespace:
         help="Directory with Ys.pickle/Xs.pickle. Default depends on --bench.",
     )
     parser.add_argument("--results-path", default="prompteval/results/", help="Output directory.")
-    parser.add_argument("--random-seeds", type=int, default=20, help="Number of random seeds.")
+    parser.add_argument(
+        "--random-seeds",
+        type=int,
+        default=20,
+        help="Number of independent BAI sampling repeats (seeds 0..N-1). Averaged in processed results. "
+        "Ignored if --seed is set. Example: --random-seeds 20",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Run a single BAI repeat with this RNG seed (overrides --random-seeds). Example: --seed 0",
+    )
     parser.add_argument("--backend", default="sklearn", choices=["sklearn", "torch"], help="Regression backend.")
     parser.add_argument("--torch-device", default="auto", help="Torch device (auto/cpu/cuda).")
-    parser.add_argument("--n-jobs", type=int, default=2, help="Parallel jobs.")
     parser.add_argument(
         "--tasks",
         default=None,
@@ -634,13 +1121,20 @@ def main() -> Dict[str, Any]:
         python prompteval/bai_evaluation.py --bench GSM8K
         python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1,various_models_seed2
         python prompteval/bai_evaluation.py --bench MMLU --all-tasks --random-seeds 20
+        python prompteval/bai_evaluation.py --bench MMLU --tasks anatomy --seed 0
     """
     args = parse_args()
     is_banditeval = args.bench in ("GSM8K", "PIQA")
 
     data_path = args.data_path or (DEFAULT_BANDITEVAL_PICKLE_DIR if is_banditeval else "prompteval/data/")
     combine_models = args.combine_models if args.combine_models is not None else not is_banditeval
-    results_tag = args.results_tag if args.results_tag is not None else ("_banditeval" if is_banditeval else "")
+    # GSM8K/PIQA: tag is either `_unitcost` or `_costaware` (not both).
+    if args.results_tag is not None:
+        results_tag = args.results_tag
+    elif is_banditeval:
+        results_tag = "_costaware" if args.cost_aware else "_unitcost"
+    else:
+        results_tag = ""
 
     tasks_csv = args.tasks
     default_subset = None
@@ -658,9 +1152,9 @@ def main() -> Dict[str, Any]:
         results_path=args.results_path,
         bench=args.bench,
         random_seeds=args.random_seeds,
+        seed=args.seed,
         backend=args.backend,
         torch_device=args.torch_device,
-        n_jobs=args.n_jobs,
         tasks=None,
         tasks_csv=tasks_csv,
         only_task=None,

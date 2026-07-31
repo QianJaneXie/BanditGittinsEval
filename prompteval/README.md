@@ -6,9 +6,9 @@ Welcome to the [*PromptEval* GitHub repository](https://github.com/felipemaiapol
 
 ## Running BAI (this repo)
 
-Best-arm identification (BAI): successive halfing + L2-regularized logistic regression, under a 10% observation budget. Supported benchmarks: **MMLU**, **GSM8K**, and **PIQA**.
+Best-arm identification (BAI): successive **halving** + L2-regularized logistic regression, under a 10% observation budget. Supported benchmarks: **MMLU**, **GSM8K**, and **PIQA**.
 
-Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`, `scikit-learn`, `joblib`, `matplotlib` (for plotting).
+Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`, `scikit-learn`, `matplotlib` (for plotting).
 
 ### MMLU
 
@@ -20,19 +20,27 @@ Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`,
 Pickles keep **15 separate** `(100 × n_questions)` matrices per subject. At runtime with the default `--combine-models`, they are stacked into **1500 arms** (each arm = one `(LLM, prompt template)` pair).
 
 ```bash
-# Default: abstract_algebra + professional_law, 20 sampling seeds, combine_models=True, sklearn
+# Default: abstract_algebra + professional_law, combine_models=True, sklearn
 python prompteval/bai_evaluation.py --bench MMLU
 
+# Set number of sampling repeats (default is 20) → seeds 0..N-1
+python prompteval/bai_evaluation.py --bench MMLU --random-seeds 20
+
+# Or a single fixed seed (overrides --random-seeds)
+python prompteval/bai_evaluation.py --bench MMLU --tasks anatomy --seed 0
+
 # Chosen subjects
-python prompteval/bai_evaluation.py --bench MMLU --tasks abstract_algebra,anatomy,professional_law
+python prompteval/bai_evaluation.py --bench MMLU --tasks abstract_algebra,anatomy --random-seeds 20
+
+# Local / debug: fewer seeds
+python prompteval/bai_evaluation.py --bench MMLU --tasks anatomy --random-seeds 2
 
 # All 57 MMLU subjects
-python prompteval/bai_evaluation.py --bench MMLU --all-tasks
+python prompteval/bai_evaluation.py --bench MMLU --all-tasks --random-seeds 20
 
 # Cost accounting (sampling unchanged; x-axis later in cost units)
-python prompteval/bai_evaluation.py --bench MMLU --cost-aware
+python prompteval/bai_evaluation.py --bench MMLU --cost-aware --random-seeds 20
 
-python prompteval/bai_evaluation.py --bench MMLU --random-seeds 20 --n-jobs 4
 python prompteval/bai_evaluation.py --help
 ```
 
@@ -43,29 +51,27 @@ python prompteval/bai_evaluation.py --help
 | Arms | 1500 stacked `(LLM, template)` pairs (`--combine-models`) |
 | Budget | 10% of matrix cells, ≤ 5 successive-halving rounds |
 | Backend | `sklearn` |
-| Seeds | `--random-seeds 20` (observation-sampling repeats; averaged in processed results) |
+| Seeds | `--random-seeds 20` → seeds `0..N-1` (averaged); or `--seed K` for a single repeat |
 
 Use `--no-combine-models` for 100 template arms **per LLM** (then average over LLMs).
 
-**Outputs** under `prompteval/results/`:
+Each MMLU subject is written as soon as it finishes (**one raw + one processed file per subject**), so a long `--all-tasks` run can be plotted subject-by-subject without waiting for the rest.
 
-| File | Contents |
-|------|----------|
-| `bai_results_MMLU_combined.npy` | Raw nested results |
-| `bai_processed_results_MMLU_combined.npy` | Seed-averaged `(n_tasks, n_budgets, n_blocks, 2, n_phases)` |
-
-Channel `0` = simple regret, `1` = cumulative spend. `n_blocks = 4` (one-hot + 3 embedding views). With `--cost-aware`, filenames include `_costaware`.
-
-**Plot** (one panel per MMLU subject):
+**Plot** (loads **one processed file per subject**):
 
 ```bash
+python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra
 python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra,professional_law
 python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra,professional_law --cost-aware
 ```
 
+See [Output format](#output-format) below for result filenames and array layout.
+
 ### GSM8K and PIQA
 
-BanditEval matrices: rows = **models** (arms), columns = i.i.d. samples. No prompt templates, so only the one-hot (baseline) covariate block runs.
+BanditEval matrices: rows = **configurations** (arms), columns = i.i.d. question samples. For GSM8K `various_models`, each row is a `(model, prompt, temperature, max_tokens)` config (122 arms; not a full cartesian product). PIQA is analogous (103 arms).
+
+**Covariates today:** `Xs` views are empty, so BAI only runs the **one-hot / identity baseline** (`X = I_{n_arms}`, e.g. 122-dim for GSM8K). A factored embedding (one-hot model ⊕ one-hot prompt ⊕ …) is a natural alternative and is *not* wired in yet (see also `data/bo_inputs/gsm8k/*_bo_inputs.npz`, which already stores `model_id` / `prompt_id` / …).
 
 **Build pickles once** from `data/BanditEval_matrices/`:
 
@@ -77,7 +83,7 @@ python prompteval/build_banditeval_pickle.py
 Each benchmark has five tasks `various_models_seed1`…`seed5` (same questions, different LLM-query seeds).
 
 ```bash
-# Defaults: all 5 data seeds, combine_models=False, tag _banditeval
+# Defaults: all 5 data seeds, combine_models=False, tag _unitcost
 python prompteval/bai_evaluation.py --bench GSM8K
 python prompteval/bai_evaluation.py --bench PIQA
 
@@ -89,11 +95,11 @@ python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1 --
 |--------|--------|
 | Data | `prompteval/pickle/` |
 | Tasks | all `various_models_seed1`…`seed5` |
-| Arms | 122 (GSM8K) or 103 (PIQA) models; **no** LLM×template stacking |
+| Arms | 122 (GSM8K) or 103 (PIQA) configs; **no** LLM×template stacking |
 | Covariates | one-hot baseline only (`Xs` views are empty) |
-| Results tag | `_banditeval` (e.g. `bai_processed_results_GSM8K_banditeval.npy`) |
+| Results tag | `_unitcost` by default, or `_costaware` with `--cost-aware` (mutually exclusive) |
 
-**Plot** (average the 5 data seeds into **one** curve — they are repeated measurements, not different datasets):
+**Plot** (needs the **processed** `.npy`; averages the 5 data seeds into **one** curve):
 
 ```bash
 python prompteval/plot_bai_regret.py --bench GSM8K
@@ -101,8 +107,138 @@ python prompteval/plot_bai_regret.py --bench PIQA
 python prompteval/plot_bai_regret.py --bench GSM8K --cost-aware
 ```
 
-Figures go to `prompteval/outputs/bai_regret_plots/`. Use `--per-task` only if you want one panel per data seed.
+Figures go to `prompteval/outputs/bai_regret_plots/`. Curves are drawn as a **staircase** (`steps-post`): simple regret is constant between evaluations. Use `--per-task` only if you want one panel per data seed.
 
+If plotting fails with “Processed results not found” but the raw file exists, re-run `bai_evaluation.py` for that bench/tag (or regenerate processed from raw with the same hold-last aggregation).
+
+### Output format
+
+**MMLU** writes **one raw + one processed file per subject** (saved as soon as that subject finishes):
+
+```text
+prompteval/results/bai_results_MMLU_<subject><tag>.npy
+prompteval/results/bai_processed_results_MMLU_<subject><tag>.npy
+```
+
+**GSM8K / PIQA** write a single multi-task pair (all data seeds in one file):
+
+```text
+prompteval/results/bai_results_<BENCH><tag>.npy              # raw (required to rebuild processed)
+prompteval/results/bai_processed_results_<BENCH><tag>.npy    # seed-averaged (what the plotter reads)
+```
+
+**Filename tags** (mutually exclusive cost mode; `_combined` only for MMLU stacking):
+
+| Condition | Suffix |
+|-----------|--------|
+| GSM8K / PIQA (observation / unit cost; default) | `_unitcost` |
+| `--cost-aware` | `_costaware` (replaces `_unitcost`, never `_unitcost_costaware`) |
+| `--combine-models` (MMLU default) | `_combined` |
+
+Examples: `bai_processed_results_MMLU_abstract_algebra_combined.npy`, `bai_processed_results_GSM8K_unitcost.npy`, `bai_processed_results_GSM8K_costaware.npy`.
+
+#### Processed results (what the plot script reads)
+
+Saved as a **dict** (via `np.save`):
+
+```python
+{
+  "curves": ndarray,          # shape (n_tasks, n_budgets, n_blocks, 2, n_points)
+  "channels": ["simple_regret", "budget"],
+  "tasks": [...],             # task names in axis-0 order
+  "seeds": [...],             # RNG seeds that were averaged
+  "bench": "MMLU" | "GSM8K" | "PIQA",
+  "combine_models": bool,
+  "cost_aware": bool,
+  "aggregation": "phase_mean" | "cost_grid_hold_last",
+  "n_models_stacked": int,
+  "update_fields": [...],     # fields present in each raw phase update
+  "note": "...",
+}
+```
+
+`curves` axes:
+
+| Axis | Meaning |
+|------|---------|
+| `n_tasks` | MMLU per-subject file: always `1`. GSM8K/PIQA multi-task file: number of data seeds |
+| `n_budgets` | Always `1` (single budget = 10% of matrix cells) |
+| `n_blocks` | Covariate blocks: MMLU = **4**, GSM8K/PIQA = **1** |
+| channel (`2`) | `0` = simple regret, `1` = cumulative spend (plot x-axis) |
+| `n_points` | Unit-cost: successive-halving phases (≤ 5). Cost-aware: # of distinct evaluation spends on the shared grid (scales with seeds × phases; multi-task files align tasks onto one grid) |
+
+**How seeds are combined**
+
+- **Unit cost** (`aggregation: "phase_mean"`): observation counts align across seeds → average regret (and spend) **per phase** → ≤ 5 points. If a run stops early, later phase slots **keep the last regret** (unchanged), so that seed stays in the average.
+- **Cost-aware** (`aggregation: "cost_grid_hold_last"`): different seeds sample different arms → different spend at each phase. x-grid = sorted **unique evaluation spends** from the random-seed runs. At each cost, each seed contributes its **last evaluated** simple regret (hold-last / step — no linear interpolation). A seed that never reaches a higher spend still contributes that held regret there. The plotter draws the same step semantics (`steps-post`).
+
+Sampling is always unit-cost (10% of cells); `--cost-aware` only changes the **recorded** spend channel used for the x-axis.
+
+MMLU block order (index → covariates):
+
+0. one-hot / identity baseline (`X=None` → `I_{n_arms}`)
+1. discrete template features
+2. sentence-transformer (PCA)
+3. fine-tuned BERT (PCA)
+
+GSM8K/PIQA only have block `0` (flat one-hot over configuration arms).
+
+Spend channel units: observation counts by default; cost units with `--cost-aware`.
+
+#### Per-update records (raw file — chosen model / regret / budget)
+
+Each successive-halving phase writes an **update dict** (one “return” moment):
+
+| Field | Meaning |
+|-------|---------|
+| `phase` | Round index `0 .. n_phases-1` |
+| `budget` | Cumulative spend after sampling this phase |
+| `chosen_arm` | Arm index returned by logistic regression (the identified model / `(LLM, template)` row) |
+| `chosen_mean` | True mean reward of `chosen_arm` |
+| `oracle_mean` | Best arm’s true mean |
+| `simple_regret` | `oracle_mean - chosen_mean` |
+| `n_active` | Number of arms still active before elimination |
+
+If a run stops before later phases (labels exhausted, one arm left, …), remaining phase slots **copy the last budget and simple regret** (chosen arm unchanged).
+
+These live in the **raw** file (not averaged — arm identity is per seed):
+
+```python
+raw = np.load("prompteval/results/bai_results_MMLU_abstract_algebra_combined.npy", allow_pickle=True).item()
+# One evaluate_bai run:
+run = raw["out"][0]           # aligned with raw["jobs"][0] == (task, seed)
+updates = run[0][0]           # budget 0, covariate block 0
+print(updates[0])
+# {'phase': 0, 'budget': 2440.0, 'chosen_arm': 17, 'chosen_mean': 0.42,
+#  'oracle_mean': 0.55, 'simple_regret': 0.13, 'n_active': 1500}
+```
+
+Load processed curves (one subject file; `n_tasks=1`):
+
+```python
+import numpy as np
+proc = np.load(
+    "prompteval/results/bai_processed_results_MMLU_abstract_algebra_combined.npy",
+    allow_pickle=True,
+).item()
+r = proc["curves"]            # (1, 1, n_blocks, 2, n_points)
+regret = r[0, 0, 0, 0, :]     # baseline block, simple regret vs phase / cost
+spend  = r[0, 0, 0, 1, :]     # same, cumulative budget (x-axis)
+print(proc["tasks"], proc["seeds"], proc.get("aggregation"))
+```
+
+#### Plots
+
+`plot_bai_regret.py` reads the **processed** file(s) and writes PNGs to:
+
+```text
+# MMLU (one subject)
+prompteval/outputs/bai_regret_plots/bai_simple_regret_MMLU_<subject>_combined.png
+# GSM8K / PIQA
+prompteval/outputs/bai_regret_plots/bai_simple_regret_<BENCH><tag>.png
+```
+
+Regret vs budget is plotted as a **step function** (flat between evaluations, jump at the next evaluation).
 ---
 
 ## Overview
