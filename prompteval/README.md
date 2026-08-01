@@ -38,8 +38,10 @@ python prompteval/bai_evaluation.py --bench MMLU --tasks anatomy --random-seeds 
 # All 57 MMLU subjects
 python prompteval/bai_evaluation.py --bench MMLU --all-tasks --random-seeds 20
 
-# Cost accounting (sampling unchanged; x-axis later in cost units)
-python prompteval/bai_evaluation.py --bench MMLU --cost-aware --random-seeds 20
+# Cost accounting is automatic when a pricing JSON exists for the bench:
+# one run records both observation spend and cost-weighted spend, then writes
+# unit-cost + cost-aware processed files (no need for a second --cost-aware run).
+python prompteval/bai_evaluation.py --bench MMLU --random-seeds 20
 
 python prompteval/bai_evaluation.py --help
 ```
@@ -52,6 +54,7 @@ python prompteval/bai_evaluation.py --help
 | Budget | 10% of matrix cells, ≤ 5 successive-halving rounds |
 | Backend | `sklearn` |
 | Seeds | `--random-seeds 20` → seeds `0..N-1` (averaged); or `--seed K` for a single repeat |
+| Costs | loaded from `DEFAULT_COST_FILES` when present → both processed views |
 
 Use `--no-combine-models` for 100 template arms **per LLM** (then average over LLMs).
 
@@ -83,11 +86,11 @@ python prompteval/build_banditeval_pickle.py
 Each benchmark has five tasks `various_models_seed1`…`seed5` (same questions, different LLM-query seeds).
 
 ```bash
-# Defaults: all 5 data seeds, combine_models=False, tag _unitcost
+# One run: sampling is unit-cost; raw stores budget_obs + budget_cost;
+# writes both bai_processed_results_GSM8K_unitcost.npy and ..._costaware.npy
 python prompteval/bai_evaluation.py --bench GSM8K
 python prompteval/bai_evaluation.py --bench PIQA
 
-python prompteval/bai_evaluation.py --bench GSM8K --cost-aware
 python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1 --random-seeds 20
 ```
 
@@ -97,7 +100,8 @@ python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1 --
 | Tasks | all `various_models_seed1`…`seed5` |
 | Arms | 122 (GSM8K) or 103 (PIQA) configs; **no** LLM×template stacking |
 | Covariates | one-hot baseline only (`Xs` views are empty) |
-| Results tag | `_unitcost` by default, or `_costaware` with `--cost-aware` (mutually exclusive) |
+| Raw file | `bai_results_GSM8K.npy` (shared; both spends) |
+| Processed | `_unitcost` and `_costaware` from the **same** run |
 
 **Plot** (needs the **processed** `.npy`; averages the 5 data seeds into **one** curve):
 
@@ -113,26 +117,30 @@ If plotting fails with “Processed results not found” but the raw file exists
 
 ### Output format
 
-**MMLU** writes **one raw + one processed file per subject** (saved as soon as that subject finishes):
+**MMLU** writes **one shared raw file per subject**, plus **two processed files** when costs are available (unit-cost and cost-aware views of the same run):
 
 ```text
-prompteval/results/bai_results_MMLU_<subject><tag>.npy
-prompteval/results/bai_processed_results_MMLU_<subject><tag>.npy
+prompteval/results/bai_results_MMLU_<subject>_combined.npy
+prompteval/results/bai_processed_results_MMLU_<subject>_combined.npy
+prompteval/results/bai_processed_results_MMLU_<subject>_costaware_combined.npy
 ```
 
-**GSM8K / PIQA** write a single multi-task pair (all data seeds in one file):
+**GSM8K / PIQA** write one shared raw file and both processed views:
 
 ```text
-prompteval/results/bai_results_<BENCH><tag>.npy              # raw (required to rebuild processed)
-prompteval/results/bai_processed_results_<BENCH><tag>.npy    # seed-averaged (what the plotter reads)
+prompteval/results/bai_results_<BENCH>.npy
+prompteval/results/bai_processed_results_<BENCH>_unitcost.npy
+prompteval/results/bai_processed_results_<BENCH>_costaware.npy
 ```
 
-**Filename tags** (mutually exclusive cost mode; `_combined` only for MMLU stacking):
+You do **not** need two BAI runs: sampling choices are identical; only the x-axis spend channel differs (`budget_obs` vs `budget_cost` on each phase update).
+
+**Filename tags** (processed files):
 
 | Condition | Suffix |
 |-----------|--------|
-| GSM8K / PIQA (observation / unit cost; default) | `_unitcost` |
-| `--cost-aware` | `_costaware` (replaces `_unitcost`, never `_unitcost_costaware`) |
+| GSM8K / PIQA unit-cost view | `_unitcost` |
+| Cost-aware view (any bench with a cost file) | `_costaware` |
 | `--combine-models` (MMLU default) | `_combined` |
 
 Examples: `bai_processed_results_MMLU_abstract_algebra_combined.npy`, `bai_processed_results_GSM8K_unitcost.npy`, `bai_processed_results_GSM8K_costaware.npy`.

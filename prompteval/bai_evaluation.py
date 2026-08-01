@@ -88,7 +88,9 @@ DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/pickle/"
 
 UPDATE_FIELDS = [
     "phase",
-    "budget",
+    "budget_obs",
+    "budget_cost",
+    "budget",  # legacy alias of budget_obs
     "chosen_arm",
     "chosen_mean",
     "oracle_mean",
@@ -104,6 +106,33 @@ def results_file_stem(bench: str, tag: str, task: Optional[str] = None) -> str:
     return f"{bench}{tag}"
 
 
+def raw_results_tag(*, combine_models: bool) -> str:
+    """Tag for the shared raw file (no unitcost/costaware — both spends are stored)."""
+    return "_combined" if combine_models else ""
+
+
+def processed_results_tag(
+    *,
+    cost_aware: bool,
+    combine_models: bool,
+    banditeval: bool,
+) -> str:
+    """
+    Tag for a processed file.
+
+    GSM8K/PIQA: ``_unitcost`` or ``_costaware``.
+    MMLU: ``_combined`` (unit) or ``_costaware_combined``.
+    """
+    parts: List[str] = []
+    if cost_aware:
+        parts.append("_costaware")
+    elif banditeval:
+        parts.append("_unitcost")
+    if combine_models:
+        parts.append("_combined")
+    return "".join(parts)
+
+
 def save_bai_raw(
     path: str,
     *,
@@ -113,9 +142,10 @@ def save_bai_raw(
     seeds: Sequence[int],
     bench: str,
     combine_models: bool,
-    cost_aware: bool,
+    costs_recorded: bool,
     n_models_stacked: int,
     out_by_task: Optional[list] = None,
+    cost_file: Optional[str] = None,
 ) -> None:
     payload: Dict[str, Any] = {
         "out": out,
@@ -125,8 +155,14 @@ def save_bai_raw(
         "tasks": list(tasks),
         "seeds": list(seeds),
         "bench": bench,
-        "cost_aware": cost_aware,
+        "costs_recorded": costs_recorded,
+        "cost_file": cost_file,
         "update_fields": UPDATE_FIELDS,
+        "note": (
+            "Each phase update stores budget_obs (observation count) and budget_cost "
+            "(cost-weighted spend when costs were loaded). Sampling is always unit-cost; "
+            "processed unitcost/costaware files are derived from the same raw out."
+        ),
     }
     if out_by_task is not None:
         payload["out_by_task"] = out_by_task
@@ -147,26 +183,27 @@ def save_bai_processed(
 ) -> None:
     if cost_aware:
         note = (
-            "cost-aware: spends differ across seeds; at each cost on the shared grid, "
-            "each seed contributes its last evaluated simple regret (hold-last / step; "
-            "the chosen arm is unchanged until the next phase), then nanmean. "
-            "Per-update chosen_arm / chosen_mean live in the raw file "
-            f"({raw_path}) under out[*][budget][block][phase]."
+            "cost-aware view of a shared BAI run: x-axis is budget_cost. "
+            "At each cost on the shared grid, each seed contributes its last evaluated "
+            "simple regret (hold-last / step). Same sampling as the unit-cost processed file "
+            f"(raw: {raw_path})."
         )
         aggregation = "cost_grid_hold_last"
+        spend_field = "budget_cost"
     else:
         note = (
-            "unit-cost: curves average simple_regret and budget over seeds at each phase "
-            "(observation counts align across seeds). "
-            "Per-update chosen_arm / chosen_mean live in the raw file "
-            f"({raw_path}) under out[*][budget][block][phase]."
+            "unit-cost view of a shared BAI run: x-axis is budget_obs (observation counts). "
+            "Curves average simple_regret and spend over seeds at each phase. "
+            f"Same sampling as the cost-aware processed file when present (raw: {raw_path})."
         )
         aggregation = "phase_mean"
+        spend_field = "budget_obs"
     np.save(
         path,
         {
             "curves": curves,  # (n_tasks, n_budgets, n_blocks, 2, n_points)
             "channels": ["simple_regret", "budget"],
+            "spend_field": spend_field,
             "tasks": list(tasks),
             "seeds": list(seeds),
             "bench": bench,
@@ -318,15 +355,17 @@ def compute_regrets(
     torch_fit_log_interval (int): When ``backend=="torch"``, print training loss every this many
         epochs inside ``TorchLogisticRegression`` (0 = silent).
     costs (numpy.ndarray, optional): Per-arm cost of one observation, used for **accounting
-        only**. Sampling and the observation budget are identical with or without costs; the
-        recorded per-phase spend is the cost-weighted sum of observations when costs are given,
-        otherwise the plain observation count.
+        only**. Sampling and the observation budget are identical with or without costs.
+        When provided, each phase records both observation count and cost-weighted spend.
 
     Returns:
     list[dict]: One record per phase (length ``n_phases = min(ceil(log2(n_formats)), MAX_BAI_PHASES)``).
         Each record has:
         - ``phase`` (int)
-        - ``budget`` (float): cumulative spend after sampling this phase (observations, or cost units)
+        - ``budget_obs`` (float): cumulative observation count after this phase
+        - ``budget_cost`` (float): cost-weighted cumulative spend (equals ``budget_obs`` if
+          ``costs`` is None)
+        - ``budget`` (float): legacy alias of ``budget_obs``
         - ``chosen_arm`` (int | None): arm index returned by logreg (None if no fit this phase)
         - ``chosen_mean`` (float | None): true mean reward of ``chosen_arm``
         - ``oracle_mean`` (float): best arm's true mean
@@ -364,14 +403,17 @@ def compute_regrets(
                 seen_examples, seen_examples.sum() + budget_phase, random_seed, active_arms, random_column
             )
 
+        budget_obs = float(seen_examples.sum())
         if costs is None:
-            budget_spent = float(seen_examples.sum())
+            budget_cost = budget_obs
         else:
-            budget_spent = float((seen_examples.sum(1) * costs).sum())
+            budget_cost = float((seen_examples.sum(1) * costs).sum())
 
         update: Dict[str, Any] = {
             "phase": phase,
-            "budget": budget_spent,
+            "budget_obs": budget_obs,
+            "budget_cost": budget_cost,
+            "budget": budget_obs,  # legacy alias
             "chosen_arm": None,
             "chosen_mean": None,
             "oracle_mean": oracle,
@@ -425,6 +467,8 @@ def compute_regrets(
         phase_updates.append(
             {
                 "phase": len(phase_updates),
+                "budget_obs": last["budget_obs"],
+                "budget_cost": last["budget_cost"],
                 "budget": last["budget"],
                 "chosen_arm": last["chosen_arm"],
                 "chosen_mean": last["chosen_mean"],
@@ -437,14 +481,20 @@ def compute_regrets(
     return phase_updates
 
 
-def updates_to_regret_spend(updates: List[Dict[str, Any]]) -> np.ndarray:
-    """Convert a list of phase update dicts to array shape ``(2, n_phases)``: regret, budget."""
+def updates_to_regret_spend(
+    updates: List[Dict[str, Any]],
+    spend_field: str = "budget_obs",
+) -> np.ndarray:
+    """Convert phase updates to ``(2, n_phases)``: simple regret, spend (obs or cost)."""
     n = len(updates)
     out = np.full((2, n), np.nan, dtype=float)
     for i, u in enumerate(updates):
         r = u.get("simple_regret")
-        b = u.get("budget")
         out[0, i] = float(r) if r is not None else np.nan
+        b = u.get(spend_field)
+        if b is None and spend_field != "budget":
+            # Legacy raw files only stored ``budget`` (obs or cost, depending on the run).
+            b = u.get("budget")
         if b is None or (isinstance(b, float) and np.isnan(b)):
             out[1, i] = np.nan
         else:
@@ -452,10 +502,10 @@ def updates_to_regret_spend(updates: List[Dict[str, Any]]) -> np.ndarray:
     return out
 
 
-def evaluate_bai_to_curves(eval_out: list) -> np.ndarray:
+def evaluate_bai_to_curves(eval_out: list, spend_field: str = "budget_obs") -> np.ndarray:
     """
     ``evaluate_bai`` output → ``(n_budgets, n_blocks, 2, n_phases)`` float array
-    (channel 0 = simple regret, 1 = cumulative budget).
+    (channel 0 = simple regret, 1 = cumulative spend from ``spend_field``).
     """
     n_budgets = len(eval_out)
     n_blocks = len(eval_out[0]) if n_budgets else 0
@@ -463,8 +513,17 @@ def evaluate_bai_to_curves(eval_out: list) -> np.ndarray:
     curves = np.full((n_budgets, n_blocks, 2, n_phases), np.nan, dtype=float)
     for bi in range(n_budgets):
         for bj in range(n_blocks):
-            curves[bi, bj] = updates_to_regret_spend(eval_out[bi][bj])
+            curves[bi, bj] = updates_to_regret_spend(eval_out[bi][bj], spend_field=spend_field)
     return curves
+
+
+def aggregate_eval_outs(eval_outs: Sequence, *, cost_aware: bool) -> np.ndarray:
+    """Seed-average evaluate_bai outputs using obs or cost spend on the x-axis."""
+    spend_field = "budget_cost" if cost_aware else "budget_obs"
+    return aggregate_curves(
+        [evaluate_bai_to_curves(r, spend_field=spend_field) for r in eval_outs],
+        cost_aware=cost_aware,
+    )
 
 
 # Cost-aware aggregation: if n_grid is None, use every distinct observed spend
@@ -720,24 +779,31 @@ def run_bai_evaluation(
     ``torch_fit_log_interval``: if >0 and ``backend=="torch"``, prints logistic training loss every
     that many epochs inside each ``TorchLogisticRegression`` fit.
 
-    ``cost_aware``: if True, per-arm costs (from ``cost_file``, default
-    ``DEFAULT_COST_FILES[bench]``) are **recorded** alongside regrets: each phase's cumulative
-    spend is the cost-weighted number of observations instead of the plain count. Sampling and
-    the observation budget (10% of cells) are identical either way — costs never change the
-    algorithm, only the recorded spend (e.g. for plotting regret vs dollars).
+    ``record_costs`` / ``cost_file``: if a cost file is available (explicit ``cost_file`` or
+    ``DEFAULT_COST_FILES[bench]``), per-arm costs are loaded and **both** observation spend
+    and cost-weighted spend are recorded on every phase. Sampling is always unit-cost.
+    One raw file is written; unit-cost and cost-aware **processed** files are derived from it.
+    ``cost_aware`` is kept for API compatibility and is ignored (both views are written when
+    costs are available).
     """
     if seed is not None:
         random_seed_list = [int(seed)]
     else:
         random_seed_list = list(range(int(random_seeds)))
+    del cost_aware  # unused; both processed views are written when costs exist
+
+    cost_path = cost_file or DEFAULT_COST_FILES.get(bench)
     costs_full: Optional[np.ndarray] = None
-    if cost_aware:
-        cost_path = cost_file or DEFAULT_COST_FILES.get(bench)
-        if cost_path is None:
-            raise ValueError(f"cost_aware=True but no cost file known for benchmark {bench!r}.")
+    if cost_path is not None:
         costs_full = load_arm_costs(cost_path)
-        print(f"cost-aware: {len(costs_full)} arm costs from {cost_path} "
-              f"(min={costs_full.min():.4g}, max={costs_full.max():.4g})")
+        print(
+            f"recording costs: {len(costs_full)} arms from {cost_path} "
+            f"(min={costs_full.min():.4g}, max={costs_full.max():.4g}); "
+            "will write both unit-cost and cost-aware processed files",
+            flush=True,
+        )
+    else:
+        print("no cost file for this benchmark; writing unit-cost processed only", flush=True)
     if backend == "torch" and torch_device == "cuda":
         import torch
 
@@ -789,18 +855,62 @@ def run_bai_evaluation(
     else:
         task_list = all_task_keys
 
-    tag = (results_tag or "").strip()
-    # `_unitcost` and `_costaware` are mutually exclusive modes (not stacked).
-    if cost_aware and "_costaware" not in tag:
-        tag = tag + "_costaware"
-    if combine_models:
-        tag = tag + "_combined"
+    raw_tag = (results_tag or "").strip() + raw_results_tag(combine_models=combine_models)
+    # Strip accidental mode tags from a custom --results-tag; modes go only on processed files.
+    for mode in ("_unitcost", "_costaware"):
+        raw_tag = raw_tag.replace(mode, "")
+    banditeval = bench in ("GSM8K", "PIQA")
+    costs_recorded = costs_full is not None
 
     n_llm_ref = len(Ys[bench][task_list[0]]) if task_list else 0
     # MMLU subjects are independent datasets → one result file per task so plotting
     # can load a subject directly. GSM8K/PIQA keep a single multi-task file (tasks
     # are repeated measurements of the same questions).
     per_task_files = bench == "MMLU"
+
+    def save_processed_views(
+        outs_by_task: Dict[str, list],
+        *,
+        tasks_in_file: Sequence[str],
+        raw_path: str,
+        task_stem: Optional[str] = None,
+    ) -> List[str]:
+        """Write unit-cost and (if costs recorded) cost-aware processed files from shared outs."""
+        written: List[str] = []
+        modes = [False, True] if costs_recorded else [False]
+        for use_cost in modes:
+            curves_list = [
+                aggregate_eval_outs(outs_by_task[t], cost_aware=use_cost) for t in tasks_in_file
+            ]
+            stacked = stack_task_curves(curves_list, cost_aware=use_cost)
+            tag = processed_results_tag(
+                cost_aware=use_cost,
+                combine_models=combine_models,
+                banditeval=banditeval,
+            )
+            # Keep any custom results_tag prefix (without mode/combined) on processed files too.
+            custom = (results_tag or "").strip()
+            for mode in ("_unitcost", "_costaware", "_combined"):
+                custom = custom.replace(mode, "")
+            stem = results_file_stem(bench, custom + tag, task_stem)
+            proc_path = results_path + f"bai_processed_results_{stem}.npy"
+            save_bai_processed(
+                proc_path,
+                curves=stacked,
+                tasks=list(tasks_in_file),
+                seeds=random_seed_list,
+                bench=bench,
+                combine_models=combine_models,
+                cost_aware=use_cost,
+                n_models_stacked=n_llm_ref if combine_models else 1,
+                raw_path=raw_path,
+            )
+            written.append(proc_path)
+            print(
+                f"saved processed ({'cost-aware' if use_cost else 'unit-cost'}): {proc_path}",
+                flush=True,
+            )
+        return written
 
     # Pre-stack once per combined-models task (ms), then run jobs serially.
     combined_by_task: Dict[str, Any] = {}
@@ -871,16 +981,12 @@ def run_bai_evaluation(
             ]
             retained_out[task] = results
             retained_jobs[task] = jobs
-            curves = aggregate_curves(
-                [evaluate_bai_to_curves(r) for r in results],
-                cost_aware=cost_aware,
-            )
-            final_curves.append(curves)
+            # Unit-cost curves kept for the return value.
+            final_curves.append(aggregate_eval_outs(results, cost_aware=False))
 
             if per_task_files:
-                stem = results_file_stem(bench, tag, task)
+                stem = results_file_stem(bench, raw_tag, task)
                 raw_path = results_path + f"bai_results_{stem}.npy"
-                proc_path = results_path + f"bai_processed_results_{stem}.npy"
                 save_bai_raw(
                     raw_path,
                     out=results,
@@ -889,32 +995,27 @@ def run_bai_evaluation(
                     seeds=random_seed_list,
                     bench=bench,
                     combine_models=True,
-                    cost_aware=cost_aware,
+                    costs_recorded=costs_recorded,
                     n_models_stacked=n_llm_ref,
                     out_by_task=[results],
-                )
-                save_bai_processed(
-                    proc_path,
-                    curves=curves[None, ...],
-                    tasks=[task],
-                    seeds=random_seed_list,
-                    bench=bench,
-                    combine_models=True,
-                    cost_aware=cost_aware,
-                    n_models_stacked=n_llm_ref,
-                    raw_path=raw_path,
+                    cost_file=cost_path,
                 )
                 raw_paths.append(raw_path)
-                proc_paths.append(proc_path)
-                print(f"saved {bench}/{task}: {proc_path}", flush=True)
+                proc_paths.extend(
+                    save_processed_views(
+                        {task: results},
+                        tasks_in_file=[task],
+                        raw_path=raw_path,
+                        task_stem=task,
+                    )
+                )
 
         if not per_task_files:
             all_out = [r for task in task_list for r in retained_out[task]]
             all_jobs = [j for task in task_list for j in retained_jobs[task]]
             out_by_task = [retained_out[task] for task in task_list]
-            stem = results_file_stem(bench, tag)
+            stem = results_file_stem(bench, raw_tag)
             raw_path = results_path + f"bai_results_{stem}.npy"
-            proc_path = results_path + f"bai_processed_results_{stem}.npy"
             save_bai_raw(
                 raw_path,
                 out=all_out,
@@ -923,23 +1024,17 @@ def run_bai_evaluation(
                 seeds=random_seed_list,
                 bench=bench,
                 combine_models=True,
-                cost_aware=cost_aware,
+                costs_recorded=costs_recorded,
                 n_models_stacked=n_llm_ref,
                 out_by_task=out_by_task,
-            )
-            save_bai_processed(
-                proc_path,
-                curves=stack_task_curves(final_curves, cost_aware=cost_aware),
-                tasks=task_list,
-                seeds=random_seed_list,
-                bench=bench,
-                combine_models=True,
-                cost_aware=cost_aware,
-                n_models_stacked=n_llm_ref,
-                raw_path=raw_path,
+                cost_file=cost_path,
             )
             raw_paths = [raw_path]
-            proc_paths = [proc_path]
+            proc_paths = save_processed_views(
+                retained_out,
+                tasks_in_file=task_list,
+                raw_path=raw_path,
+            )
     else:
         results_by_task: Dict[str, List] = {task: [] for task in task_list}
         jobs_by_task: Dict[str, List] = {task: [] for task in task_list}
@@ -962,18 +1057,13 @@ def run_bai_evaluation(
                         )
                     )
 
-            # Average all (llm, seed) runs together. Unit-cost: phase-aligned mean.
-            # Cost-aware: interpolate onto a shared spend grid (arms differ → spends differ).
-            curves_task = aggregate_curves(
-                [evaluate_bai_to_curves(r) for r in results_by_task[task]],
-                cost_aware=cost_aware,
+            final_curves.append(
+                aggregate_eval_outs(results_by_task[task], cost_aware=False)
             )
-            final_curves.append(curves_task)
 
             if per_task_files:
-                stem = results_file_stem(bench, tag, task)
+                stem = results_file_stem(bench, raw_tag, task)
                 raw_path = results_path + f"bai_results_{stem}.npy"
-                proc_path = results_path + f"bai_processed_results_{stem}.npy"
                 save_bai_raw(
                     raw_path,
                     out=results_by_task[task],
@@ -982,30 +1072,25 @@ def run_bai_evaluation(
                     seeds=random_seed_list,
                     bench=bench,
                     combine_models=False,
-                    cost_aware=cost_aware,
+                    costs_recorded=costs_recorded,
                     n_models_stacked=1,
-                )
-                save_bai_processed(
-                    proc_path,
-                    curves=curves_task[None, ...],
-                    tasks=[task],
-                    seeds=random_seed_list,
-                    bench=bench,
-                    combine_models=False,
-                    cost_aware=cost_aware,
-                    n_models_stacked=1,
-                    raw_path=raw_path,
+                    cost_file=cost_path,
                 )
                 raw_paths.append(raw_path)
-                proc_paths.append(proc_path)
-                print(f"saved {bench}/{task}: {proc_path}", flush=True)
+                proc_paths.extend(
+                    save_processed_views(
+                        {task: results_by_task[task]},
+                        tasks_in_file=[task],
+                        raw_path=raw_path,
+                        task_stem=task,
+                    )
+                )
 
         if not per_task_files:
             all_out = [r for task in task_list for r in results_by_task[task]]
             all_jobs = [j for task in task_list for j in jobs_by_task[task]]
-            stem = results_file_stem(bench, tag)
+            stem = results_file_stem(bench, raw_tag)
             raw_path = results_path + f"bai_results_{stem}.npy"
-            proc_path = results_path + f"bai_processed_results_{stem}.npy"
             save_bai_raw(
                 raw_path,
                 out=all_out,
@@ -1014,24 +1099,18 @@ def run_bai_evaluation(
                 seeds=random_seed_list,
                 bench=bench,
                 combine_models=False,
-                cost_aware=cost_aware,
+                costs_recorded=costs_recorded,
                 n_models_stacked=1,
-            )
-            save_bai_processed(
-                proc_path,
-                curves=stack_task_curves(final_curves, cost_aware=cost_aware),
-                tasks=task_list,
-                seeds=random_seed_list,
-                bench=bench,
-                combine_models=False,
-                cost_aware=cost_aware,
-                n_models_stacked=1,
-                raw_path=raw_path,
+                cost_file=cost_path,
             )
             raw_paths = [raw_path]
-            proc_paths = [proc_path]
+            proc_paths = save_processed_views(
+                results_by_task,
+                tasks_in_file=task_list,
+                raw_path=raw_path,
+            )
 
-    final_results = stack_task_curves(final_curves, cost_aware=cost_aware)
+    final_results = stack_task_curves(final_curves, cost_aware=False)
     return {
         "final_results": final_results,
         "tasks": task_list,
@@ -1039,6 +1118,7 @@ def run_bai_evaluation(
         "processed_results_path": proc_paths[0] if len(proc_paths) == 1 else proc_paths,
         "combine_models": combine_models,
         "n_work_items": n_work,
+        "costs_recorded": costs_recorded,
     }
 
 
@@ -1097,18 +1177,18 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="One matrix per task (GSM8K/PIQA default).",
     )
-    parser.add_argument("--results-tag", default=None, help="Suffix for result filenames. Default depends on --bench.")
+    parser.add_argument("--results-tag", default=None, help="Optional custom suffix for result filenames.")
     parser.add_argument(
         "--cost-aware",
         action="store_true",
-        help="Record each phase's cumulative spend in cost units (per-arm costs from --cost-file) "
-        "instead of observation counts. Sampling itself is unchanged (all costs 1, 10%% budget).",
+        help="Deprecated/no-op: when a cost file is available, one run records both observation "
+        "and cost spend and writes unit-cost + cost-aware processed files.",
     )
     parser.add_argument(
         "--cost-file",
         default=None,
         help="JSON with per-arm costs (configuration index -> estimated_cost_per_1m_input_tokens). "
-        "Default depends on --bench (see DEFAULT_COST_FILES).",
+        "Default depends on --bench (see DEFAULT_COST_FILES). If present, both processed views are written.",
     )
     return parser.parse_args()
 
@@ -1128,13 +1208,7 @@ def main() -> Dict[str, Any]:
 
     data_path = args.data_path or (DEFAULT_BANDITEVAL_PICKLE_DIR if is_banditeval else "prompteval/data/")
     combine_models = args.combine_models if args.combine_models is not None else not is_banditeval
-    # GSM8K/PIQA: tag is either `_unitcost` or `_costaware` (not both).
-    if args.results_tag is not None:
-        results_tag = args.results_tag
-    elif is_banditeval:
-        results_tag = "_costaware" if args.cost_aware else "_unitcost"
-    else:
-        results_tag = ""
+    results_tag = args.results_tag if args.results_tag is not None else ""
 
     tasks_csv = args.tasks
     default_subset = None
