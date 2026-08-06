@@ -6,20 +6,20 @@ BanditEval .npy files are (n_models, n_samples): rows = models (arms), columns =
 samples. There are no prompt templates, so Xs covariate views are empty lists and BAI
 runs the baseline (X=None) path only.
 
-Output (default ``prompteval/pickle/``):
+Output (default ``prompteval/banditeval_pickle/``):
 
 - ``Ys.pickle`` — ``{"GSM8K": {task: [Y], ...}, "PIQA": {task: [Y], ...}}``
 - ``Xs.pickle`` — same keys; ``Xs[bench][task] == [[]]`` (one pseudo-LLM slot, no views)
 
 Run BAI afterward, e.g.::
 
-    python prompteval/bai_evaluation.py  # after setting data_path / bench in main()
+    python prompteval/bai_evaluation.py --bench GSM8K
 
 or::
 
     from bai_evaluation import run_bai_evaluation
     run_bai_evaluation(
-        data_path="prompteval/pickle/",
+        data_path="prompteval/banditeval_pickle/",
         bench="GSM8K",
         tasks=["various_models_seed1"],
         combine_models=False,
@@ -142,8 +142,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out-dir",
         type=Path,
-        default=Path(__file__).resolve().parent / "pickle",
-        help="Output directory for Ys.pickle and Xs.pickle (default: prompteval/pickle/).",
+        default=Path(__file__).resolve().parent / "banditeval_pickle",
+        help="Output directory for Ys.pickle and Xs.pickle (default: prompteval/banditeval_pickle/).",
     )
     p.add_argument(
         "--gsm8k-glob",

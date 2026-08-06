@@ -351,7 +351,7 @@ def main() -> int:
     is_banditeval = args.bench in ("GSM8K", "PIQA")
     combined = False if is_banditeval else not args.no_combined
     data_path = args.data_path or (
-        REPO_ROOT / "prompteval" / ("pickle" if is_banditeval else "data")
+        REPO_ROOT / "prompteval" / ("banditeval_pickle" if is_banditeval else "data")
     )
     # GSM8K/PIQA: `_unitcost` XOR `_costaware`. MMLU cost-aware: `_costaware` (+ `_combined` later).
     if args.results_tag is not None:

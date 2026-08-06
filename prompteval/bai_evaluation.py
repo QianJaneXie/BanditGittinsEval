@@ -82,7 +82,7 @@ def slice_costs_for_llm(costs: Optional[np.ndarray], n_arms: int, llm: int) -> O
 DEFAULT_TASK_SUBSET = ("abstract_algebra", "professional_law")
 
 # BanditEval GSM8K/PIQA pickles from build_banditeval_pickle.py (no prompt-template covariates).
-DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/pickle/"
+DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/banditeval_pickle/"
 
 # CLI: python prompteval/bai_evaluation.py --bench {MMLU,GSM8K,PIQA} [--tasks ...] (see parse_args / --help).
 
@@ -1132,7 +1132,7 @@ def parse_args() -> argparse.Namespace:
         default="MMLU",
         choices=["MMLU", "GSM8K", "PIQA"],
         help="Dataset/benchmark name. MMLU uses prompteval/data/ with combine_models; "
-        "GSM8K/PIQA use prompteval/pickle/ (build_banditeval_pickle.py) without.",
+        "GSM8K/PIQA use prompteval/banditeval_pickle/ (build_banditeval_pickle.py) without.",
     )
     parser.add_argument(
         "--data-path",

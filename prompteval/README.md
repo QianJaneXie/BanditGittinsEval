@@ -14,8 +14,10 @@ Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`,
 
 **Prerequisites**
 
-- `prompteval/data/Ys.pickle` — correctness matrices (15 LLMs × 100 prompt templates per subject)
+- `prompteval/data/Ys.pickle` — correctness matrices (15 LLMs × 100 prompt templates per subject; also BBH/LMentry in the same file)
 - `prompteval/data/Xs.pickle` — prompt covariates (discrete features, sentence-transformer PCA, fine-tuned BERT PCA)
+
+(`prompteval/data/` = PromptEval / MMLU-style pickles. GSM8K/PIQA live under `prompteval/banditeval_pickle/`.)
 
 Pickles keep **15 separate** `(100 × n_questions)` matrices per subject. At runtime with the default `--combine-models`, they are stacked into **1500 arms** (each arm = one `(LLM, prompt template)` pair).
 
@@ -80,7 +82,7 @@ BanditEval matrices: rows = **configurations** (arms), columns = i.i.d. question
 
 ```bash
 python prompteval/build_banditeval_pickle.py
-# writes prompteval/pickle/Ys.pickle and Xs.pickle
+# writes prompteval/banditeval_pickle/Ys.pickle and Xs.pickle
 ```
 
 Each benchmark has five tasks `various_models_seed1`…`seed5` (same questions, different LLM-query seeds).
@@ -96,7 +98,7 @@ python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1 --
 
 | Setting | Default (`--bench GSM8K` / `PIQA`) |
 |--------|--------|
-| Data | `prompteval/pickle/` |
+| Data | `prompteval/banditeval_pickle/` |
 | Tasks | all `various_models_seed1`…`seed5` |
 | Arms | 122 (GSM8K) or 103 (PIQA) configs; **no** LLM×template stacking |
 | Covariates | one-hot baseline only (`Xs` views are empty) |
