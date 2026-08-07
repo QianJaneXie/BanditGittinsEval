@@ -41,7 +41,11 @@ from sysrs_policy import make_sysrs_policy  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
 DEFAULT_PRIOR_VARIANCE = 0.04
-DATASET_PRIORS = {"gsm8k": (0.2, 0.01), "piqa": (0.3, 0.02), "alpaca": (0.1, 0.02)}
+DATASET_PRIORS = {
+    "gsm8k": (0.2, 0.01),
+    "piqa": (0.4, 0.02),
+    "alpaca": (0.2, 0.01),
+}
 MMLU_PRIOR_BY_BUCKET = {"low": (0.4, 0.02), "medium": (0.6, 0.02), "high": (0.75, 0.01)}
 DEFAULT_MMLU_TASK_METADATA = REPO_ROOT / "data" / "MMLU_matrices" / "task_metadata.json"
 
