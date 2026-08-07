@@ -163,10 +163,15 @@ Saved as a **dict** (via `np.save`):
   "aggregation": "phase_mean" | "cost_grid_hold_last",
   "n_models_stacked": int,
   "update_fields": [...],     # fields present in each raw phase update
+  "total_wall_time_s": [...], # per-run wall clock (s), same order as raw out/jobs
+  "total_wall_time_stats": {  # mean/median/std/se/min/max over those runs
+    "n", "mean_s", "median_s", "std_s", "se_s", "min_s", "max_s",
+  },
   "note": "...",
 }
 ```
 
+Wall-clock timing matches bandit runs (`total_wall_time_s`): one value per BAI evaluation job (task×seed when `--combine-models`, else llm×task×seed). Raw files store the same list + stats. Use these for timing figures alongside Gittins/UCB.
 `curves` axes:
 
 | Axis | Meaning |

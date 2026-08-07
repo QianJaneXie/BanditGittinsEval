@@ -1,8 +1,9 @@
 import argparse
 import json
 import pickle
+import time
 import warnings
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from sklearn.exceptions import ConvergenceWarning
@@ -133,6 +134,33 @@ def processed_results_tag(
     return "".join(parts)
 
 
+def summarize_wall_times(vals: Sequence[float]) -> Dict[str, Any]:
+    """Summary stats for wall-clock times (seconds), matching bandit timing plots."""
+    arr = np.asarray(vals, dtype=float)
+    arr = arr[np.isfinite(arr)]
+    if arr.size == 0:
+        return {
+            "n": 0,
+            "mean_s": None,
+            "median_s": None,
+            "std_s": None,
+            "se_s": None,
+            "min_s": None,
+            "max_s": None,
+        }
+    std = float(np.std(arr, ddof=1)) if arr.size > 1 else 0.0
+    se = float(std / np.sqrt(arr.size)) if arr.size > 1 else 0.0
+    return {
+        "n": int(arr.size),
+        "mean_s": float(np.mean(arr)),
+        "median_s": float(np.median(arr)),
+        "std_s": std,
+        "se_s": se,
+        "min_s": float(np.min(arr)),
+        "max_s": float(np.max(arr)),
+    }
+
+
 def save_bai_raw(
     path: str,
     *,
@@ -146,6 +174,7 @@ def save_bai_raw(
     n_models_stacked: int,
     out_by_task: Optional[list] = None,
     cost_file: Optional[str] = None,
+    total_wall_time_s: Optional[Sequence[float]] = None,
 ) -> None:
     payload: Dict[str, Any] = {
         "out": out,
@@ -161,11 +190,16 @@ def save_bai_raw(
         "note": (
             "Each phase update stores budget_obs (observation count) and budget_cost "
             "(cost-weighted spend when costs were loaded). Sampling is always unit-cost; "
-            "processed unitcost/costaware files are derived from the same raw out."
+            "processed unitcost/costaware files are derived from the same raw out. "
+            "total_wall_time_s is aligned with out/jobs (one wall-clock seconds value per run)."
         ),
     }
     if out_by_task is not None:
         payload["out_by_task"] = out_by_task
+    if total_wall_time_s is not None:
+        wall = [float(x) for x in total_wall_time_s]
+        payload["total_wall_time_s"] = wall
+        payload["total_wall_time_stats"] = summarize_wall_times(wall)
     np.save(path, payload)
 
 
@@ -180,6 +214,7 @@ def save_bai_processed(
     cost_aware: bool,
     n_models_stacked: int,
     raw_path: str,
+    total_wall_time_s: Optional[Sequence[float]] = None,
 ) -> None:
     if cost_aware:
         note = (
@@ -198,23 +233,25 @@ def save_bai_processed(
         )
         aggregation = "phase_mean"
         spend_field = "budget_obs"
-    np.save(
-        path,
-        {
-            "curves": curves,  # (n_tasks, n_budgets, n_blocks, 2, n_points)
-            "channels": ["simple_regret", "budget"],
-            "spend_field": spend_field,
-            "tasks": list(tasks),
-            "seeds": list(seeds),
-            "bench": bench,
-            "combine_models": combine_models,
-            "cost_aware": cost_aware,
-            "aggregation": aggregation,
-            "n_models_stacked": n_models_stacked,
-            "update_fields": UPDATE_FIELDS,
-            "note": note,
-        },
-    )
+    payload: Dict[str, Any] = {
+        "curves": curves,  # (n_tasks, n_budgets, n_blocks, 2, n_points)
+        "channels": ["simple_regret", "budget"],
+        "spend_field": spend_field,
+        "tasks": list(tasks),
+        "seeds": list(seeds),
+        "bench": bench,
+        "combine_models": combine_models,
+        "cost_aware": cost_aware,
+        "aggregation": aggregation,
+        "n_models_stacked": n_models_stacked,
+        "update_fields": UPDATE_FIELDS,
+        "note": note,
+    }
+    if total_wall_time_s is not None:
+        wall = [float(x) for x in total_wall_time_s]
+        payload["total_wall_time_s"] = wall
+        payload["total_wall_time_stats"] = summarize_wall_times(wall)
+    np.save(path, payload)
 
 
 def evaluate_bai_combined_one_seed(
@@ -226,9 +263,13 @@ def evaluate_bai_combined_one_seed(
     torch_device,
     torch_fit_log_interval: int = 0,
     costs=None,
-):
-    """One parallel worker job: BAI on an already-stacked (LLM×template) matrix for a single seed."""
+) -> Tuple[list, float]:
+    """One parallel worker job: BAI on an already-stacked (LLM×template) matrix for a single seed.
+
+    Returns ``(eval_out, total_wall_time_s)`` where wall time covers the full ``evaluate_bai`` call.
+    """
     print(f"[BAI] start task={task!r} seed={random_seed}", flush=True)
+    wall_t0 = time.perf_counter()
     out = evaluate_bai(
         Y_cat,
         xs_cat,
@@ -238,21 +279,30 @@ def evaluate_bai_combined_one_seed(
         torch_fit_log_interval=torch_fit_log_interval,
         costs=costs,
     )
-    print(f"[BAI] done  task={task!r} seed={random_seed}", flush=True)
-    return out
+    total_wall_time_s = float(time.perf_counter() - wall_t0)
+    print(
+        f"[BAI] done  task={task!r} seed={random_seed} total_wall_time_s={total_wall_time_s:.3f}",
+        flush=True,
+    )
+    return out, total_wall_time_s
 
 
 def evaluate_bai_combined_one_task(
     Ys, Xs, bench: str, task: str, random_seeds, backend, torch_device, torch_fit_log_interval: int = 0, costs=None
 ):
-    """Stack all models for one benchmark task, then run evaluate_bai for each seed (serial helper)."""
+    """Stack all models for one benchmark task, then run evaluate_bai for each seed (serial helper).
+
+    Returns ``(eval_outs, total_wall_time_s_list)``.
+    """
     Y_cat, xs_cat = combine_models_y_xs(Ys, Xs, bench, task)
     if costs is not None and costs.shape[0] != Y_cat.shape[0]:
         raise ValueError(
             f"{bench}/{task}: cost vector has {costs.shape[0]} entries but stacked Y has {Y_cat.shape[0]} arms."
         )
-    return [
-        evaluate_bai_combined_one_seed(
+    outs: List = []
+    walls: List[float] = []
+    for random_seed in random_seeds:
+        out, wt = evaluate_bai_combined_one_seed(
             Y_cat,
             xs_cat,
             task,
@@ -262,8 +312,9 @@ def evaluate_bai_combined_one_task(
             torch_fit_log_interval,
             costs=costs,
         )
-        for random_seed in random_seeds
-    ]
+        outs.append(out)
+        walls.append(wt)
+    return outs, walls
 
 
 def combine_models_y_xs(Ys, Xs, bench: str, task: str):
@@ -874,9 +925,13 @@ def run_bai_evaluation(
         tasks_in_file: Sequence[str],
         raw_path: str,
         task_stem: Optional[str] = None,
+        walls_by_task: Optional[Dict[str, Sequence[float]]] = None,
     ) -> List[str]:
         """Write unit-cost and (if costs recorded) cost-aware processed files from shared outs."""
         written: List[str] = []
+        wall_flat: Optional[List[float]] = None
+        if walls_by_task is not None:
+            wall_flat = [float(w) for t in tasks_in_file for w in walls_by_task.get(t, [])]
         modes = [False, True] if costs_recorded else [False]
         for use_cost in modes:
             curves_list = [
@@ -904,6 +959,7 @@ def run_bai_evaluation(
                 cost_aware=use_cost,
                 n_models_stacked=n_llm_ref if combine_models else 1,
                 raw_path=raw_path,
+                total_wall_time_s=wall_flat,
             )
             written.append(proc_path)
             print(
@@ -963,11 +1019,14 @@ def run_bai_evaluation(
     if combine_models:
         retained_out: Dict[str, list] = {}
         retained_jobs: Dict[str, list] = {}
+        retained_walls: Dict[str, List[float]] = {}
         for task in task_list:
             Y_cat, xs_cat = combined_by_task[task]
             jobs = [(task, seed) for seed in random_seed_list]
-            results = [
-                evaluate_bai_combined_one_seed(
+            results: List = []
+            walls: List[float] = []
+            for _, seed in jobs:
+                out, wt = evaluate_bai_combined_one_seed(
                     Y_cat,
                     xs_cat,
                     task,
@@ -977,10 +1036,17 @@ def run_bai_evaluation(
                     torch_fit_log_interval,
                     costs=costs_full,
                 )
-                for _, seed in jobs
-            ]
+                results.append(out)
+                walls.append(wt)
             retained_out[task] = results
             retained_jobs[task] = jobs
+            retained_walls[task] = walls
+            stats = summarize_wall_times(walls)
+            print(
+                f"[BAI] timing task={task!r}: median={stats['median_s']:.3f}s "
+                f"mean={stats['mean_s']:.3f}s se={stats['se_s']:.3f}s n={stats['n']}",
+                flush=True,
+            )
             # Unit-cost curves kept for the return value.
             final_curves.append(aggregate_eval_outs(results, cost_aware=False))
 
@@ -999,6 +1065,7 @@ def run_bai_evaluation(
                     n_models_stacked=n_llm_ref,
                     out_by_task=[results],
                     cost_file=cost_path,
+                    total_wall_time_s=walls,
                 )
                 raw_paths.append(raw_path)
                 proc_paths.extend(
@@ -1007,12 +1074,14 @@ def run_bai_evaluation(
                         tasks_in_file=[task],
                         raw_path=raw_path,
                         task_stem=task,
+                        walls_by_task={task: walls},
                     )
                 )
 
         if not per_task_files:
             all_out = [r for task in task_list for r in retained_out[task]]
             all_jobs = [j for task in task_list for j in retained_jobs[task]]
+            all_walls = [w for task in task_list for w in retained_walls[task]]
             out_by_task = [retained_out[task] for task in task_list]
             stem = results_file_stem(bench, raw_tag)
             raw_path = results_path + f"bai_results_{stem}.npy"
@@ -1028,21 +1097,29 @@ def run_bai_evaluation(
                 n_models_stacked=n_llm_ref,
                 out_by_task=out_by_task,
                 cost_file=cost_path,
+                total_wall_time_s=all_walls,
             )
             raw_paths = [raw_path]
             proc_paths = save_processed_views(
                 retained_out,
                 tasks_in_file=task_list,
                 raw_path=raw_path,
+                walls_by_task=retained_walls,
             )
     else:
         results_by_task: Dict[str, List] = {task: [] for task in task_list}
         jobs_by_task: Dict[str, List] = {task: [] for task in task_list}
+        walls_by_task: Dict[str, List[float]] = {task: [] for task in task_list}
         for task in task_list:
             for random_seed in random_seed_list:
                 for llm in range(len(Ys[bench][task])):
                     job = (llm, task, random_seed)
                     jobs_by_task[task].append(job)
+                    print(
+                        f"[BAI] start llm={llm} task={task!r} seed={random_seed}",
+                        flush=True,
+                    )
+                    wall_t0 = time.perf_counter()
                     results_by_task[task].append(
                         evaluate_bai(
                             Ys[bench][task][llm],
@@ -1056,7 +1133,20 @@ def run_bai_evaluation(
                             ),
                         )
                     )
+                    wt = float(time.perf_counter() - wall_t0)
+                    walls_by_task[task].append(wt)
+                    print(
+                        f"[BAI] done  llm={llm} task={task!r} seed={random_seed} "
+                        f"total_wall_time_s={wt:.3f}",
+                        flush=True,
+                    )
 
+            stats = summarize_wall_times(walls_by_task[task])
+            print(
+                f"[BAI] timing task={task!r}: median={stats['median_s']:.3f}s "
+                f"mean={stats['mean_s']:.3f}s se={stats['se_s']:.3f}s n={stats['n']}",
+                flush=True,
+            )
             final_curves.append(
                 aggregate_eval_outs(results_by_task[task], cost_aware=False)
             )
@@ -1075,6 +1165,7 @@ def run_bai_evaluation(
                     costs_recorded=costs_recorded,
                     n_models_stacked=1,
                     cost_file=cost_path,
+                    total_wall_time_s=walls_by_task[task],
                 )
                 raw_paths.append(raw_path)
                 proc_paths.extend(
@@ -1083,12 +1174,14 @@ def run_bai_evaluation(
                         tasks_in_file=[task],
                         raw_path=raw_path,
                         task_stem=task,
+                        walls_by_task={task: walls_by_task[task]},
                     )
                 )
 
         if not per_task_files:
             all_out = [r for task in task_list for r in results_by_task[task]]
             all_jobs = [j for task in task_list for j in jobs_by_task[task]]
+            all_walls = [w for task in task_list for w in walls_by_task[task]]
             stem = results_file_stem(bench, raw_tag)
             raw_path = results_path + f"bai_results_{stem}.npy"
             save_bai_raw(
@@ -1102,12 +1195,14 @@ def run_bai_evaluation(
                 costs_recorded=costs_recorded,
                 n_models_stacked=1,
                 cost_file=cost_path,
+                total_wall_time_s=all_walls,
             )
             raw_paths = [raw_path]
             proc_paths = save_processed_views(
                 results_by_task,
                 tasks_in_file=task_list,
                 raw_path=raw_path,
+                walls_by_task=walls_by_task,
             )
 
     final_results = stack_task_curves(final_curves, cost_aware=False)
