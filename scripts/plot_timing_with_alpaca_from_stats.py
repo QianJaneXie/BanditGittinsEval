@@ -31,11 +31,16 @@ GROUP_ORDER = ["GSM8K", "PIQA", "AlpacaEval", "MMLU-small", "MMLU-medium", "MMLU
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--stats-dir", type=Path, default=Path(r"outputs\figure\new_figure\final"))
-    p.add_argument("--alpaca-bandit-root", type=Path, default=Path(r"outputs\wandb_downloads_new\ucb_gittins\alpaca_0.1_0.02"))
+    p.add_argument(
+        "--alpaca-bandit-root",
+        type=Path,
+        default=Path(r"outputs\wandb_downloads_new\gittins_prior_new\merged_latest_Gs_for_2x3\alpaca"),
+        help="Alpaca UCB/Gittins summary root (paper prior: Gittins-S N(0.2, 0.01)).",
+    )
     p.add_argument("--alpaca-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\alpaca_lrf"))
     p.add_argument("--alpaca-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\alpaca_bo"))
     p.add_argument("--sysrs-root", type=Path, default=Path(r"outputs\wandb_downloads_new\sysrs"))
-    p.add_argument("--out-dir", type=Path, default=Path(r"outputs\figure\new_figure\final\timing_with_alpaca_sysrs"))
+    p.add_argument("--out-dir", type=Path, default=Path(r"outputs\figure\new_figure\final\timing"))
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--lrf-batch-size", type=int, default=32)
     p.add_argument("--scale", default="1e-4")
