@@ -7,7 +7,7 @@ For MMLU, we keep the default vague prior `N(0.5, 0.04)` as the uninformative ba
 | ---------------------------------------- | --------------- | -------------------------------------------------------------------------------- |
 | Low expected accuracy / hard subjects    | `N(0.4, 0.02)`  | Math, physics, formal logic, difficult STEM, and difficult professional subjects |
 | Medium expected accuracy                 | `N(0.6, 0.02)`  | Mixed science, medicine, economics, philosophy, and general-knowledge subjects   |
-| High expected accuracy / easier subjects | `N(0.8, 0.01)` | Many humanities, social science, policy, history, and management-style subjects  |
+| High expected accuracy / easier subjects | `N(0.75, 0.01)` | Many humanities, social science, policy, history, and management-style subjects  |
 
 
 The bucket assignment uses simple coarse thresholds based on estimated row means:
@@ -62,7 +62,7 @@ The bucket assignment uses simple coarse thresholds based on estimated row means
 - `prehistory`
 - `security_studies`
 
-## High Bucket: `N(0.8, 0.01)`
+## High Bucket: `N(0.75, 0.01)`
 
 - `jurisprudence`
 - `high_school_biology`
