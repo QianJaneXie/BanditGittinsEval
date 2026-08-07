@@ -24,11 +24,11 @@ READABLE_STYLE = {
         "png_dpi": 360,
     },
     "font": {
-        "title": 20.0,
-        "axis_label": 20.0,
+        "title": 21.0,
+        "axis_label": 22.0,
         "tick": 17.0,
         "legend": 15.5,
-        "row_label": 19.0,
+        "row_label": 20.0,
     },
     "axes": {
         "grid_alpha": 0.14,
@@ -75,7 +75,7 @@ TEXT_PRESETS = {
     "percentage_preview": {
         "row_labels": ("Unit-cost", "Cost-Aware"),
         "shared_y_label": "Simple Regret",
-        "shared_x_label": "Exhaustive Evaluation Cost (%)",
+        "shared_x_label": "Percentage of Exhaustive Evaluation Cost",
     },
 }
 
@@ -488,13 +488,13 @@ def draw_figure(
         str(text_config["shared_y_label"]),
         x=0.010,
         y=0.55,
-        fontsize=args.title_size,
+        fontsize=args.label_size,
     )
     fig.supxlabel(
         str(text_config["shared_x_label"]),
         x=0.395,
-        y=-0.01,
-        fontsize=args.title_size,
+        y=-0.04,
+        fontsize=args.label_size,
     )
     for row, text in enumerate(text_config["row_labels"]):
         axes[row, 2].text(

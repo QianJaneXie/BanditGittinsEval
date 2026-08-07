@@ -43,7 +43,7 @@ DEFAULT_COST_VECTOR = Path(
 PERCENT_XTICKS = (0.0, 5.0, 10.0)
 PERCENT_X_RIGHT = 10.5
 PERCENT_X_PAD = 0.25
-SHARED_X_LABEL_PERCENT = "Exhaustive Evaluation Cost (%)"
+SHARED_X_LABEL_PERCENT = "Percentage of Exhaustive Evaluation Cost"
 
 
 TASKS_BY_BUCKET: dict[str, list[str]] = {
@@ -443,7 +443,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--right", type=float, default=0.985)
     p.add_argument("--top", type=float, default=0.965)
     p.add_argument("--shared-y-label-x", type=float, default=0.042)
-    p.add_argument("--shared-x-label-pad-in", type=float, default=0.48)
+    p.add_argument("--shared-x-label-pad-in", type=float, default=0.58)
     # Smaller pad pulls the legend closer to the x-label (slightly upward).
     p.add_argument("--legend-pad-in", type=float, default=1.55)
     p.add_argument("--bottom-floor-in", type=float, default=1.70)

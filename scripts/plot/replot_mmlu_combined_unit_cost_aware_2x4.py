@@ -36,11 +36,11 @@ READABLE_STYLE = {
         "png_dpi": 360,
     },
     "font": {
-        "title": 20.0,
-        "axis_label": 20.0,
+        "title": 21.0,
+        "axis_label": 22.0,
         "tick": 17.0,
-        "legend": 17.0,
-        "row_label": 19.0,
+        "legend": 15.5,
+        "row_label": 20.0,
     },
     "axes": {
         "grid_alpha": 0.14,
@@ -65,7 +65,7 @@ READABLE_STYLE = {
         "shared_y_y": 0.620,
         "shared_x_x": 0.516,
         "shared_x_y": 0.195,
-        "legend_anchor_y": 0.105,
+        "legend_anchor_y": 0.160,
     },
     "uncertainty": {
         "primary_alpha": 0.10,
@@ -77,9 +77,9 @@ READABLE_STYLE = {
     "legend": {
         "handlelength": 2.6,
         "handletextpad": 0.5,
-        "columnspacing": 1.35,
+        "columnspacing": 1.15,
         "labelspacing": 0.45,
-        "ncol": 3,
+        "ncol": 6,
     },
 }
 
@@ -93,8 +93,8 @@ Y_TICKS_BY_GROUP = {
 
 TEXT_CONFIG = {
     "row_labels": ("Unit-cost", "Cost-Aware"),
-    "shared_y_label": "Simple Regret",
-    "shared_x_label": "Exhaustive Evaluation Cost (%)",
+    "shared_y_label": "Normalized Simple Regret",
+    "shared_x_label": "Percentage of Exhaustive Evaluation Cost",
     "column_titles": (
         "Easy–Small",
         "Easy–Large",
@@ -188,18 +188,21 @@ LEGEND_ORDER = [
     "bo_logei_unit",
 ]
 
-# Bottom legend: 4 rows x 3 columns (same appendix format).
-# Matplotlib fills legends column-major, so list Col1 (top→bottom), then Col2, then Col3:
-#   Col1: Gittins-S, Gittins-G, BO-PBGI, BO-LogEI(PC)
+# Bottom legend: 2 rows x 6 columns (same distribution as the GSM8K-style flat legend).
+# Matplotlib fills legends column-major, so list Col1 (top→bottom), then Col2, ...:
+#   Col1: Gittins-S, Gittins-G
 #   Col2: matching mean stops
-#   Col3: UCB-E, LRF, SySRs, ±SE
+#   Col3: BO-PBGI, BO-LogEI(PC)
+#   Col4: matching mean stops
+#   Col5: UCB-E, LRF
+#   Col6: SySRs, ±SE
 LEGEND_ENTRIES = [
     ("method", "gittins_data"),
     ("method", "gittins_default"),
-    ("method", "bo_pbgi_unit"),
-    ("method", "bo_logei_unit"),
     ("stop", "gittins_data"),
     ("stop", "gittins_default"),
+    ("method", "bo_pbgi_unit"),
+    ("method", "bo_logei_unit"),
     ("stop", "bo_pbgi_unit"),
     ("stop", "bo_logei_unit"),
     ("method", "ucb"),
@@ -541,7 +544,7 @@ def make_legend(
     stop_kinds: set[str],
     args: argparse.Namespace,
 ) -> None:
-    # Keep a fixed 4x3 column-major legend template; do not drop mid-list
+    # Keep a fixed 2x6 column-major legend template; do not drop mid-list
     # entries or Matplotlib will scramble the intended columns.
     _ = available_kinds, stop_kinds
     show_stops = not args.no_show_stopping
@@ -582,7 +585,7 @@ def make_legend(
             if not show_band:
                 continue
             handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.14))
-            labels.append(rf"$\pm${args.stderr_k:g} SE band")
+            labels.append(rf"$\pm$ {args.stderr_k:g} SE band")
 
     fig.legend(
         handles,
@@ -672,13 +675,13 @@ def plot_combined_mmlu_unit_cost_cost_aware(
         str(TEXT_CONFIG["shared_y_label"]),
         x=float(labels_cfg["shared_y_x"]),
         y=float(labels_cfg["shared_y_y"]),
-        fontsize=args.title_size,
+        fontsize=args.label_size,
     )
     fig.supxlabel(
         str(TEXT_CONFIG["shared_x_label"]),
         x=float(labels_cfg["shared_x_x"]),
         y=float(labels_cfg["shared_x_y"]),
-        fontsize=args.title_size,
+        fontsize=args.label_size,
     )
     for row, text in enumerate(TEXT_CONFIG["row_labels"]):
         axes[row, -1].text(
