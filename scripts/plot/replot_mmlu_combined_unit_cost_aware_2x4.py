@@ -311,6 +311,22 @@ def parse_args() -> argparse.Namespace:
         default=0.25,
         help="Cost-aware PromptEval raw-point bin width in full-cost percent.",
     )
+    p.add_argument(
+        "--prompteval-bo-style-extend",
+        action="store_true",
+        help=(
+            "Aggregate PromptEval like BO coverage: use a common x grid per group, "
+            "left-extend each task with its first value and right-extend with its last value."
+        ),
+    )
+    p.add_argument(
+        "--prompteval-average-initial-align",
+        action="store_true",
+        help=(
+            "For --prompteval-bo-style-extend, start each group at the average "
+            "initial PromptEval x, matching the BO average-initial alignment idea."
+        ),
+    )
     p.add_argument("--no-range", action="store_true")
     p.add_argument("--no-show-stopping", action="store_true")
     p.add_argument("--stderr-k", type=float, default=1.0)
@@ -411,6 +427,8 @@ def prompteval_aggregate(
 ) -> pd.DataFrame:
     if not selected_tasks:
         return pd.DataFrame()
+    if bool(getattr(args, "prompteval_bo_style_extend", False)):
+        return prompteval_aggregate_bo_style_extend(selected_tasks, mode, args)
     rows: list[dict[str, float | str | int]] = []
     for group, tasks in selected_tasks.items():
         for task in tasks:
@@ -438,6 +456,81 @@ def prompteval_aggregate(
     out["stderr"] = out["std"].fillna(0.0) / np.sqrt(out["count"].clip(lower=1))
     out["n_curves_total"] = out.groupby(["group", "method_kind"])["count"].transform("sum")
     return out[["group", "method_kind", "x", "mean", "stderr", "n_curves_total"]]
+
+
+def prompteval_aggregate_bo_style_extend(
+    selected_tasks: dict[str, list[str]] | None,
+    mode: str,
+    args: argparse.Namespace,
+) -> pd.DataFrame:
+    if not selected_tasks:
+        return pd.DataFrame()
+    rows: list[dict[str, float | str | int]] = []
+    for group, tasks in selected_tasks.items():
+        curves: list[tuple[np.ndarray, np.ndarray]] = []
+        for task in tasks:
+            x_raw, y = load_prompteval_curve(task, mode)
+            if x_raw.size == 0:
+                continue
+            full_cost = full_evaluation_cost(task, mode)
+            pct_full = x_raw / full_cost * 100.0
+            if mode == "aware":
+                width = float(args.prompteval_aware_bin_width_percent)
+                pct_full = (np.floor(pct_full / width) + 0.5) * width
+            x_cached = pct_full / (float(args.budget_fraction) * 100.0)
+            good = np.isfinite(x_cached) & np.isfinite(y)
+            x_cached = np.asarray(x_cached[good], dtype=float)
+            y = np.asarray(y[good], dtype=float)
+            if x_cached.size == 0:
+                continue
+            order = np.argsort(x_cached)
+            x_cached = x_cached[order]
+            y = y[order]
+            unique_x, last_idx = np.unique(x_cached, return_index=True)
+            if unique_x.size != x_cached.size:
+                # Keep the last value at duplicate x bins, matching the cached aggregate behavior.
+                tmp = pd.DataFrame({"x": x_cached, "y": y}).groupby("x", as_index=False)["y"].last()
+                x_cached = tmp["x"].to_numpy(dtype=float)
+                y = tmp["y"].to_numpy(dtype=float)
+            curves.append((x_cached, y))
+
+        if not curves:
+            continue
+        target = float(np.mean([float(x_arr[0]) for x_arr, _ in curves]))
+        raw_grid = np.asarray(sorted({float(x) for x_arr, _ in curves for x in x_arr}), dtype=float)
+        if bool(getattr(args, "prompteval_average_initial_align", False)):
+            raw_grid = raw_grid[raw_grid > target]
+            x_grid = np.concatenate([[target], raw_grid])
+        else:
+            x_grid = raw_grid
+        values: list[np.ndarray] = []
+        for x_arr, y_arr in curves:
+            if bool(getattr(args, "prompteval_average_initial_align", False)):
+                if target < float(x_arr[0]):
+                    x_arr = np.concatenate([[target], x_arr])
+                    y_arr = np.concatenate([[float(y_arr[0])], y_arr])
+                elif target > float(x_arr[0]):
+                    y0 = float(np.interp(target, x_arr, y_arr))
+                    keep = x_arr > target
+                    x_arr = np.concatenate([[target], x_arr[keep]])
+                    y_arr = np.concatenate([[y0], y_arr[keep]])
+            idx = np.searchsorted(x_arr, x_grid, side="right") - 1
+            idx = np.clip(idx, 0, len(y_arr) - 1)
+            values.append(y_arr[idx])
+        arr = np.vstack(values)
+        mean = np.nanmean(arr, axis=0)
+        std = np.nanstd(arr, axis=0, ddof=1) if arr.shape[0] > 1 else np.zeros_like(mean)
+        stderr = std / np.sqrt(arr.shape[0]) if arr.shape[0] > 0 else np.zeros_like(mean)
+        for x_value, mean_value, stderr_value in zip(x_grid, mean, stderr, strict=True):
+            rows.append({
+                "group": group,
+                "method_kind": "prompteval_bai",
+                "x": float(x_value),
+                "mean": float(mean_value),
+                "stderr": float(stderr_value),
+                "n_curves_total": int(arr.shape[0]),
+            })
+    return pd.DataFrame(rows)
 
 
 def canonical_kind(kind: str) -> str:
