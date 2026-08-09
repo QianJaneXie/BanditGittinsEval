@@ -246,6 +246,10 @@ COLOR_GITTINS_G = "tab:green"
 COLOR_SYSRS = "tab:pink"
 COLOR_BO_PBGI = "tab:olive"
 COLOR_BO_LOGEI = "tab:brown"
+COLOR_PROMPTEVAL = "tab:cyan"
+PROMPTEVAL_RESULTS_DIR = Path(
+    r"outputs\prompteval_downloads\wallclock_mmlu_gsm8k_piqa_20260807\results\formal\mmlu"
+)
 
 STYLE_BY_KIND = {
     # Match the main paper figures (2x3 / MMLU combined).
@@ -256,6 +260,7 @@ STYLE_BY_KIND = {
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 2.1, "z": 3.8},
     "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 2.1, "z": 3.4},
     "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI(PC)", "lw": 2.05, "z": 3.2},
+    "prompteval_bai": {"color": COLOR_PROMPTEVAL, "label": "PromptEval-BAI", "lw": 2.25, "z": 4.8},
 }
 
 # Bottom legend: 4 rows x 3 columns.
@@ -275,7 +280,11 @@ LEGEND_ENTRIES = [
     ("method", "ucb"),
     ("method", "lrf"),
     ("method", "sysrs"),
+    ("method", "prompteval_bai"),
     ("band", None),
+    ("blank", None),
+    ("blank", None),
+    ("blank", None),
 ]
 
 STOP_LABELS = {
@@ -312,6 +321,41 @@ def style_kind_from_cache(method_kind: str) -> str:
 
 def method_label_for_kind(kind: str, mode: str) -> str:
     return str(STYLE_BY_KIND[kind]["label"])
+
+
+def prompteval_curve_path(task: str, mode: str) -> Path:
+    suffix = "combined" if mode == "unit" else "costaware_combined"
+    return PROMPTEVAL_RESULTS_DIR / f"bai_processed_results_MMLU_{task}_{suffix}.npy"
+
+
+def load_prompteval_curve(task: str, mode: str) -> pd.DataFrame:
+    path = prompteval_curve_path(task, mode)
+    if not path.is_file():
+        return pd.DataFrame()
+    payload = np.load(path, allow_pickle=True).item()
+    curve = np.asarray(payload["curves"], dtype=float)[0, 0, 0]
+    if curve.shape[0] != 2:
+        raise ValueError(f"Unexpected PromptEval curve shape at {path}: {curve.shape}")
+    y = np.asarray(curve[0], dtype=float)
+    x = np.asarray(curve[1], dtype=float)
+    good = np.isfinite(x) & np.isfinite(y)
+    x = x[good]
+    y = y[good]
+    if x.size == 0:
+        return pd.DataFrame()
+    x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
+    return pd.DataFrame({
+        "mmlu_task": task,
+        "mode": mode,
+        "method_kind": "prompteval_bai",
+        "method_label": STYLE_BY_KIND["prompteval_bai"]["label"],
+        "x": x,
+        "mean": y,
+        "lo": y,
+        "hi": y,
+        "n_runs": 1,
+        "x_label": x_col,
+    })
 
 
 def clean_tick_label(value: float, _pos: int) -> str:
@@ -435,8 +479,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--title-size", type=float, default=14.5)
     p.add_argument("--tick-size", type=float, default=14)
     p.add_argument("--shared-label-size", type=float, default=35)
-    p.add_argument("--legend-size", type=float, default=26)
-    p.add_argument("--legend-ncol", type=int, default=3)
+    p.add_argument("--legend-size", type=float, default=22)
+    p.add_argument("--legend-ncol", type=int, default=4)
     p.add_argument("--fig-width", type=float, default=18.0)
     p.add_argument("--grid-cols", type=int, default=4)
     p.add_argument("--left", type=float, default=0.058)
@@ -877,6 +921,9 @@ def compute_panel_payload(
             "n_runs": n_runs,
             "x_label": x_col,
         }))
+    prompteval_curve = load_prompteval_curve(task, mode)
+    if not prompteval_curve.empty:
+        rows.append(prompteval_curve)
 
     curves = pd.concat(rows, ignore_index=True, sort=False) if rows else pd.DataFrame(
         columns=["mmlu_task", "mode", "method_kind", "method_label", "x", "mean", "lo", "hi", "n_runs", "x_label"]
@@ -977,7 +1024,7 @@ def draw_panel_payload(
         hi = pd.to_numeric(cg["hi"], errors="coerce").to_numpy(dtype=float)
         ax.plot(x, mean, color=style["color"], linewidth=style["lw"], zorder=style["z"])
         if args.range != "none":
-            band_alpha = 0.10 if kind.startswith("gittins_") else 0.065
+            band_alpha = 0.20 if kind.startswith("gittins_") else 0.155
             ax.fill_between(
                 x,
                 lo,
@@ -1073,6 +1120,10 @@ def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Pat
         raise FileNotFoundError(f"Missing processed cache for {task}/{mode}: {curve_path} or {meta_path}")
     curves = pd.read_csv(curve_path)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if "method_kind" not in curves.columns or "prompteval_bai" not in set(curves["method_kind"].astype(str)):
+        prompteval_curve = load_prompteval_curve(task, mode)
+        if not prompteval_curve.empty:
+            curves = pd.concat([curves, prompteval_curve], ignore_index=True, sort=False)
     out = draw_panel_payload(task, mode, curves, meta, args)
     print(f"[PLOT-CACHE] wrote {out}")
     return out
@@ -1112,8 +1163,11 @@ def legend_handles_labels(args: argparse.Namespace, mode: str) -> tuple[list[obj
         elif entry_type == "band":
             if args.range == "none":
                 continue
-            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.14))
+            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.18))
             labels.append(rf"$\pm${args.se_mult:g} SE band")
+        elif entry_type == "blank":
+            handles.append(Line2D([0], [0], color="none", linewidth=0, alpha=0))
+            labels.append("")
     return handles, labels
 
 

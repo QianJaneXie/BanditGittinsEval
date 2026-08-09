@@ -68,8 +68,8 @@ READABLE_STYLE = {
         "legend_anchor_y": 0.160,
     },
     "uncertainty": {
-        "primary_alpha": 0.10,
-        "baseline_alpha": 0.065,
+        "primary_alpha": 0.20,
+        "baseline_alpha": 0.155,
         "stop_band_alpha": 0.07,
         "stop_line_alpha": 0.70,
         "stop_linewidth": None,
@@ -79,7 +79,7 @@ READABLE_STYLE = {
         "handletextpad": 0.5,
         "columnspacing": 1.15,
         "labelspacing": 0.45,
-        "ncol": 6,
+        "ncol": 7,
     },
 }
 
@@ -170,6 +170,12 @@ METHOD_STYLE = {
         "alpha": 0.86,
         "zorder": 3.2,
     },
+    "prompteval_bai": {
+        "linewidth": 2.25,
+        "linestyle": "-",
+        "alpha": 0.94,
+        "zorder": 4.8,
+    },
 }
 
 # Map cost-aware BO kinds onto the shared legend keys used by the 2x3 figure.
@@ -186,6 +192,7 @@ LEGEND_ORDER = [
     "lrf",
     "bo_pbgi_unit",
     "bo_logei_unit",
+    "prompteval_bai",
 ]
 
 # Bottom legend: 2 rows x 6 columns (same distribution as the GSM8K-style flat legend).
@@ -208,6 +215,7 @@ LEGEND_ENTRIES = [
     ("method", "ucb"),
     ("method", "lrf"),
     ("method", "sysrs"),
+    ("method", "prompteval_bai"),
     ("band", None),
 ]
 
@@ -221,6 +229,7 @@ DISPLAY_LABEL = {
     "bo_logei_unit": "BO-LogEI(PC)",
     "bo_pbgi_cost": "BO-PBGI",
     "bo_logeipc_cost": "BO-LogEI(PC)",
+    "prompteval_bai": "PromptEval-BAI",
 }
 
 STOP_LABELS = {
@@ -247,12 +256,20 @@ DRAW_ORDER = [
     "bo_logei_unit",
     "bo_pbgi_cost",
     "bo_logeipc_cost",
+    "prompteval_bai",
 ]
 
 DEFAULT_STEM = (
     "mmlu_aggregate_2x2_{mode}_Bsmall2_Blarge8_scale1e-4_"
     "xfinal_ynone_fast_lrf_bo_xoffset_bo_after_init_with_sysrs"
 )
+
+PROMPTEVAL_RESULTS_DIR = Path(
+    r"outputs\prompteval_downloads\wallclock_mmlu_gsm8k_piqa_20260807\results\formal\mmlu"
+)
+MMLU_MATRIX_DIR = Path("data/MMLU_matrices")
+MMLU_COST_VECTOR = Path("data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json")
+_COST_VECTOR_CACHE: np.ndarray | None = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -288,6 +305,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--color-lrf", default="tab:purple")
     p.add_argument("--color-bo-pbgi", default="tab:olive")
     p.add_argument("--color-bo-logei", default="tab:brown")
+    p.add_argument("--color-prompteval", default="tab:cyan")
+    p.add_argument(
+        "--prompteval-aware-bin-width-percent",
+        type=float,
+        default=0.25,
+        help="Cost-aware PromptEval raw-point bin width in full-cost percent.",
+    )
     p.add_argument("--no-range", action="store_true")
     p.add_argument("--no-show-stopping", action="store_true")
     p.add_argument("--stderr-k", type=float, default=1.0)
@@ -330,12 +354,91 @@ def set_colors(args: argparse.Namespace) -> None:
         "bo_pbgi_cost": args.color_bo_pbgi,
         "bo_logei_unit": args.color_bo_logei,
         "bo_logeipc_cost": args.color_bo_logei,
+        "prompteval_bai": args.color_prompteval,
     }
     for kind, color in colors.items():
+        if kind == "prompteval_bai" and kind not in pg.STYLE_BY_KIND:
+            pg.STYLE_BY_KIND[kind] = {"color": color}
         if kind in pg.STYLE_BY_KIND:
             pg.STYLE_BY_KIND[kind]["color"] = color
     pg.COLOR_GITTINS_S = args.color_gittins_s
     pg.COLOR_GITTINS_G = args.color_gittins_g
+
+
+def load_mmlu_cost_vector() -> np.ndarray:
+    global _COST_VECTOR_CACHE
+    if _COST_VECTOR_CACHE is not None:
+        return _COST_VECTOR_CACHE
+    payload = json.loads(MMLU_COST_VECTOR.read_text(encoding="utf-8"))
+    _COST_VECTOR_CACHE = np.asarray(
+        [float(payload[str(i)]["estimated_cost_per_1m_input_tokens"]) for i in range(len(payload))],
+        dtype=float,
+    )
+    return _COST_VECTOR_CACHE
+
+
+def full_evaluation_cost(task: str, mode: str) -> float:
+    matrix = np.load(MMLU_MATRIX_DIR / f"{task}.npy")
+    n_arms, n_examples = int(matrix.shape[0]), int(matrix.shape[1])
+    if mode == "unit":
+        return float(n_arms * n_examples)
+    costs = load_mmlu_cost_vector()
+    if costs.size != n_arms:
+        raise ValueError(f"Cost vector length {costs.size} != n_arms {n_arms} for {task}")
+    return float(n_examples) * float(costs.sum())
+
+
+def prompteval_curve_path(task: str, mode: str) -> Path:
+    suffix = "combined" if mode == "unit" else "costaware_combined"
+    return PROMPTEVAL_RESULTS_DIR / f"bai_processed_results_MMLU_{task}_{suffix}.npy"
+
+
+def load_prompteval_curve(task: str, mode: str) -> tuple[np.ndarray, np.ndarray]:
+    path = prompteval_curve_path(task, mode)
+    if not path.is_file():
+        return np.array([]), np.array([])
+    payload = np.load(path, allow_pickle=True).item()
+    curve = np.asarray(payload["curves"], dtype=float)[0, 0, 0]
+    y = np.asarray(curve[0], dtype=float)
+    x = np.asarray(curve[1], dtype=float)
+    good = np.isfinite(x) & np.isfinite(y)
+    return x[good], y[good]
+
+
+def prompteval_aggregate(
+    selected_tasks: dict[str, list[str]] | None,
+    mode: str,
+    args: argparse.Namespace,
+) -> pd.DataFrame:
+    if not selected_tasks:
+        return pd.DataFrame()
+    rows: list[dict[str, float | str | int]] = []
+    for group, tasks in selected_tasks.items():
+        for task in tasks:
+            x_raw, y = load_prompteval_curve(task, mode)
+            if x_raw.size == 0:
+                continue
+            full_cost = full_evaluation_cost(task, mode)
+            pct_full = x_raw / full_cost * 100.0
+            if mode == "aware":
+                width = float(args.prompteval_aware_bin_width_percent)
+                pct_full = (np.floor(pct_full / width) + 0.5) * width
+            x_cached = pct_full / (float(args.budget_fraction) * 100.0)
+            for x_value, y_value in zip(x_cached, y):
+                rows.append({
+                    "group": group,
+                    "method_kind": "prompteval_bai",
+                    "x": float(x_value),
+                    "simple_regret": float(y_value),
+                })
+    if not rows:
+        return pd.DataFrame()
+    raw = pd.DataFrame(rows)
+    grouped = raw.groupby(["group", "method_kind", "x"], as_index=False)
+    out = grouped["simple_regret"].agg(["mean", "std", "count"]).reset_index()
+    out["stderr"] = out["std"].fillna(0.0) / np.sqrt(out["count"].clip(lower=1))
+    out["n_curves_total"] = out.groupby(["group", "method_kind"])["count"].transform("sum")
+    return out[["group", "method_kind", "x", "mean", "stderr", "n_curves_total"]]
 
 
 def canonical_kind(kind: str) -> str:
@@ -584,7 +687,7 @@ def make_legend(
         elif entry_type == "band":
             if not show_band:
                 continue
-            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.14))
+            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.18))
             labels.append(rf"$\pm$ {args.stderr_k:g} SE band")
 
     fig.legend(
@@ -745,6 +848,13 @@ def main() -> int:
     aware_curves, aware_stops, aware_groups = load_mode_tables(
         args.data_dir, "aware", args.aware_curve, args.aware_stop
     )
+    selected = unit_groups.get("selected_tasks") or aware_groups.get("selected_tasks")
+    unit_bai = prompteval_aggregate(selected, "unit", args)
+    aware_bai = prompteval_aggregate(selected, "aware", args)
+    if not unit_bai.empty:
+        unit_curves = pd.concat([unit_curves, unit_bai], ignore_index=True, sort=False)
+    if not aware_bai.empty:
+        aware_curves = pd.concat([aware_curves, aware_bai], ignore_index=True, sort=False)
 
     # Report x coverage before percentage conversion.
     for mode, df in (("unit", unit_curves), ("aware", aware_curves)):
@@ -757,7 +867,6 @@ def main() -> int:
             f"{pct_max:.2f}] (budget_fraction={args.budget_fraction})"
         )
 
-    selected = unit_groups.get("selected_tasks") or aware_groups.get("selected_tasks")
     fig = plot_combined_mmlu_unit_cost_cost_aware(
         unit_curves,
         aware_curves,

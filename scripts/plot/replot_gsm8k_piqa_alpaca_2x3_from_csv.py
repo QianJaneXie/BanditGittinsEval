@@ -42,8 +42,9 @@ READABLE_STYLE = {
         "y_pad_frac": 0.015,
     },
     "uncertainty": {
-        "primary_alpha": 0.10,
-        "baseline_alpha": 0.065,
+        # Stronger ±SE bands for overlap readability on the 2x3 grid.
+        "primary_alpha": 0.20,
+        "baseline_alpha": 0.155,
         "stop_band_alpha": 0.07,
         "stop_line_alpha": 0.70,
         # Mean-stop dashes use each method's solid linewidth (see METHOD_STYLE).
@@ -135,6 +136,12 @@ METHOD_STYLE = {
         "alpha": 0.86,
         "zorder": 3.2,
     },
+    "prompteval_bai": {
+        "linewidth": 2.35,
+        "linestyle": "-",
+        "alpha": 0.96,
+        "zorder": 5.5,
+    },
 }
 
 LEGEND_ORDER = [
@@ -147,19 +154,20 @@ LEGEND_ORDER = [
     "bo_logei_unit",
 ]
 
-# Linear legend order: Gittins → BO(+stops) → UCB/LRF → SySRs → SE.
+# Linear legend order: each method immediately followed by its mean-stop.
 LEGEND_ENTRIES = [
     ("method", "gittins_data"),
-    ("method", "gittins_default"),
     ("stop", "gittins_data"),
+    ("method", "gittins_default"),
     ("stop", "gittins_default"),
     ("method", "bo_pbgi_unit"),
-    ("method", "bo_logei_unit"),
     ("stop", "bo_pbgi_unit"),
+    ("method", "bo_logei_unit"),
     ("stop", "bo_logei_unit"),
     ("method", "ucb"),
     ("method", "lrf"),
     ("method", "sysrs"),
+    ("method", "prompteval_bai"),
     ("band", None),
 ]
 
@@ -179,10 +187,7 @@ def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--data-dir", type=Path, default=default_dir)
     p.add_argument("--out-dir", type=Path, default=default_dir)
-    p.add_argument(
-        "--stem",
-        default="figure_gsm8k_piqa_alpaca_2x3_B8_LRFB32_scale1e-4_sysrs",
-    )
+    p.add_argument("--stem", default="figure_gsm8k_piqa_alpaca")
     p.add_argument("--color-gittins-s", default="tab:orange")
     p.add_argument("--color-gittins-g", default="tab:green")
     p.add_argument("--color-sysrs", default="tab:pink")
@@ -190,6 +195,41 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--color-lrf", default="tab:purple")
     p.add_argument("--color-bo-pbgi", default="tab:olive")
     p.add_argument("--color-bo-logei", default="tab:brown")
+    p.add_argument("--color-prompteval", default="tab:cyan")
+    p.add_argument(
+        "--prompteval-gsm8k-results",
+        type=Path,
+        default=None,
+        help=(
+            "Optional bai_results_GSM8K.npy. When supplied, add PromptEval-BAI "
+            "to the GSM8K unit-cost and cost-aware panels."
+        ),
+    )
+    p.add_argument(
+        "--prompteval-piqa-results",
+        type=Path,
+        default=None,
+        help=(
+            "Optional bai_results_PIQA.npy. When supplied, add PromptEval-BAI "
+            "to the PIQA unit-cost and cost-aware panels."
+        ),
+    )
+    p.add_argument(
+        "--prompteval-grid-size",
+        type=int,
+        default=350,
+        help="Shared interpolation grid size for PromptEval-BAI (interp style only).",
+    )
+    p.add_argument(
+        "--prompteval-style",
+        choices=["interp", "steps"],
+        default="interp",
+        help=(
+            "interp: linear interpolate each run onto a shared dense grid (default). "
+            "steps: phase-average the raw successive-halving evaluations and draw "
+            "as a right-angle staircase (no interpolation)."
+        ),
+    )
     p.add_argument("--no-range", action="store_true")
     p.add_argument("--no-show-stopping", action="store_true")
     p.add_argument(
@@ -228,11 +268,136 @@ def set_colors(args: argparse.Namespace) -> None:
         "bo_pbgi_cost": args.color_bo_pbgi,
         "bo_logei_unit": args.color_bo_logei,
         "bo_logeipc_cost": args.color_bo_logei,
+        "prompteval_bai": args.color_prompteval,
     }
     for kind, color in colors.items():
-        pg.STYLE_BY_KIND[kind]["color"] = color
+        if kind in pg.STYLE_BY_KIND:
+            pg.STYLE_BY_KIND[kind]["color"] = color
     pg.COLOR_GITTINS_S = args.color_gittins_s
     pg.COLOR_GITTINS_G = args.color_gittins_g
+
+
+def _record_traces(value: object) -> list[list[dict[str, object]]]:
+    """Find record lists in PromptEval's nested raw-output structure."""
+    if not isinstance(value, list):
+        return []
+    if value and all(isinstance(item, dict) for item in value):
+        if all("simple_regret" in item for item in value):
+            return [value]
+        return []
+    found: list[list[dict[str, object]]] = []
+    for item in value:
+        found.extend(_record_traces(item))
+    return found
+
+
+def build_prompteval_curves(
+    path: Path | None,
+    dataset: str,
+    args: argparse.Namespace,
+) -> pd.DataFrame:
+    """Aggregate raw PromptEval trajectories for the 2x3 figure.
+
+    ``interp`` (default): interpolate every independent run onto a shared linear
+    grid, then take pointwise mean/std/SE — same rule as the other methods.
+
+    ``steps``: keep the raw successive-halving phases (typically 5), average
+    across runs at each phase index, and let the plotter draw ``steps-post``.
+    """
+    if path is None:
+        return pd.DataFrame()
+    raw = np.load(path, allow_pickle=True).item()
+    traces = _record_traces(raw.get("out"))
+    expected = len(raw.get("tasks", [])) * len(raw.get("seeds", []))
+    if expected and len(traces) != expected:
+        raise ValueError(
+            f"Expected {expected} PromptEval {dataset.upper()} traces, found {len(traces)} in {path}"
+        )
+
+    rows: list[dict[str, object]] = []
+    for cost_mode, x_key, x_axis in [
+        ("unit", "budget_obs", "cum_eval"),
+        ("aware", "budget_cost", "cum_original_cost"),
+    ]:
+        if args.prompteval_style == "steps":
+            n_phases = max((len(t) for t in traces), default=0)
+            for phase in range(n_phases):
+                xs: list[float] = []
+                ys: list[float] = []
+                for trace in traces:
+                    if phase >= len(trace):
+                        continue
+                    record = trace[phase]
+                    x = float(record[x_key])
+                    y = float(record["simple_regret"])
+                    if np.isfinite(x) and np.isfinite(y):
+                        xs.append(x)
+                        ys.append(y)
+                if not xs:
+                    continue
+                x_arr = np.asarray(xs, dtype=float)
+                y_arr = np.asarray(ys, dtype=float)
+                mean = float(np.mean(y_arr))
+                std = float(np.std(y_arr, ddof=1)) if y_arr.size > 1 else 0.0
+                n = int(y_arr.size)
+                se = float(std / np.sqrt(n)) if n > 0 else 0.0
+                xi = float(np.mean(x_arr))
+                rows.append(
+                    {
+                        "dataset": dataset,
+                        "dataset_title": dataset.upper(),
+                        "cost_mode": cost_mode,
+                        "x_axis": x_axis,
+                        "kind": "prompteval_bai",
+                        "variant": "prompteval_bai",
+                        "label": "PromptEval-BAI",
+                        "x": xi,
+                        "mean": mean,
+                        "std": std,
+                        "stderr": se,
+                        "n": n,
+                        "band_lo": mean - se,
+                        "band_hi": mean + se,
+                        "drawstyle": "steps-post",
+                    }
+                )
+            continue
+
+        run_rows: list[dict[str, float | str]] = []
+        for run_index, trace in enumerate(traces):
+            for record in trace:
+                x = float(record[x_key])
+                y = float(record["simple_regret"])
+                if np.isfinite(x) and np.isfinite(y):
+                    run_rows.append({"run_id": str(run_index), "x": x, "y": y})
+        run_df = pd.DataFrame(run_rows)
+        x_grid, mean, std, stderr, n = pg.aggregate_variant(
+            run_df,
+            "x",
+            "y",
+            args.prompteval_grid_size,
+        )
+        for xi, yi, stdi, sei, ni in zip(x_grid, mean, std, stderr, n, strict=True):
+            rows.append(
+                {
+                    "dataset": dataset,
+                    "dataset_title": dataset.upper(),
+                    "cost_mode": cost_mode,
+                    "x_axis": x_axis,
+                    "kind": "prompteval_bai",
+                    "variant": "prompteval_bai",
+                    "label": "PromptEval-BAI",
+                    "x": float(xi),
+                    "mean": float(yi),
+                    "std": float(stdi),
+                    "stderr": float(sei),
+                    "n": int(ni),
+                    "band_lo": float(yi - sei),
+                    "band_hi": float(yi + sei),
+                    "drawstyle": "default",
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def as_full_cost_percentage(
@@ -338,7 +503,7 @@ def make_legend(
             if not show_band:
                 continue
             band_name = "SE" if args.stop_band == "stderr" else "std"
-            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.14))
+            handles.append(Patch(facecolor="0.55", edgecolor="none", alpha=0.18))
             labels.append(rf"$\pm${args.stderr_k:g} {band_name} band")
 
     fig.legend(
@@ -419,6 +584,11 @@ def draw_figure(
                 x_percentage = as_full_cost_percentage(
                     kg["x"], dataset, cost_mode
                 )
+                drawstyle = "default"
+                if "drawstyle" in kg.columns:
+                    styles = kg["drawstyle"].dropna().unique().tolist()
+                    if len(styles) == 1 and styles[0] == "steps-post":
+                        drawstyle = "steps-post"
                 ax.plot(
                     x_percentage,
                     kg["mean"],
@@ -429,6 +599,7 @@ def draw_figure(
                     label=pg.STYLE_BY_KIND[kind]["label"],
                     zorder=style["zorder"],
                     solid_capstyle="round",
+                    drawstyle=drawstyle,
                 )
                 available_kinds.add(kind)
                 if not args.no_range:
@@ -437,14 +608,19 @@ def draw_figure(
                         if kind.startswith("gittins_")
                         else READABLE_STYLE["uncertainty"]["baseline_alpha"]
                     )
+                    fill_kwargs = {
+                        "color": color,
+                        "alpha": band_alpha,
+                        "linewidth": 0,
+                        "zorder": style["zorder"] - 0.8,
+                    }
+                    if drawstyle == "steps-post":
+                        fill_kwargs["step"] = "post"
                     ax.fill_between(
                         x_percentage,
                         kg["band_lo"].to_numpy(dtype=float),
                         kg["band_hi"].to_numpy(dtype=float),
-                        color=color,
-                        alpha=band_alpha,
-                        linewidth=0,
-                        zorder=style["zorder"] - 0.8,
+                        **fill_kwargs,
                     )
 
             panel_stops = (
@@ -529,12 +705,39 @@ def main() -> int:
     stops = pd.read_csv(stops_path) if stops_path.exists() else pd.DataFrame()
 
     set_colors(args)
+    pg.STYLE_BY_KIND["prompteval_bai"] = {
+        "color": args.color_prompteval,
+        "label": "PromptEval-BAI",
+        "linewidth": METHOD_STYLE["prompteval_bai"]["linewidth"],
+        "zorder": METHOD_STYLE["prompteval_bai"]["zorder"],
+    }
+    prompteval_curves = pd.concat(
+        [
+            build_prompteval_curves(
+                args.prompteval_gsm8k_results, "gsm8k", args
+            ),
+            build_prompteval_curves(
+                args.prompteval_piqa_results, "piqa", args
+            ),
+        ],
+        ignore_index=True,
+    )
+    if not prompteval_curves.empty:
+        curves = pd.concat([curves, prompteval_curves], ignore_index=True)
+        augmented_curves_path = args.out_dir / "plot_data_curves_with_prompteval.csv"
+        curves.to_csv(augmented_curves_path, index=False)
+        print(
+            "Added PromptEval-BAI: "
+            f"{prompteval_curves['n'].max()} independent matrix/seed runs "
+            "per curve point at full coverage."
+        )
+        print(f"Wrote {augmented_curves_path}")
     pg.setup_matplotlib(args)
 
     fig = draw_figure(curves, stops, args, TEXT_PRESETS["percentage_preview"])
-    suffix = "_readable_shared_axes_legend_right_percentage"
-    out_png = args.out_dir / f"{args.stem}{suffix}.png"
-    out_pdf = args.out_dir / f"{args.stem}{suffix}.pdf"
+    # Keep filenames short (e.g. figure_gsm8k_piqa_alpaca.png).
+    out_png = args.out_dir / f"{args.stem}.png"
+    out_pdf = args.out_dir / f"{args.stem}.pdf"
     fig.savefig(
         out_png,
         dpi=args.png_dpi,

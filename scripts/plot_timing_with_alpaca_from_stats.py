@@ -14,7 +14,16 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import MaxNLocator
 
 
-METHOD_ORDER = ["Gittins-S", "Gittins-G", "SySRs", "UCB-E", "LRF", "BO-PBGI", "BO-LogEI"]
+METHOD_ORDER = [
+    "Gittins-S",
+    "Gittins-G",
+    "BO-PBGI",
+    "BO-LogEI",
+    "UCB-E",
+    "LRF",
+    "SySRs",
+    "PromptEval-BAI",
+]
 METHOD_COLOR = {
     "Gittins-S": "tab:orange",
     "Gittins-G": "tab:green",
@@ -24,8 +33,76 @@ METHOD_COLOR = {
     "BO-PBGI": "tab:olive",
     "BO-LogEI": "tab:brown",
     "BO-LogEIPC": "tab:brown",
+    "PromptEval-BAI": "tab:cyan",
 }
 GROUP_ORDER = ["GSM8K", "PIQA", "AlpacaEval", "MMLU-small", "MMLU-medium", "MMLU-large"]
+
+# Size-bucket task lists used by the existing MMLU timing panels (from bandit downloads).
+MMLU_SIZE_BUCKET_TASKS = {
+    "MMLU-small": [
+        "abstract_algebra",
+        "anatomy",
+        "business_ethics",
+        "college_biology",
+        "college_chemistry",
+        "college_computer_science",
+        "college_mathematics",
+        "college_physics",
+        "computer_security",
+        "econometrics",
+        "electrical_engineering",
+        "formal_logic",
+        "global_facts",
+        "high_school_computer_science",
+        "human_sexuality",
+        "international_law",
+        "jurisprudence",
+        "machine_learning",
+        "management",
+        "medical_genetics",
+        "public_relations",
+        "us_foreign_policy",
+    ],
+    "MMLU-medium": [
+        "astronomy",
+        "clinical_knowledge",
+        "college_medicine",
+        "conceptual_physics",
+        "elementary_mathematics",
+        "high_school_biology",
+        "high_school_chemistry",
+        "high_school_european_history",
+        "high_school_geography",
+        "high_school_government_and_politics",
+        "high_school_macroeconomics",
+        "high_school_mathematics",
+        "high_school_microeconomics",
+        "high_school_physics",
+        "high_school_statistics",
+        "high_school_us_history",
+        "high_school_world_history",
+        "human_aging",
+        "logical_fallacies",
+        "marketing",
+        "moral_disputes",
+        "nutrition",
+        "philosophy",
+        "prehistory",
+        "professional_accounting",
+        "professional_medicine",
+        "security_studies",
+        "sociology",
+        "virology",
+        "world_religions",
+    ],
+    "MMLU-large": [
+        "high_school_psychology",
+        "miscellaneous",
+        "moral_scenarios",
+        "professional_law",
+        "professional_psychology",
+    ],
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,6 +117,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--alpaca-lrf-root", type=Path, default=Path(r"outputs\wandb_downloads_new\lrf\alpaca_lrf"))
     p.add_argument("--alpaca-bo-root", type=Path, default=Path(r"outputs\wandb_downloads_new\bo_baseline_5pct\alpaca_bo"))
     p.add_argument("--sysrs-root", type=Path, default=Path(r"outputs\wandb_downloads_new\sysrs"))
+    p.add_argument(
+        "--prompteval-root",
+        type=Path,
+        default=Path(
+            r"outputs\prompteval_downloads\wallclock_mmlu_gsm8k_piqa_20260807\results\formal"
+        ),
+        help="Formal PromptEval/BAI results root with total_wall_time_s in raw npy files.",
+    )
     p.add_argument("--out-dir", type=Path, default=Path(r"outputs\figure\new_figure\final\timing"))
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--lrf-batch-size", type=int, default=32)
@@ -165,6 +250,74 @@ def sysrs_final_rows(args: argparse.Namespace, mode: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _load_bai_wall_times(path: Path) -> np.ndarray:
+    raw = np.load(path, allow_pickle=True).item()
+    if "total_wall_time_s" not in raw:
+        raise KeyError(f"missing total_wall_time_s in {path}")
+    return np.asarray(raw["total_wall_time_s"], dtype=float)
+
+
+def prompteval_final_rows(args: argparse.Namespace, mode: str) -> pd.DataFrame:
+    """Add PromptEval-BAI total wall times.
+
+    One BAI run writes both unit-cost and cost-aware processed views, so the same
+    wall-clock values are used for both timing panels. Alpaca has no PromptEval
+    results yet and is left empty.
+    """
+    root = Path(args.prompteval_root)
+    rows: list[dict[str, object]] = []
+
+    for group, rel in [
+        ("GSM8K", Path("gsm8k") / "bai_results_GSM8K.npy"),
+        ("PIQA", Path("piqa") / "bai_results_PIQA.npy"),
+    ]:
+        path = root / rel
+        if not path.is_file():
+            continue
+        walls = _load_bai_wall_times(path)
+        med, se, n = center_se(pd.Series(walls), float(args.se_mult))
+        rows.append(
+            {
+                "mode": mode,
+                "group": group,
+                "batch_for_ucb_gittins": 0,
+                "method": "PromptEval-BAI",
+                "variant": "prompteval_bai",
+                "median_s": med,
+                "se_s": se,
+                "n_runs": n,
+            }
+        )
+
+    mmlu_dir = root / "mmlu"
+    for group, tasks in MMLU_SIZE_BUCKET_TASKS.items():
+        walls_list: list[float] = []
+        missing = 0
+        for task in tasks:
+            path = mmlu_dir / f"bai_results_MMLU_{task}_combined.npy"
+            if not path.is_file():
+                missing += 1
+                continue
+            walls_list.extend(_load_bai_wall_times(path).tolist())
+        if not walls_list:
+            continue
+        med, se, n = center_se(pd.Series(walls_list), float(args.se_mult))
+        rows.append(
+            {
+                "mode": mode,
+                "group": group,
+                "batch_for_ucb_gittins": 0,
+                "method": "PromptEval-BAI",
+                "variant": "prompteval_bai",
+                "median_s": med,
+                "se_s": se,
+                "n_runs": n,
+                "n_tasks_missing": missing,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def stop_wall_rows(args: argparse.Namespace, mode: str, stop_family: str) -> pd.DataFrame:
     b = int(args.batch_size)
     scale = str(args.scale)
@@ -222,6 +375,9 @@ def load_mode_stats(args: argparse.Namespace, mode: str) -> tuple[pd.DataFrame, 
     bo = pd.read_csv(base / f"total_wall_time_{mode}_minbatch_5groups_1se_bo_stop_wall_stats.csv")
     final = pd.concat([final, alpaca_final_rows(args, mode)], ignore_index=True)
     final = pd.concat([final, sysrs_final_rows(args, mode)], ignore_index=True)
+    pe = prompteval_final_rows(args, mode)
+    if not pe.empty:
+        final = pd.concat([final, pe], ignore_index=True)
     gs = pd.concat([gs, stop_wall_rows(args, mode, "gittins")], ignore_index=True)
     bo = pd.concat([bo, stop_wall_rows(args, mode, "bo")], ignore_index=True)
     return final, gs, bo
@@ -310,24 +466,42 @@ def plot_mode(args: argparse.Namespace, mode: str) -> None:
 
     fig.text(0.004, 0.55, "Time (s)", rotation="vertical", ha="center", va="center", fontsize=31)
 
-    handles: list[object] = [
+    # Matplotlib fills legend entries column-wise for ncol>1. With ncol=4,
+    # this renders four method columns:
+    # (Gittins-S, Gittins-G), (BO-PBGI, BO-LogEI/PC), (UCB-E, LRF), (SySRs, PromptEval-BAI).
+    method_handles: list[object] = [
         Patch(facecolor=METHOD_COLOR["Gittins-S"], edgecolor="black", label="Gittins-S"),
         Patch(facecolor=METHOD_COLOR["Gittins-G"], edgecolor="black", label="Gittins-G"),
-        Patch(facecolor=METHOD_COLOR["SySRs"], edgecolor="black", label="SySRs"),
-        Patch(facecolor=METHOD_COLOR["UCB-E"], edgecolor="black", label="UCB-E"),
-        Patch(facecolor=METHOD_COLOR["LRF"], edgecolor="black", label="LRF"),
         Patch(facecolor=METHOD_COLOR["BO-PBGI"], edgecolor="black", label="BO-PBGI"),
         Patch(facecolor=METHOD_COLOR["BO-LogEI"], edgecolor="black", label="BO-LogEIPC" if mode == "aware" else "BO-LogEI"),
+        Patch(facecolor=METHOD_COLOR["UCB-E"], edgecolor="black", label="UCB-E"),
+        Patch(facecolor=METHOD_COLOR["LRF"], edgecolor="black", label="LRF"),
+        Patch(facecolor=METHOD_COLOR["SySRs"], edgecolor="black", label="SySRs"),
+        Patch(facecolor=METHOD_COLOR["PromptEval-BAI"], edgecolor="black", label="PromptEval-BAI"),
+    ]
+    legend_spacer = Line2D([0], [0], color="none", linewidth=0, label="")
+    aux_handles: list[object] = [
         Line2D([0], [0], color="black", marker="D", markersize=8, linestyle="none", markerfacecolor="white", label="Gittins stop median"),
         Line2D([0], [0], color="black", marker="o", markersize=8, linestyle="none", markerfacecolor="white", label="BO stop median"),
         Line2D([0], [0], color="black", marker="_", markersize=22, linewidth=1.7, label=f"\u00b1{args.se_mult:g} SE"),
+        legend_spacer,
     ]
-    labels = [h.get_label() for h in handles]
-    fig.legend(handles, labels, loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, 0.028), fontsize=25, handlelength=2.2, columnspacing=1.32)
+    all_handles = method_handles + aux_handles
+    fig.legend(
+        all_handles,
+        [h.get_label() for h in all_handles],
+        loc="lower center",
+        ncol=6,
+        frameon=False,
+        bbox_to_anchor=(0.5, 0.028),
+        fontsize=22.5,
+        handlelength=2.2,
+        columnspacing=1.10,
+    )
     fig.subplots_adjust(left=0.050, right=0.995, top=0.80, bottom=0.28, wspace=0.34, hspace=0.07)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"total_wall_time_{mode}_minbatch_6groups_1se_with_bo_stops_sysrs"
+    stem = f"total_wall_time_{mode}_minbatch_6groups_1se_with_bo_stops_sysrs_prompteval"
     png = args.out_dir / f"{stem}.png"
     pdf = args.out_dir / f"{stem}.pdf"
     csv = args.out_dir / f"{stem}_final_stats.csv"
