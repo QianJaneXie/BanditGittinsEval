@@ -168,7 +168,6 @@ LEGEND_ENTRIES = [
     ("method", "lrf"),
     ("method", "sysrs"),
     ("method", "prompteval_bai"),
-    ("band", None),
 ]
 
 STOP_LABELS = {
@@ -350,7 +349,7 @@ def build_prompteval_curves(
                         "x_axis": x_axis,
                         "kind": "prompteval_bai",
                         "variant": "prompteval_bai",
-                        "label": "PromptEval-BAI",
+                        "label": "PromptEval",
                         "x": xi,
                         "mean": mean,
                         "std": std,
@@ -386,7 +385,7 @@ def build_prompteval_curves(
                     "x_axis": x_axis,
                     "kind": "prompteval_bai",
                     "variant": "prompteval_bai",
-                    "label": "PromptEval-BAI",
+                    "label": "PromptEval",
                     "x": float(xi),
                     "mean": float(yi),
                     "std": float(stdi),
@@ -584,14 +583,28 @@ def draw_figure(
                 x_percentage = as_full_cost_percentage(
                     kg["x"], dataset, cost_mode
                 )
+                mean = kg["mean"].to_numpy(dtype=float)
+                band_lo = kg["band_lo"].to_numpy(dtype=float)
+                band_hi = kg["band_hi"].to_numpy(dtype=float)
                 drawstyle = "default"
                 if "drawstyle" in kg.columns:
                     styles = kg["drawstyle"].dropna().unique().tolist()
                     if len(styles) == 1 and styles[0] == "steps-post":
                         drawstyle = "steps-post"
+                if (
+                    kind == "prompteval_bai"
+                    and drawstyle == "steps-post"
+                    and len(x_percentage) > 0
+                ):
+                    x_right = float(READABLE_STYLE["axes"]["x_right"])
+                    if float(x_percentage[-1]) < x_right:
+                        x_percentage = np.append(x_percentage, x_right)
+                        mean = np.append(mean, mean[-1])
+                        band_lo = np.append(band_lo, band_lo[-1])
+                        band_hi = np.append(band_hi, band_hi[-1])
                 ax.plot(
                     x_percentage,
-                    kg["mean"],
+                    mean,
                     color=color,
                     linewidth=style["linewidth"],
                     linestyle=style["linestyle"],
@@ -618,8 +631,8 @@ def draw_figure(
                         fill_kwargs["step"] = "post"
                     ax.fill_between(
                         x_percentage,
-                        kg["band_lo"].to_numpy(dtype=float),
-                        kg["band_hi"].to_numpy(dtype=float),
+                        band_lo,
+                        band_hi,
                         **fill_kwargs,
                     )
 
@@ -707,7 +720,7 @@ def main() -> int:
     set_colors(args)
     pg.STYLE_BY_KIND["prompteval_bai"] = {
         "color": args.color_prompteval,
-        "label": "PromptEval-BAI",
+        "label": "PromptEval",
         "linewidth": METHOD_STYLE["prompteval_bai"]["linewidth"],
         "zorder": METHOD_STYLE["prompteval_bai"]["zorder"],
     }
@@ -727,7 +740,7 @@ def main() -> int:
         augmented_curves_path = args.out_dir / "plot_data_curves_with_prompteval.csv"
         curves.to_csv(augmented_curves_path, index=False)
         print(
-            "Added PromptEval-BAI: "
+            "Added PromptEval: "
             f"{prompteval_curves['n'].max()} independent matrix/seed runs "
             "per curve point at full coverage."
         )

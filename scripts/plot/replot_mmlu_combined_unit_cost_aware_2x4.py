@@ -79,7 +79,7 @@ READABLE_STYLE = {
         "handletextpad": 0.5,
         "columnspacing": 1.15,
         "labelspacing": 0.45,
-        "ncol": 7,
+        "ncol": 6,
     },
 }
 
@@ -216,7 +216,6 @@ LEGEND_ENTRIES = [
     ("method", "lrf"),
     ("method", "sysrs"),
     ("method", "prompteval_bai"),
-    ("band", None),
 ]
 
 DISPLAY_LABEL = {
@@ -229,7 +228,7 @@ DISPLAY_LABEL = {
     "bo_logei_unit": "BO-LogEI(PC)",
     "bo_pbgi_cost": "BO-PBGI",
     "bo_logeipc_cost": "BO-LogEI(PC)",
-    "prompteval_bai": "PromptEval-BAI",
+    "prompteval_bai": "PromptEval",
 }
 
 STOP_LABELS = {
@@ -582,6 +581,18 @@ def draw_panel(
         color = pg.STYLE_BY_KIND[kind]["color"]
         x_pct = as_full_cost_percentage(kd["x"], args.budget_fraction)
         mean = kd["mean"].to_numpy(dtype=float)
+        stderr = (
+            kd["stderr"].to_numpy(dtype=float)
+            if "stderr" in kd.columns
+            else None
+        )
+        if kind == "prompteval_bai" and len(x_pct) > 0:
+            x_right = float(READABLE_STYLE["axes"]["x_right"])
+            if float(x_pct[-1]) < x_right:
+                x_pct = np.append(x_pct, x_right)
+                mean = np.append(mean, mean[-1])
+                if stderr is not None:
+                    stderr = np.append(stderr, stderr[-1])
         ax.plot(
             x_pct,
             mean,
@@ -592,10 +603,11 @@ def draw_panel(
             label=DISPLAY_LABEL[kind],
             zorder=style["zorder"],
             solid_capstyle="round",
+            drawstyle="steps-post" if kind == "prompteval_bai" else "default",
         )
         available.add(canonical_kind(kind))
-        if not args.no_range and "stderr" in kd.columns:
-            band = kd["stderr"].to_numpy(dtype=float) * float(args.stderr_k)
+        if not args.no_range and stderr is not None:
+            band = stderr * float(args.stderr_k)
             band_alpha = (
                 READABLE_STYLE["uncertainty"]["primary_alpha"]
                 if kind.startswith("gittins_")
@@ -609,6 +621,7 @@ def draw_panel(
                 alpha=band_alpha,
                 linewidth=0,
                 zorder=style["zorder"] - 0.8,
+                step="post" if kind == "prompteval_bai" else None,
             )
 
     available |= draw_stops(ax, stops, group, args)

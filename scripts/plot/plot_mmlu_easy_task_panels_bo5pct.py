@@ -260,7 +260,7 @@ STYLE_BY_KIND = {
     "lrf": {"color": COLOR_LRF, "label": "LRF", "lw": 2.1, "z": 3.8},
     "bo_pbgi": {"color": COLOR_BO_PBGI, "label": "BO-PBGI", "lw": 2.1, "z": 3.4},
     "bo_logei": {"color": COLOR_BO_LOGEI, "label": "BO-LogEI(PC)", "lw": 2.05, "z": 3.2},
-    "prompteval_bai": {"color": COLOR_PROMPTEVAL, "label": "PromptEval-BAI", "lw": 2.25, "z": 4.8},
+    "prompteval_bai": {"color": COLOR_PROMPTEVAL, "label": "PromptEval", "lw": 2.25, "z": 4.8},
 }
 
 # Bottom legend: 4 rows x 3 columns.
@@ -281,10 +281,6 @@ LEGEND_ENTRIES = [
     ("method", "lrf"),
     ("method", "sysrs"),
     ("method", "prompteval_bai"),
-    ("band", None),
-    ("blank", None),
-    ("blank", None),
-    ("blank", None),
 ]
 
 STOP_LABELS = {
@@ -479,8 +475,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--title-size", type=float, default=14.5)
     p.add_argument("--tick-size", type=float, default=14)
     p.add_argument("--shared-label-size", type=float, default=35)
-    p.add_argument("--legend-size", type=float, default=22)
-    p.add_argument("--legend-ncol", type=int, default=4)
+    p.add_argument("--legend-size", type=float, default=26)
+    p.add_argument("--legend-ncol", type=int, default=3)
     p.add_argument("--fig-width", type=float, default=18.0)
     p.add_argument("--grid-cols", type=int, default=4)
     p.add_argument("--left", type=float, default=0.058)
@@ -1022,7 +1018,21 @@ def draw_panel_payload(
         mean = pd.to_numeric(cg["mean"], errors="coerce").to_numpy(dtype=float)
         lo = pd.to_numeric(cg["lo"], errors="coerce").to_numpy(dtype=float)
         hi = pd.to_numeric(cg["hi"], errors="coerce").to_numpy(dtype=float)
-        ax.plot(x, mean, color=style["color"], linewidth=style["lw"], zorder=style["z"])
+        if kind == "prompteval_bai" and x_as_percent and len(x) > 0:
+            x_right = float(args.percent_x_right)
+            if float(x[-1]) < x_right:
+                x = np.append(x, x_right)
+                mean = np.append(mean, mean[-1])
+                lo = np.append(lo, lo[-1])
+                hi = np.append(hi, hi[-1])
+        ax.plot(
+            x,
+            mean,
+            color=style["color"],
+            linewidth=style["lw"],
+            zorder=style["z"],
+            drawstyle="steps-post" if kind == "prompteval_bai" else "default",
+        )
         if args.range != "none":
             band_alpha = 0.20 if kind.startswith("gittins_") else 0.155
             ax.fill_between(
@@ -1033,6 +1043,7 @@ def draw_panel_payload(
                 alpha=band_alpha,
                 linewidth=0,
                 zorder=style["z"] - 0.5,
+                step="post" if kind == "prompteval_bai" else None,
             )
 
     draw_cached_stopping(ax, stop_lines, args)
