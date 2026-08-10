@@ -319,37 +319,128 @@ def method_label_for_kind(kind: str, mode: str) -> str:
     return str(STYLE_BY_KIND[kind]["label"])
 
 
-def prompteval_curve_path(task: str, mode: str) -> Path:
-    suffix = "combined" if mode == "unit" else "costaware_combined"
-    return PROMPTEVAL_RESULTS_DIR / f"bai_processed_results_MMLU_{task}_{suffix}.npy"
+def prompteval_raw_path(task: str) -> Path:
+    """Shared raw BAI run; unit uses budget_obs, cost-aware uses budget_cost."""
+    return PROMPTEVAL_RESULTS_DIR / f"bai_results_MMLU_{task}_combined.npy"
 
 
-def load_prompteval_curve(task: str, mode: str) -> pd.DataFrame:
-    path = prompteval_curve_path(task, mode)
+def _prompteval_channel0_trace(seed_out: object) -> list[dict[str, object]] | None:
+    """Extract channel-0 phase records for one seed (matches prior processed [0,0,0])."""
+    if not isinstance(seed_out, list) or not seed_out:
+        return None
+    channels = seed_out[0] if isinstance(seed_out[0], list) else seed_out
+    if not isinstance(channels, list) or not channels:
+        return None
+    if isinstance(channels[0], list) and channels[0] and isinstance(channels[0][0], dict):
+        trace = channels[0]
+    elif isinstance(channels[0], dict):
+        trace = channels
+    else:
+        return None
+    if not all(isinstance(r, dict) and "simple_regret" in r for r in trace):
+        return None
+    return trace  # type: ignore[return-value]
+
+
+def load_prompteval_seed_curves(task: str, mode: str) -> list[tuple[np.ndarray, np.ndarray]]:
+    """One (x, y) curve per seed from raw bai_results."""
+    path = prompteval_raw_path(task)
     if not path.is_file():
-        return pd.DataFrame()
+        return []
     payload = np.load(path, allow_pickle=True).item()
-    curve = np.asarray(payload["curves"], dtype=float)[0, 0, 0]
-    if curve.shape[0] != 2:
-        raise ValueError(f"Unexpected PromptEval curve shape at {path}: {curve.shape}")
-    y = np.asarray(curve[0], dtype=float)
-    x = np.asarray(curve[1], dtype=float)
-    good = np.isfinite(x) & np.isfinite(y)
-    x = x[good]
-    y = y[good]
-    if x.size == 0:
+    x_key = "budget_obs" if mode == "unit" else "budget_cost"
+    curves: list[tuple[np.ndarray, np.ndarray]] = []
+    for seed_out in payload.get("out", []):
+        trace = _prompteval_channel0_trace(seed_out)
+        if not trace:
+            continue
+        x = np.asarray([float(r[x_key]) for r in trace], dtype=float)
+        y = np.asarray([float(r["simple_regret"]) for r in trace], dtype=float)
+        good = np.isfinite(x) & np.isfinite(y)
+        x = x[good]
+        y = y[good]
+        if x.size == 0:
+            continue
+        order = np.argsort(x)
+        x = x[order]
+        y = y[order]
+        tmp = pd.DataFrame({"x": x, "y": y}).groupby("x", as_index=False)["y"].last()
+        curves.append((tmp["x"].to_numpy(dtype=float), tmp["y"].to_numpy(dtype=float)))
+    return curves
+
+
+def _align_curve_to_average_initial(
+    x_arr: np.ndarray,
+    y_arr: np.ndarray,
+    target: float,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Match BO panel handling: left-pad / crop-or-interp to average initial x."""
+    if len(x_arr) == 0 or target > float(x_arr[-1]):
+        return None
+    if target < float(x_arr[0]):
+        x_arr = np.concatenate([[target], x_arr])
+        y_arr = np.concatenate([[float(y_arr[0])], y_arr])
+    elif target > float(x_arr[0]):
+        y0 = float(np.interp(target, x_arr, y_arr))
+        keep = x_arr > target
+        x_arr = np.concatenate([[target], x_arr[keep]])
+        y_arr = np.concatenate([[y0], y_arr[keep]])
+    return x_arr, y_arr
+
+
+def load_prompteval_curve(task: str, mode: str, args: argparse.Namespace) -> pd.DataFrame:
+    """Seed-level PromptEval with BO-style average-initial align + right-hold extend."""
+    seed_curves = load_prompteval_seed_curves(task, mode)
+    if not seed_curves:
         return pd.DataFrame()
+
+    target = float(np.mean([float(x_arr[0]) for x_arr, _ in seed_curves]))
+    aligned: list[tuple[np.ndarray, np.ndarray]] = []
+    for x_arr, y_arr in seed_curves:
+        aligned_curve = _align_curve_to_average_initial(x_arr, y_arr, target)
+        if aligned_curve is None:
+            continue
+        aligned.append(aligned_curve)
+    if not aligned:
+        return pd.DataFrame()
+
+    # Same coverage idea as BO extend_right: hold last y out to the farthest seed end.
+    max_end = max(float(x_arr[-1]) for x_arr, _ in aligned)
+    x_grid = np.asarray(
+        sorted({float(x) for x_arr, _ in aligned for x in x_arr} | {max_end}),
+        dtype=float,
+    )
+    values: list[np.ndarray] = []
+    for x_arr, y_arr in aligned:
+        if float(x_arr[-1]) < max_end - 1e-12:
+            x_arr = np.concatenate([x_arr, [max_end]])
+            y_arr = np.concatenate([y_arr, [float(y_arr[-1])]])
+        idx = np.searchsorted(x_arr, x_grid, side="right") - 1
+        idx = np.clip(idx, 0, len(y_arr) - 1)
+        values.append(y_arr[idx])
+    arr = np.vstack(values)
+    mean = np.nanmean(arr, axis=0)
+    if str(args.range) == "none":
+        lo = mean
+        hi = mean
+    else:
+        std = np.nanstd(arr, axis=0, ddof=1) if arr.shape[0] > 1 else np.zeros_like(mean)
+        se = std / np.sqrt(arr.shape[0])
+        band = float(args.se_mult) * se
+        lo = mean - band
+        hi = mean + band
+    n_runs = np.full(mean.shape, arr.shape[0], dtype=float)
     x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
     return pd.DataFrame({
         "mmlu_task": task,
         "mode": mode,
         "method_kind": "prompteval_bai",
         "method_label": STYLE_BY_KIND["prompteval_bai"]["label"],
-        "x": x,
-        "mean": y,
-        "lo": y,
-        "hi": y,
-        "n_runs": 1,
+        "x": x_grid,
+        "mean": mean,
+        "lo": lo,
+        "hi": hi,
+        "n_runs": n_runs,
         "x_label": x_col,
     })
 
@@ -917,7 +1008,7 @@ def compute_panel_payload(
             "n_runs": n_runs,
             "x_label": x_col,
         }))
-    prompteval_curve = load_prompteval_curve(task, mode)
+    prompteval_curve = load_prompteval_curve(task, mode, args)
     if not prompteval_curve.empty:
         rows.append(prompteval_curve)
 
@@ -1018,13 +1109,6 @@ def draw_panel_payload(
         mean = pd.to_numeric(cg["mean"], errors="coerce").to_numpy(dtype=float)
         lo = pd.to_numeric(cg["lo"], errors="coerce").to_numpy(dtype=float)
         hi = pd.to_numeric(cg["hi"], errors="coerce").to_numpy(dtype=float)
-        if kind == "prompteval_bai" and x_as_percent and len(x) > 0:
-            x_right = float(args.percent_x_right)
-            if float(x[-1]) < x_right:
-                x = np.append(x, x_right)
-                mean = np.append(mean, mean[-1])
-                lo = np.append(lo, lo[-1])
-                hi = np.append(hi, hi[-1])
         ax.plot(
             x,
             mean,
@@ -1124,6 +1208,22 @@ def cache_panel(task: str, mode: str, df: pd.DataFrame, stop_df: pd.DataFrame, a
     write_panel_cache(task, mode, curves, meta, args)
 
 
+def refresh_meta_ylim_from_curves(curves: pd.DataFrame, meta: dict[str, object]) -> None:
+    """Recompute panel ylim from the curves actually drawn (mean/lo/hi)."""
+    ys: list[float] = []
+    for col in ("mean", "lo", "hi"):
+        if col not in curves.columns:
+            continue
+        ys.extend(pd.to_numeric(curves[col], errors="coerce").dropna().astype(float).tolist())
+    if not ys:
+        meta["ylim"] = None
+        return
+    y_lo = float(np.min(ys))
+    y_hi = float(np.max(ys))
+    pad = 0.05 * (y_hi - y_lo) if y_hi > y_lo else max(0.01, abs(y_hi) * 0.05)
+    meta["ylim"] = [y_lo - pad, y_hi + pad]
+
+
 def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Path:
     curve_path = cache_curve_path(args, task, mode)
     meta_path = cache_meta_path(args, task, mode)
@@ -1131,10 +1231,13 @@ def plot_panel_from_cache(task: str, mode: str, args: argparse.Namespace) -> Pat
         raise FileNotFoundError(f"Missing processed cache for {task}/{mode}: {curve_path} or {meta_path}")
     curves = pd.read_csv(curve_path)
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    if "method_kind" not in curves.columns or "prompteval_bai" not in set(curves["method_kind"].astype(str)):
-        prompteval_curve = load_prompteval_curve(task, mode)
-        if not prompteval_curve.empty:
-            curves = pd.concat([curves, prompteval_curve], ignore_index=True, sort=False)
+    if "method_kind" in curves.columns:
+        curves = curves[curves["method_kind"].astype(str) != "prompteval_bai"].copy()
+    prompteval_curve = load_prompteval_curve(task, mode, args)
+    if not prompteval_curve.empty:
+        curves = pd.concat([curves, prompteval_curve], ignore_index=True, sort=False)
+    # Cached ylim predates seed-level PromptEval (+ SE); refresh so curves are not clipped.
+    refresh_meta_ylim_from_curves(curves, meta)
     out = draw_panel_payload(task, mode, curves, meta, args)
     print(f"[PLOT-CACHE] wrote {out}")
     return out
