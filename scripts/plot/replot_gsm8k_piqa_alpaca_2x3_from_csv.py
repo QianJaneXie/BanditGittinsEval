@@ -221,12 +221,12 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--prompteval-style",
-        choices=["interp", "steps"],
+        choices=["interp", "steps", "steps_avg_init"],
         default="interp",
         help=(
-            "interp: linear interpolate each run onto a shared dense grid (default). "
-            "steps: phase-average the raw successive-halving evaluations and draw "
-            "as a right-angle staircase (no interpolation)."
+            "interp: linear interpolate each run onto a shared dense grid. "
+            "steps: successive-halving phase means (typically 5 kinks; mean x, mean y). "
+            "steps_avg_init: average-initial align + step-hold/right-extend on an x-union grid."
         ),
     )
     p.add_argument("--no-range", action="store_true")
@@ -290,6 +290,101 @@ def _record_traces(value: object) -> list[list[dict[str, object]]]:
     return found
 
 
+def _align_curve_to_average_initial(
+    x_arr: np.ndarray,
+    y_arr: np.ndarray,
+    target: float,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    if len(x_arr) == 0 or target > float(x_arr[-1]):
+        return None
+    if target < float(x_arr[0]):
+        x_arr = np.concatenate([[target], x_arr])
+        y_arr = np.concatenate([[float(y_arr[0])], y_arr])
+    elif target > float(x_arr[0]):
+        y0 = float(np.interp(target, x_arr, y_arr))
+        keep = x_arr > target
+        x_arr = np.concatenate([[target], x_arr[keep]])
+        y_arr = np.concatenate([[y0], y_arr[keep]])
+    return x_arr, y_arr
+
+
+def _prompteval_steps_avg_init_rows(
+    traces: list[list[dict[str, object]]],
+    *,
+    dataset: str,
+    cost_mode: str,
+    x_key: str,
+    x_axis: str,
+) -> list[dict[str, object]]:
+    """MMLU-style PromptEval: mean-initial align, step-hold, right-extend."""
+    curves: list[tuple[np.ndarray, np.ndarray]] = []
+    for trace in traces:
+        x = np.asarray([float(r[x_key]) for r in trace], dtype=float)
+        y = np.asarray([float(r["simple_regret"]) for r in trace], dtype=float)
+        good = np.isfinite(x) & np.isfinite(y)
+        x = x[good]
+        y = y[good]
+        if x.size == 0:
+            continue
+        order = np.argsort(x)
+        x = x[order]
+        y = y[order]
+        tmp = pd.DataFrame({"x": x, "y": y}).groupby("x", as_index=False)["y"].last()
+        curves.append((tmp["x"].to_numpy(dtype=float), tmp["y"].to_numpy(dtype=float)))
+    if not curves:
+        return []
+
+    target = float(np.mean([float(x_arr[0]) for x_arr, _ in curves]))
+    aligned: list[tuple[np.ndarray, np.ndarray]] = []
+    for x_arr, y_arr in curves:
+        aligned_curve = _align_curve_to_average_initial(x_arr, y_arr, target)
+        if aligned_curve is not None:
+            aligned.append(aligned_curve)
+    if not aligned:
+        return []
+
+    max_end = max(float(x_arr[-1]) for x_arr, _ in aligned)
+    x_grid = np.asarray(
+        sorted({float(x) for x_arr, _ in aligned for x in x_arr} | {max_end}),
+        dtype=float,
+    )
+    values: list[np.ndarray] = []
+    for x_arr, y_arr in aligned:
+        if float(x_arr[-1]) < max_end - 1e-12:
+            x_arr = np.concatenate([x_arr, [max_end]])
+            y_arr = np.concatenate([y_arr, [float(y_arr[-1])]])
+        idx = np.searchsorted(x_arr, x_grid, side="right") - 1
+        idx = np.clip(idx, 0, len(y_arr) - 1)
+        values.append(y_arr[idx])
+    arr = np.vstack(values)
+    mean = np.nanmean(arr, axis=0)
+    std = np.nanstd(arr, axis=0, ddof=1) if arr.shape[0] > 1 else np.zeros_like(mean)
+    n = int(arr.shape[0])
+    se = std / np.sqrt(n) if n > 0 else np.zeros_like(mean)
+    rows: list[dict[str, object]] = []
+    for xi, yi, stdi, sei in zip(x_grid, mean, std, se, strict=True):
+        rows.append(
+            {
+                "dataset": dataset,
+                "dataset_title": dataset.upper(),
+                "cost_mode": cost_mode,
+                "x_axis": x_axis,
+                "kind": "prompteval_bai",
+                "variant": "prompteval_bai",
+                "label": "PromptEval",
+                "x": float(xi),
+                "mean": float(yi),
+                "std": float(stdi),
+                "stderr": float(sei),
+                "n": n,
+                "band_lo": float(yi - sei),
+                "band_hi": float(yi + sei),
+                "drawstyle": "steps-post",
+            }
+        )
+    return rows
+
+
 def build_prompteval_curves(
     path: Path | None,
     dataset: str,
@@ -297,11 +392,9 @@ def build_prompteval_curves(
 ) -> pd.DataFrame:
     """Aggregate raw PromptEval trajectories for the 2x3 figure.
 
-    ``interp`` (default): interpolate every independent run onto a shared linear
-    grid, then take pointwise mean/std/SE — same rule as the other methods.
-
-    ``steps``: keep the raw successive-halving phases (typically 5), average
-    across runs at each phase index, and let the plotter draw ``steps-post``.
+    ``interp``: interpolate every independent run onto a shared linear grid.
+    ``steps``: successive-halving phase means (typically 5 kinks; mean x, mean y).
+    ``steps_avg_init``: average-initial align + step-hold/right-extend on an x-union grid.
     """
     if path is None:
         return pd.DataFrame()
@@ -318,6 +411,18 @@ def build_prompteval_curves(
         ("unit", "budget_obs", "cum_eval"),
         ("aware", "budget_cost", "cum_original_cost"),
     ]:
+        if args.prompteval_style == "steps_avg_init":
+            rows.extend(
+                _prompteval_steps_avg_init_rows(
+                    traces,
+                    dataset=dataset,
+                    cost_mode=cost_mode,
+                    x_key=x_key,
+                    x_axis=x_axis,
+                )
+            )
+            continue
+
         if args.prompteval_style == "steps":
             n_phases = max((len(t) for t in traces), default=0)
             for phase in range(n_phases):
@@ -591,17 +696,6 @@ def draw_figure(
                     styles = kg["drawstyle"].dropna().unique().tolist()
                     if len(styles) == 1 and styles[0] == "steps-post":
                         drawstyle = "steps-post"
-                if (
-                    kind == "prompteval_bai"
-                    and drawstyle == "steps-post"
-                    and len(x_percentage) > 0
-                ):
-                    x_right = float(READABLE_STYLE["axes"]["x_right"])
-                    if float(x_percentage[-1]) < x_right:
-                        x_percentage = np.append(x_percentage, x_right)
-                        mean = np.append(mean, mean[-1])
-                        band_lo = np.append(band_lo, band_lo[-1])
-                        band_hi = np.append(band_hi, band_hi[-1])
                 ax.plot(
                     x_percentage,
                     mean,

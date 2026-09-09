@@ -342,18 +342,25 @@ def _prompteval_channel0_trace(seed_out: object) -> list[dict[str, object]] | No
     return trace  # type: ignore[return-value]
 
 
-def load_prompteval_seed_curves(task: str, mode: str) -> list[tuple[np.ndarray, np.ndarray]]:
-    """One (x, y) curve per seed from raw bai_results."""
+def load_prompteval_seed_traces(task: str, mode: str) -> list[list[dict[str, object]]]:
+    """One ordered successive-halving phase trace per seed (channel 0)."""
     path = prompteval_raw_path(task)
     if not path.is_file():
         return []
     payload = np.load(path, allow_pickle=True).item()
-    x_key = "budget_obs" if mode == "unit" else "budget_cost"
-    curves: list[tuple[np.ndarray, np.ndarray]] = []
+    traces: list[list[dict[str, object]]] = []
     for seed_out in payload.get("out", []):
         trace = _prompteval_channel0_trace(seed_out)
-        if not trace:
-            continue
+        if trace:
+            traces.append(trace)
+    return traces
+
+
+def load_prompteval_seed_curves(task: str, mode: str) -> list[tuple[np.ndarray, np.ndarray]]:
+    """One (x, y) curve per seed from raw bai_results."""
+    x_key = "budget_obs" if mode == "unit" else "budget_cost"
+    curves: list[tuple[np.ndarray, np.ndarray]] = []
+    for trace in load_prompteval_seed_traces(task, mode):
         x = np.asarray([float(r[x_key]) for r in trace], dtype=float)
         y = np.asarray([float(r["simple_regret"]) for r in trace], dtype=float)
         good = np.isfinite(x) & np.isfinite(y)
@@ -388,7 +395,73 @@ def _align_curve_to_average_initial(
     return x_arr, y_arr
 
 
-def load_prompteval_curve(task: str, mode: str, args: argparse.Namespace) -> pd.DataFrame:
+def load_prompteval_curve_phase_mean(
+    task: str,
+    mode: str,
+    args: argparse.Namespace,
+) -> pd.DataFrame:
+    """Single-task PromptEval: one kink per successive-halving phase (mean x, mean y)."""
+    traces = load_prompteval_seed_traces(task, mode)
+    if not traces:
+        return pd.DataFrame()
+    x_key = "budget_obs" if mode == "unit" else "budget_cost"
+    n_phases = max((len(t) for t in traces), default=0)
+    xs: list[float] = []
+    means: list[float] = []
+    los: list[float] = []
+    his: list[float] = []
+    ns: list[float] = []
+    for phase in range(n_phases):
+        phase_x: list[float] = []
+        phase_y: list[float] = []
+        for trace in traces:
+            if phase >= len(trace):
+                continue
+            x = float(trace[phase][x_key])
+            y = float(trace[phase]["simple_regret"])
+            if np.isfinite(x) and np.isfinite(y):
+                phase_x.append(x)
+                phase_y.append(y)
+        if not phase_x:
+            continue
+        x_arr = np.asarray(phase_x, dtype=float)
+        y_arr = np.asarray(phase_y, dtype=float)
+        mean = float(np.mean(y_arr))
+        if str(args.range) == "none" or y_arr.size <= 1:
+            lo = mean
+            hi = mean
+        else:
+            se = float(np.std(y_arr, ddof=1) / np.sqrt(y_arr.size))
+            band = float(args.se_mult) * se
+            lo = mean - band
+            hi = mean + band
+        xs.append(float(np.mean(x_arr)))
+        means.append(mean)
+        los.append(lo)
+        his.append(hi)
+        ns.append(float(y_arr.size))
+    if not xs:
+        return pd.DataFrame()
+    x_col = "cum_eval" if mode == "unit" else "cum_original_cost"
+    return pd.DataFrame({
+        "mmlu_task": task,
+        "mode": mode,
+        "method_kind": "prompteval_bai",
+        "method_label": STYLE_BY_KIND["prompteval_bai"]["label"],
+        "x": xs,
+        "mean": means,
+        "lo": los,
+        "hi": his,
+        "n_runs": ns,
+        "x_label": x_col,
+    })
+
+
+def load_prompteval_curve_avg_init_extend(
+    task: str,
+    mode: str,
+    args: argparse.Namespace,
+) -> pd.DataFrame:
     """Seed-level PromptEval with BO-style average-initial align + right-hold extend."""
     seed_curves = load_prompteval_seed_curves(task, mode)
     if not seed_curves:
@@ -404,7 +477,6 @@ def load_prompteval_curve(task: str, mode: str, args: argparse.Namespace) -> pd.
     if not aligned:
         return pd.DataFrame()
 
-    # Same coverage idea as BO extend_right: hold last y out to the farthest seed end.
     max_end = max(float(x_arr[-1]) for x_arr, _ in aligned)
     x_grid = np.asarray(
         sorted({float(x) for x_arr, _ in aligned for x in x_arr} | {max_end}),
@@ -443,6 +515,17 @@ def load_prompteval_curve(task: str, mode: str, args: argparse.Namespace) -> pd.
         "n_runs": n_runs,
         "x_label": x_col,
     })
+
+
+def load_prompteval_curve(task: str, mode: str, args: argparse.Namespace) -> pd.DataFrame:
+    """Per-task PromptEval for panel figures.
+
+    Cost-aware uses successive-halving phase means (typically 5 kinks: mean x, mean y).
+    Unit-cost keeps average-initial align + step-hold (usually also 5 synced obs points).
+    """
+    if mode == "aware":
+        return load_prompteval_curve_phase_mean(task, mode, args)
+    return load_prompteval_curve_avg_init_extend(task, mode, args)
 
 
 def clean_tick_label(value: float, _pos: int) -> str:
