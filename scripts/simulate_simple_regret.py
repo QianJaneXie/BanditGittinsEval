@@ -3,6 +3,7 @@
 
 Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
+- SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
 - Gittins: arm selection by Gittins index, recommendation by posterior mean E[θ_k | D_t].
 """
 
@@ -29,6 +30,7 @@ from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
+from sysrs_policy import make_sysrs_policy  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -101,9 +103,9 @@ def simulate_simple_regret(
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
 
-        pulled_arm = int(row_idx[0].item())
-        unit_cost = float(per_arm_original_cost[pulled_arm].item())
-        total_original_cost += unit_cost * float(n_batch)
+        rows = row_idx.to(dtype=torch.long)
+        total_original_cost += float(per_arm_original_cost[rows].sum().item())
+        pulled_arm = int(rows[0].item())
 
         if post_pull_fn is not None:
             post_pull_fn(obs, pulled_arm, int(evaluated))
@@ -207,7 +209,7 @@ def main() -> int:
         "--out",
         type=Path,
         required=True,
-        help="Output .npz path (will store ucb_* and gittins_* arrays).",
+        help="Output .npz path (will store ucb_*, sysrs_*, and gittins_* arrays).",
     )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
@@ -220,7 +222,12 @@ def main() -> int:
             "cumulative cost reaches this fraction of n_examples * sum_k c_k."
         ),
     )
-    p.add_argument("--batch-size", type=int, default=32, help="UCB-E batch size (examples per step).")
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=32,
+        help="UCB-E batch size (examples per step). Unused by SySRs.",
+    )
     p.add_argument(
         "--gittins-batch-size",
         type=int,
@@ -252,8 +259,8 @@ def main() -> int:
     p.add_argument(
         "--algorithms",
         nargs="+",
-        default=["ucb", "gittins"],
-        choices=["ucb", "gittins"],
+        default=["ucb", "sysrs", "gittins"],
+        choices=["ucb", "sysrs", "gittins"],
     )
     args = p.parse_args()
 
@@ -327,6 +334,44 @@ def main() -> int:
             ucb_regret=np.asarray([], dtype=np.float32),
             ucb_recommended_arm=np.asarray([], dtype=np.int32),
             ucb_recommended_mean=np.asarray([], dtype=np.float32),
+        )
+
+    if "sysrs" in args.algorithms:
+        # Plan SySRs against the cell budget fraction (same as unit-cost max_evaluations).
+        planned_budget = int(
+            max(1, round(float(args.eval_budget_fraction) * n_arms * n_examples))
+        )
+        sysrs_step, sysrs_recommend, sysrs_state = make_sysrs_policy(
+            n_arms=n_arms,
+            n_examples=n_examples,
+            planned_budget=planned_budget,
+            seed=int(args.seed),
+        )
+        tr = simulate_simple_regret(
+            ground_truth=ground_truth,
+            step=sysrs_step,
+            step_kwargs={},
+            seed=int(args.seed),
+            max_evaluations=max_evaluations,
+            per_arm_original_cost=per_arm_original_cost,
+            max_original_cost=max_original_cost,
+            recommend_fn=sysrs_recommend,
+        )
+        out.update(
+            sysrs_x=np.asarray(tr.x, dtype=np.int32),
+            sysrs_x_original_cost=np.asarray(tr.x_original_cost, dtype=np.float64),
+            sysrs_regret=np.asarray(tr.regret, dtype=np.float32),
+            sysrs_recommended_arm=np.asarray(tr.recommended_arm, dtype=np.int32),
+            sysrs_recommended_mean=np.asarray(tr.recommended_mean, dtype=np.float32),
+            sysrs_planned_budget=np.asarray(sysrs_state.planned_budget, dtype=np.int32),
+        )
+    else:
+        out.update(
+            sysrs_x=np.asarray([], dtype=np.int32),
+            sysrs_x_original_cost=np.asarray([], dtype=np.float64),
+            sysrs_regret=np.asarray([], dtype=np.float32),
+            sysrs_recommended_arm=np.asarray([], dtype=np.int32),
+            sysrs_recommended_mean=np.asarray([], dtype=np.float32),
         )
 
     if "gittins" in args.algorithms:

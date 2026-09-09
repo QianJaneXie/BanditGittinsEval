@@ -246,6 +246,18 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
             prior_type="default",
         )
         return out
+    if v in {"sysrs", "sysrs_cost", "sysrs_aware"}:
+        cost_mode = "cost" if v != "sysrs" else "baseline"
+        out.update(
+            policy_variant="sysrs_cost" if cost_mode == "cost" else "sysrs",
+            policy_family="sysrs",
+            cost_mode=cost_mode if cost_mode == "cost" else "baseline",
+            batch_size=0,
+            gittins_batch_size=0,
+            cost_scaling_factor=1e-4,
+            prior_type="default",
+        )
+        return out
     m = re.fullmatch(r"gittins_(unit|cost|aware)_B(\d+)_scale([0-9.eE+-]+)_(default|dataset)", v)
     if m:
         cost_mode = m.group(1)
@@ -700,7 +712,7 @@ def scan_history_with_retry(run: wandb.apis.public.Run, *, page_size: int, retri
     last_err: Exception | None = None
     for attempt in range(1, int(retries) + 1):
         try:
-            return [dict(h) for h in run.scan_history(keys=HISTORY_KEYS, page_size=page_size)]
+            return [dict(h) for h in run.scan_history(page_size=page_size)]
         except Exception as e:
             last_err = e
             wait = float(sleep_s) * attempt
@@ -1094,7 +1106,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--entity", required=True)
     p.add_argument("--project", required=True)
     p.add_argument("--sweep-id", required=True)
-    p.add_argument("--dataset", choices=["auto", "gsm8k", "piqa", "mmlu"], default="auto")
+    p.add_argument(
+        "--dataset",
+        choices=["auto", "gsm8k", "piqa", "alpaca", "mmlu"],
+        default="auto",
+    )
     p.add_argument("--mmlu-size-bucket", choices=["all", "small", "medium", "large"], default="all")
     p.add_argument("--task-metadata", type=Path, default=None)
     p.add_argument("--raw-dir", "--out-dir", dest="raw_dir", required=True, type=Path)

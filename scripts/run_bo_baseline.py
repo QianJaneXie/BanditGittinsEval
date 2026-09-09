@@ -60,8 +60,9 @@ DOMINANT_DIM_COL_BY_DATASET: dict[str, int] = {
     "gsm8k": 0,  # model_id
     "piqa": 0,  # model_id
     "mmlu": 1,  # prompt_idx
+    "alpaca": 0,  # model_idx
 }
-INIT_BUDGET_FRACTION = 0.4
+INIT_BUDGET_FRACTION = 0.5
 
 
 def dominant_dimension_count(X_np: np.ndarray, dataset: str) -> int:
@@ -149,7 +150,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=(
             "Number of random initial configurations. Defaults to "
-            "min(dominant dimension, 40% of eval_budget_fraction * n_configs). "
+            "min(dominant dimension, 50% of eval_budget_fraction * n_configs). "
             "Dominant dimension is model_id for GSM8K/PIQA and prompt_idx for MMLU."
         ),
     )

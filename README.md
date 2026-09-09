@@ -27,10 +27,11 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | Policy | Selection | Recommendation |
 |--------|-----------|----------------|
 | UCB-E | UCB bound | Empirical mean |
+| SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
 | Gittins | Gittins index | Posterior mean \(E[\theta_k \mid D_t]\) |
 
-`simulate_simple_regret.py` runs UCB-E and Gittins (`--algorithms ucb gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`).
+`simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
 
 **Common flags** — run any script with `--help` for the full list:
 
@@ -113,7 +114,7 @@ Combine bandit and BayesOpt traces with `plot_bandit_bo_comparison.py` (pass `--
 |--------|---------|
 | `simulate_simple_regret.py` | Run UCB-E / Gittins; save trace `.npz` |
 | `plot_simple_regret_results.py` | Plot regret from a trace bundle |
-| `plot_arm_eval_rollouts.py` | Per-arm batch-pull rollouts (re-simulates from traces) |
+| `plot_arm_eval_rollouts.py` | Per-arm batch-pull rollouts for UCB-E / SySRs / Gittins (re-simulates from traces) |
 | `run_bo_baseline.py` | BayesOpt baselines on `data/bo_inputs/*.npz` |
 | `plot_bandit_bo_comparison.py` | Overlay bandit + BO curves |
 | `convert_matrix_to_bo_inputs.py` | Build BO input files from a matrix |
@@ -132,18 +133,18 @@ BayesOpt runs on configuration-level inputs (`data/bo_inputs/*.npz`), not matrix
 **Random initialization.** Unless `--n-init` is set, the number of initial arms is
 
 \[
-n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.4 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
+n_{\mathrm{init}} = \min\bigl(d,\; \mathrm{round}(0.5 \times \texttt{eval\_budget\_fraction} \times n_{\mathrm{configs}})\bigr),
 \]
 
-where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
+where \(d\) is the **dominant dimension**: unique `model_id` levels for GSM8K/PIQA, unique `prompt_idx` levels for MMLU. With the default `eval_budget_fraction = 0.1`, the budget cap is **5%** of \(n_{\mathrm{configs}}\). Initial arms are sampled uniformly at random without replacement (not necessarily one per dominant level).
 
 At the default 10% budget:
 
 | Dataset | \(d\) | \(n_{\mathrm{configs}}\) | Default \(n_{\mathrm{init}}\) | BO steps after init |
 |---------|------|---------------------------|-------------------------------|---------------------|
-| GSM8K | 11 models | 122 | 5 | 7 |
-| PIQA | 11 models | 103 | 4 | 6 |
-| MMLU | 100 prompts | 1500 | 60 | 90 |
+| GSM8K | 11 models | 122 | 6 | 6 |
+| PIQA | 11 models | 103 | 5 | 5 |
+| MMLU | 100 prompts | 1500 | 75 | 75 |
 
 Override with `--n-init`. See **Examples** above for GSM8K and MMLU commands.
 
