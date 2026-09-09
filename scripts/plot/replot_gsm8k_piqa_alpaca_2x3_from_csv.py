@@ -226,7 +226,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "interp: linear interpolate each run onto a shared dense grid. "
             "steps: successive-halving phase means (typically 5 kinks; mean x, mean y). "
-            "steps_avg_init: average-initial align + step-hold/right-extend on an x-union grid."
+            "steps_avg_init: average-initial align + step-hold/right-extend to the fixed 10%% budget."
         ),
     )
     p.add_argument("--no-range", action="store_true")
@@ -316,7 +316,13 @@ def _prompteval_steps_avg_init_rows(
     x_key: str,
     x_axis: str,
 ) -> list[dict[str, object]]:
-    """MMLU-style PromptEval: mean-initial align, step-hold, right-extend."""
+    """BO-style PromptEval aggregation on the fixed 10% budget interval.
+
+    Align every seed to the mean initial budget, holding its first value to
+    the left when necessary.  At the right boundary, crop observations after
+    10% of exhaustive evaluation and hold each seed's last available value
+    through that common endpoint before averaging across seeds.
+    """
     curves: list[tuple[np.ndarray, np.ndarray]] = []
     for trace in traces:
         x = np.asarray([float(r[x_key]) for r in trace], dtype=float)
@@ -343,15 +349,28 @@ def _prompteval_steps_avg_init_rows(
     if not aligned:
         return []
 
-    max_end = max(float(x_arr[-1]) for x_arr, _ in aligned)
+    budget_end = 0.10 * float(FULL_EVALUATION_COST[dataset][cost_mode])
     x_grid = np.asarray(
-        sorted({float(x) for x_arr, _ in aligned for x in x_arr} | {max_end}),
+        sorted(
+            {
+                float(x)
+                for x_arr, _ in aligned
+                for x in x_arr
+                if float(x) <= budget_end
+            }
+            | {budget_end}
+        ),
         dtype=float,
     )
     values: list[np.ndarray] = []
     for x_arr, y_arr in aligned:
-        if float(x_arr[-1]) < max_end - 1e-12:
-            x_arr = np.concatenate([x_arr, [max_end]])
+        keep = x_arr <= budget_end
+        x_arr = x_arr[keep]
+        y_arr = y_arr[keep]
+        if x_arr.size == 0:
+            continue
+        if float(x_arr[-1]) < budget_end - 1e-12:
+            x_arr = np.concatenate([x_arr, [budget_end]])
             y_arr = np.concatenate([y_arr, [float(y_arr[-1])]])
         idx = np.searchsorted(x_arr, x_grid, side="right") - 1
         idx = np.clip(idx, 0, len(y_arr) - 1)
@@ -394,7 +413,7 @@ def build_prompteval_curves(
 
     ``interp``: interpolate every independent run onto a shared linear grid.
     ``steps``: successive-halving phase means (typically 5 kinks; mean x, mean y).
-    ``steps_avg_init``: average-initial align + step-hold/right-extend on an x-union grid.
+    ``steps_avg_init``: average-initial align + step-hold/right-extend to the fixed 10% budget.
     """
     if path is None:
         return pd.DataFrame()
@@ -425,6 +444,7 @@ def build_prompteval_curves(
 
         if args.prompteval_style == "steps":
             n_phases = max((len(t) for t in traces), default=0)
+            phase_rows: list[dict[str, object]] = []
             for phase in range(n_phases):
                 xs: list[float] = []
                 ys: list[float] = []
@@ -446,7 +466,7 @@ def build_prompteval_curves(
                 n = int(y_arr.size)
                 se = float(std / np.sqrt(n)) if n > 0 else 0.0
                 xi = float(np.mean(x_arr))
-                rows.append(
+                phase_rows.append(
                     {
                         "dataset": dataset,
                         "dataset_title": dataset.upper(),
@@ -465,6 +485,13 @@ def build_prompteval_curves(
                         "drawstyle": "steps-post",
                     }
                 )
+            budget_end = 0.10 * float(FULL_EVALUATION_COST[dataset][cost_mode])
+            phase_rows = [row for row in phase_rows if float(row["x"]) <= budget_end]
+            if phase_rows and float(phase_rows[-1]["x"]) < budget_end:
+                endpoint = dict(phase_rows[-1])
+                endpoint["x"] = budget_end
+                phase_rows.append(endpoint)
+            rows.extend(phase_rows)
             continue
 
         run_rows: list[dict[str, float | str]] = []
