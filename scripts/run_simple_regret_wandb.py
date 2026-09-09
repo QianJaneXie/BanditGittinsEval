@@ -188,6 +188,39 @@ def load_mmlu_task_prior_buckets(path: Path | None) -> dict[str, str]:
     }
 
 
+def empirical_bayes_warm_start(
+    ground_truth: torch.Tensor,
+    *,
+    batch_size: int,
+    seed: int,
+) -> tuple[float, torch.Tensor]:
+    """Return a shared plug-in prior mean and one paired warm batch.
+
+    Every arm is evaluated on the same seeded set of example columns.  The
+    shared prior mean gives every arm equal weight: first average within each
+    arm's warm batch, then average those arm means.  The caller is responsible
+    for putting these observations into the posterior exactly once and for
+    charging them to the evaluation budget.
+    """
+    if ground_truth.ndim != 2:
+        raise ValueError("ground_truth must be a two-dimensional arm-by-example matrix")
+    n_arms, n_examples = map(int, ground_truth.shape)
+    if n_arms <= 0 or n_examples <= 0:
+        raise ValueError("ground_truth must contain at least one arm and one example")
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    if batch_size > n_examples:
+        raise ValueError(
+            f"warm-start batch size {batch_size} exceeds {n_examples} available examples"
+        )
+
+    rng = np.random.RandomState(int(seed))
+    columns_np = rng.permutation(n_examples)[: int(batch_size)].astype(np.int64)
+    columns = torch.tensor(columns_np, dtype=torch.long, device=ground_truth.device)
+    arm_warm_means = ground_truth[:, columns].mean(dim=1)
+    return float(arm_warm_means.mean().item()), columns
+
+
 def build_policy(
     *,
     variant: VariantConfig,
@@ -367,6 +400,7 @@ def run_simple_regret_experiment(
     max_original_cost: float | None,
     run: wandb.sdk.wandb_run.Run | None,
     log_step_metrics: bool,
+    warm_start_columns: torch.Tensor | None = None,
 ) -> dict[str, Any]:
     n_cells = int(ground_truth.numel())
     natural_stop_holder: list[int | None] = [None]
@@ -404,6 +438,56 @@ def run_simple_regret_experiment(
     recommendation_aware_stop_cum_original_cost: float | None = None
     evaluated = 0
     total_cost = 0.0
+
+    if warm_start_columns is not None:
+        columns = warm_start_columns.to(dtype=torch.long, device=ground_truth.device)
+        if columns.ndim != 1 or int(columns.numel()) != int(variant.gittins_batch_size):
+            raise ValueError("warm_start_columns must contain exactly one Gittins batch")
+        if torch.unique(columns).numel() != columns.numel():
+            raise ValueError("warm_start_columns must be unique")
+
+        rows = torch.arange(ground_truth.shape[0], dtype=torch.long, device=ground_truth.device)
+        warm_rows = rows.repeat_interleave(columns.numel())
+        warm_cols = columns.repeat(rows.numel())
+        warm_evals = int(warm_rows.numel())
+        warm_cost = float(original_cost_per_arm[warm_rows].sum().item())
+        if warm_evals > int(max_evaluations):
+            raise RuntimeError(
+                f"empirical-Bayes warm start needs {warm_evals} evaluations, "
+                f"exceeding the evaluation cap {max_evaluations}"
+            )
+        if max_original_cost is not None and warm_cost > float(max_original_cost):
+            raise RuntimeError(
+                f"empirical-Bayes warm start costs {warm_cost:.6g}, "
+                f"exceeding the cost cap {float(max_original_cost):.6g}"
+            )
+
+        obs[warm_rows, warm_cols] = ground_truth[warm_rows, warm_cols]
+        evaluated = warm_evals
+        total_cost = warm_cost
+        arm, mus = recommend_fn(obs, None)
+        simple_regret = mu_star - float(true_means[arm].item())
+        history["x"].append(int(evaluated))
+        history["x_original_cost"].append(float(total_cost))
+        history["regret"].append(float(simple_regret))
+        history["recommended_arm"].append(int(arm))
+        history["recommended_mean"].append(float(mus[arm].item()))
+        history["pulled_arm"].append(-1)
+
+        if run is not None and log_step_metrics:
+            run.log(
+                {
+                    "cum_eval": int(evaluated),
+                    "cum_original_cost": float(total_cost),
+                    "simple_regret": float(simple_regret),
+                    "recommended_arm": int(arm),
+                    "recommended_mean": float(mus[arm].item()),
+                    "pulled_arm": -1,
+                    "pulled_arms_json": json.dumps(list(range(int(ground_truth.shape[0])))),
+                    "n_pulled_arms": int(ground_truth.shape[0]),
+                    "initialization": "empirical_bayes_warm_start",
+                }
+            )
 
     while evaluated < max_evaluations:
         out = step_fn(obs, evaluated)
@@ -501,6 +585,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gittins-obs-noise-variance", "--gittins_obs_noise_variance", type=float, default=None)
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument(
+        "--gittins-empirical-bayes-warm-start",
+        "--gittins_empirical_bayes_warm_start",
+        action="store_true",
+        help=(
+            "Before adaptive Gittins allocation, pull one shared example batch on every arm, "
+            "set the common prior mean to the equally weighted mean of arm warm-batch means, "
+            "and count that batch toward the evaluation/cost budget."
+        ),
+    )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
     p.add_argument("--no-log-step-metrics", "--no_log_step_metrics", dest="log_step_metrics", action="store_false")
@@ -564,6 +658,32 @@ def main() -> int:
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
 
+    warm_start_columns: torch.Tensor | None = None
+    if args.gittins_empirical_bayes_warm_start:
+        if variant.policy_family != "gittins":
+            print("--gittins-empirical-bayes-warm-start requires a Gittins variant.", file=sys.stderr)
+            return 1
+        if args.gittins_prior_mean is not None:
+            print(
+                "--gittins-prior-mean cannot be combined with the empirical-Bayes warm start; "
+                "the warm batch determines the prior mean.",
+                file=sys.stderr,
+            )
+            return 1
+        prior_mean, warm_start_columns = empirical_bayes_warm_start(
+            ground_truth,
+            batch_size=int(variant.gittins_batch_size),
+            seed=int(args.run_seed),
+        )
+        if args.gittins_prior_variance is None:
+            prior_variance = DEFAULT_PRIOR_VARIANCE
+        prior_source = "empirical_bayes_uniform_one_pull"
+        prior_bucket = None
+
+    reported_experiment_variant = (
+        f"{variant.raw}_ebwarm" if warm_start_columns is not None else variant.raw
+    )
+
     matrix_seed = re.search(r"seed(\d+)", args.matrix.stem)
     matrix_seed = matrix_seed.group(1) if matrix_seed else None
     size_bucket = "small" if n_examples <= 150 else "medium" if n_examples <= 400 else "large"
@@ -574,7 +694,9 @@ def main() -> int:
         if dataset_tag == "mmlu" and mmlu_task
         else f"seed{matrix_seed}" if matrix_seed else "seedNA"
     )
-    run_name = args.wandb_name or f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
+    run_name = args.wandb_name or (
+        f"{dataset_tag}_{matrix_seed_label}_{reported_experiment_variant}_runseed{args.run_seed}"
+    )
     group = args.wandb_group or f"{dataset_tag}_simple_regret_sweep"
 
     run: wandb.sdk.wandb_run.Run | None = None
@@ -603,6 +725,21 @@ def main() -> int:
                 "prior_variance_resolved": prior_variance,
                 "prior_bucket": prior_bucket,
                 "prior_source": prior_source,
+                "warm_start_enabled": bool(warm_start_columns is not None),
+                "warm_start_batch_size_per_arm": (
+                    int(warm_start_columns.numel()) if warm_start_columns is not None else 0
+                ),
+                "warm_start_total_evaluations": (
+                    int(n_arms * warm_start_columns.numel())
+                    if warm_start_columns is not None
+                    else 0
+                ),
+                "warm_start_columns_json": (
+                    json.dumps(warm_start_columns.cpu().tolist())
+                    if warm_start_columns is not None
+                    else None
+                ),
+                "experiment_variant": reported_experiment_variant,
                 "mmlu_task": mmlu_task,
                 "mmlu_size_bucket": size_bucket,
             },
@@ -623,6 +760,7 @@ def main() -> int:
             max_original_cost=max_original_cost,
             run=run,
             log_step_metrics=bool(args.log_step_metrics),
+            warm_start_columns=warm_start_columns,
         )
     except RuntimeError as exc:
         print(str(exc), file=sys.stderr)
@@ -652,11 +790,20 @@ def main() -> int:
                 "prior_variance_resolved": float(prior_variance),
                 "prior_bucket": prior_bucket,
                 "prior_source": prior_source,
+                "warm_start_enabled": bool(warm_start_columns is not None),
+                "warm_start_batch_size_per_arm": (
+                    int(warm_start_columns.numel()) if warm_start_columns is not None else 0
+                ),
+                "warm_start_total_evaluations": (
+                    int(n_arms * warm_start_columns.numel())
+                    if warm_start_columns is not None
+                    else 0
+                ),
                 "mmlu_task": mmlu_task,
                 "mmlu_size_bucket": size_bucket,
                 "matrix_seed": matrix_seed,
                 "run_seed": int(args.run_seed),
-                "experiment_variant": variant.raw,
+                "experiment_variant": reported_experiment_variant,
                 "gittins_stop_cum_eval": result["natural_stop_cum_eval"],
                 "gittins_stop_cum_original_cost": result["natural_stop_cum_original_cost"],
                 "gittins_recommendation_aware_stop_cum_eval": result["recommendation_aware_stop_cum_eval"],

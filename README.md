@@ -40,6 +40,15 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 - `--gittins-prior-mean` / `--gittins-prior-variance` — Gittins prior; MMLU bucket priors in [`docs/mmlu_prior_buckets.md`](docs/mmlu_prior_buckets.md).
 - `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
 
+### Empirical-Bayes Gittins warm start
+
+`run_simple_regret_wandb.py` supports `--gittins-empirical-bayes-warm-start`.
+It first pulls one shared Gittins batch on every arm, estimates one common prior
+mean from the equally weighted arm batch means, and then continues adaptive
+allocation. The warm observations count toward both evaluation and cost budgets
+and are applied to each posterior once. These runs use the `_ebwarm` experiment-
+variant suffix so that they cannot be mixed accidentally with fixed-prior runs.
+
 ## Examples
 
 Two representative benchmarks below. Swap paths for any other matrix in `data/`.

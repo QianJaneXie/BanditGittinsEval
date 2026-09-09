@@ -485,12 +485,6 @@ def build_prompteval_curves(
                         "drawstyle": "steps-post",
                     }
                 )
-            budget_end = 0.10 * float(FULL_EVALUATION_COST[dataset][cost_mode])
-            phase_rows = [row for row in phase_rows if float(row["x"]) <= budget_end]
-            if phase_rows and float(phase_rows[-1]["x"]) < budget_end:
-                endpoint = dict(phase_rows[-1])
-                endpoint["x"] = budget_end
-                phase_rows.append(endpoint)
             rows.extend(phase_rows)
             continue
 
