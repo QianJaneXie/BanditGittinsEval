@@ -41,6 +41,7 @@ from sysrs_policy import make_sysrs_policy  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
 DEFAULT_PRIOR_VARIANCE = 0.04
+MIN_ESTIMATED_PRIOR_VARIANCE = 1e-8
 DATASET_PRIORS = {
     "gsm8k": (0.2, 0.01),
     "piqa": (0.4, 0.02),
@@ -312,14 +313,20 @@ def build_policy(
     dp_costs_per_arm = (
         decision_cost_per_arm.to(torch.float32).numpy() * float(variant.cost_scaling_factor)
     ).astype(np.float32)
+    unique_dp_costs, cost_inverse = np.unique(dp_costs_per_arm, return_inverse=True)
+    roots_unique = np.asarray(
+        compute_roots_lookup_table(
+            transition_stds=transition_stds,
+            costs_per_arm=(
+                unique_dp_costs[0] if unique_dp_costs.size == 1 else unique_dp_costs
+            ),
+            n_points=int(args.gittins_grid_points),
+        )
+    )
+    if roots_unique.ndim == 1:
+        roots_unique = roots_unique[np.newaxis, :]
     roots_torch = torch.tensor(
-        np.array(
-            compute_roots_lookup_table(
-                transition_stds=transition_stds,
-                costs_per_arm=dp_costs_per_arm,
-                n_points=int(args.gittins_grid_points),
-            )
-        ),
+        roots_unique[cost_inverse],
         dtype=torch.float32,
     )
     lookup_table_s = float(time.perf_counter() - t0)
@@ -438,6 +445,7 @@ def run_simple_regret_experiment(
     recommendation_aware_stop_cum_original_cost: float | None = None
     evaluated = 0
     total_cost = 0.0
+    duplicate_observation_count = 0
 
     if warm_start_columns is not None:
         columns = warm_start_columns.to(dtype=torch.long, device=ground_truth.device)
@@ -503,11 +511,28 @@ def run_simple_regret_experiment(
             break
 
         rows = row_idx.to(dtype=torch.long)
+        cols = col_idx.to(dtype=torch.long)
         pulled_arms = sorted({int(x) for x in rows.tolist()})
         pulled_arm = int(pulled_arms[0])
+
+        # Keep complete policy batches while enforcing hard budget caps. The
+        # empirical-Bayes warm batch has already consumed part of both caps.
+        batch_cost = float(original_cost_per_arm[rows].sum().item())
+        if evaluated + n_batch > int(max_evaluations):
+            break
+        if (
+            max_original_cost is not None
+            and total_cost + batch_cost > float(max_original_cost) + 1e-12
+        ):
+            break
+
+        already_observed = ~torch.isnan(obs[rows, cols])
+        duplicate_observation_count += int(already_observed.sum().item())
+        if bool(already_observed.any()):
+            raise RuntimeError("policy attempted to reuse an already observed matrix cell")
         obs[row_idx, col_idx] = ground_truth[row_idx, col_idx]
         evaluated += n_batch
-        total_cost += float(original_cost_per_arm[rows].sum().item())
+        total_cost += batch_cost
 
         gittins_diag: dict[str, float] | None = None
         if post_pull_fn is not None:
@@ -560,6 +585,8 @@ def run_simple_regret_experiment(
         "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
         "natural_stop_cum_eval": natural_stop_holder[0],
         "recommendation_aware_stop_cum_eval": recommendation_aware_stop_holder[0],
+        "duplicate_observation_count": int(duplicate_observation_count),
+        "final_observed_cell_count": int((~torch.isnan(obs)).sum().item()),
     }
 
 
@@ -595,6 +622,15 @@ def parse_args() -> argparse.Namespace:
             "and count that batch toward the evaluation/cost budget."
         ),
     )
+    p.add_argument(
+        "--gittins-empirical-bayes-estimate-prior-variance",
+        "--gittins_empirical_bayes_estimate_prior_variance",
+        action="store_true",
+        help=(
+            "With the empirical-Bayes warm start, set the common prior variance "
+            "to the sample variance across arm warm-batch means."
+        ),
+    )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
     p.add_argument("--no-log-step-metrics", "--no_log_step_metrics", dest="log_step_metrics", action="store_false")
@@ -603,6 +639,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--wandb-group", "--wandb_group", default=None)
     p.add_argument("--wandb-name", "--wandb_name", default=None)
     p.add_argument("--wandb-mode", "--wandb_mode", choices=["online", "offline", "disabled"], default="online")
+    p.add_argument(
+        "--output-json",
+        "--output_json",
+        type=Path,
+        default=None,
+        help="Atomically write config, summary, and full history to this JSON file.",
+    )
     return p.parse_args()
 
 
@@ -657,8 +700,34 @@ def main() -> int:
         prior_mean = float(args.gittins_prior_mean)
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
+    fixed_prior_mean = float(prior_mean)
+    fixed_prior_variance = float(prior_variance)
+    prior_variance_source = "configured"
+    estimated_prior_std: float | None = None
+    raw_estimated_prior_variance: float | None = None
+    prior_variance_was_floored = False
 
     warm_start_columns: torch.Tensor | None = None
+    if (
+        args.gittins_empirical_bayes_estimate_prior_variance
+        and not args.gittins_empirical_bayes_warm_start
+    ):
+        print(
+            "--gittins-empirical-bayes-estimate-prior-variance requires "
+            "--gittins-empirical-bayes-warm-start.",
+            file=sys.stderr,
+        )
+        return 1
+    if (
+        args.gittins_empirical_bayes_estimate_prior_variance
+        and args.gittins_prior_variance is not None
+    ):
+        print(
+            "--gittins-prior-variance cannot be combined with "
+            "--gittins-empirical-bayes-estimate-prior-variance.",
+            file=sys.stderr,
+        )
+        return 1
     if args.gittins_empirical_bayes_warm_start:
         if variant.policy_family != "gittins":
             print("--gittins-empirical-bayes-warm-start requires a Gittins variant.", file=sys.stderr)
@@ -675,13 +744,44 @@ def main() -> int:
             batch_size=int(variant.gittins_batch_size),
             seed=int(args.run_seed),
         )
-        if args.gittins_prior_variance is None:
+        if args.gittins_empirical_bayes_estimate_prior_variance:
+            arm_warm_means = ground_truth[:, warm_start_columns].mean(dim=1)
+            raw_estimated_prior_variance = float(
+                arm_warm_means.var(unbiased=True).item()
+            )
+            if not math.isfinite(raw_estimated_prior_variance) or raw_estimated_prior_variance < 0.0:
+                print(
+                    "Estimated prior variance must be nonnegative and finite, got "
+                    f"{raw_estimated_prior_variance}.",
+                    file=sys.stderr,
+                )
+                return 1
+            estimated_prior_std = math.sqrt(raw_estimated_prior_variance)
+            prior_variance = max(
+                raw_estimated_prior_variance, MIN_ESTIMATED_PRIOR_VARIANCE
+            )
+            prior_variance_was_floored = (
+                raw_estimated_prior_variance < MIN_ESTIMATED_PRIOR_VARIANCE
+            )
+            prior_variance_source = "warm_arm_means_sample_variance"
+        elif args.gittins_prior_variance is None:
             prior_variance = DEFAULT_PRIOR_VARIANCE
-        prior_source = "empirical_bayes_uniform_one_pull"
+            prior_variance_source = "fixed_default_0.04"
+        else:
+            prior_variance_source = "configured"
+        prior_source = (
+            "empirical_bayes_uniform_one_pull_mean_variance"
+            if args.gittins_empirical_bayes_estimate_prior_variance
+            else "empirical_bayes_uniform_one_pull"
+        )
         prior_bucket = None
 
     reported_experiment_variant = (
-        f"{variant.raw}_ebwarm" if warm_start_columns is not None else variant.raw
+        f"{variant.raw}_ebwarm_estvar"
+        if args.gittins_empirical_bayes_estimate_prior_variance
+        else f"{variant.raw}_ebwarm"
+        if warm_start_columns is not None
+        else variant.raw
     )
 
     matrix_seed = re.search(r"seed(\d+)", args.matrix.stem)
@@ -723,6 +823,11 @@ def main() -> int:
                 "sim_max_evaluations": max_evaluations,
                 "prior_mean_resolved": prior_mean,
                 "prior_variance_resolved": prior_variance,
+                "prior_std_resolved": math.sqrt(float(prior_variance)),
+                "estimated_prior_std": estimated_prior_std,
+                "raw_estimated_prior_variance": raw_estimated_prior_variance,
+                "prior_variance_was_floored": prior_variance_was_floored,
+                "prior_variance_source": prior_variance_source,
                 "prior_bucket": prior_bucket,
                 "prior_source": prior_source,
                 "warm_start_enabled": bool(warm_start_columns is not None),
@@ -771,48 +876,103 @@ def main() -> int:
     total_wall_time_s = float(time.perf_counter() - wall_t0)
     final_simple_regret = float(result["regret"][-1]) if result["regret"] else None
     best_seen_regret = float(min(result["regret"])) if result["regret"] else None
+    summary = {
+        "final_simple_regret": final_simple_regret,
+        "best_seen_regret": best_seen_regret,
+        "final_cum_eval": int(result["x"][-1]) if result["x"] else None,
+        "final_cum_original_cost": (
+            float(result["x_original_cost"][-1]) if result["x_original_cost"] else None
+        ),
+        "num_batches": len(result["regret"]),
+        "lookup_table_s": result["lookup_table_s"],
+        "total_wall_time_s": total_wall_time_s,
+        "prior_mean_resolved": float(prior_mean),
+        "prior_variance_resolved": float(prior_variance),
+        "prior_std_resolved": math.sqrt(float(prior_variance)),
+        "estimated_prior_std": estimated_prior_std,
+        "raw_estimated_prior_variance": raw_estimated_prior_variance,
+        "prior_variance_was_floored": prior_variance_was_floored,
+        "prior_variance_source": prior_variance_source,
+        "fixed_prior_mean": fixed_prior_mean,
+        "fixed_prior_variance": fixed_prior_variance,
+        "prior_bucket": prior_bucket,
+        "prior_source": prior_source,
+        "warm_start_enabled": bool(warm_start_columns is not None),
+        "warm_start_batch_size_per_arm": (
+            int(warm_start_columns.numel()) if warm_start_columns is not None else 0
+        ),
+        "warm_start_total_evaluations": (
+            int(n_arms * warm_start_columns.numel()) if warm_start_columns is not None else 0
+        ),
+        "mmlu_task": mmlu_task,
+        "mmlu_size_bucket": size_bucket,
+        "matrix_seed": matrix_seed,
+        "run_seed": int(args.run_seed),
+        "experiment_variant": reported_experiment_variant,
+        "duplicate_observation_count": int(result["duplicate_observation_count"]),
+        "final_observed_cell_count": int(result["final_observed_cell_count"]),
+        "gittins_stop_cum_eval": result["natural_stop_cum_eval"],
+        "gittins_stop_cum_original_cost": result["natural_stop_cum_original_cost"],
+        "gittins_recommendation_aware_stop_cum_eval": (
+            result["recommendation_aware_stop_cum_eval"]
+        ),
+        "gittins_recommendation_aware_stop_cum_original_cost": (
+            result["recommendation_aware_stop_cum_original_cost"]
+        ),
+    }
 
     print(f"final_simple_regret={final_simple_regret}")
 
     if run is not None:
-        run.summary.update(
-            {
-                "final_simple_regret": final_simple_regret,
-                "best_seen_regret": best_seen_regret,
-                "final_cum_eval": int(result["x"][-1]) if result["x"] else None,
-                "final_cum_original_cost": float(result["x_original_cost"][-1])
-                if result["x_original_cost"]
-                else None,
-                "num_batches": len(result["regret"]),
-                "lookup_table_s": result["lookup_table_s"],
-                "total_wall_time_s": total_wall_time_s,
-                "prior_mean_resolved": float(prior_mean),
-                "prior_variance_resolved": float(prior_variance),
-                "prior_bucket": prior_bucket,
+        run.summary.update(summary)
+        run.finish()
+
+    if args.output_json is not None:
+        output_path = args.output_json.resolve()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_tmp = output_path.with_name(f".{output_path.name}.tmp")
+        output_payload = {
+            "status": "completed",
+            "config": {
+                **{key: str(value) if isinstance(value, Path) else value for key, value in vars(args).items()},
+                **asdict(variant),
+                "dataset_tag_resolved": dataset_tag,
+                "matrix_seed": matrix_seed,
+                "n_arms": n_arms,
+                "n_examples": n_examples,
+                "n_cells": n_cells,
+                "budget_max_evals": budget_evals,
+                "budget_original_cost": budget_original_cost,
+                "total_brute_force_original_cost": total_bf_cost,
+                "cost_aware_run": cost_aware,
+                "sim_max_evaluations": max_evaluations,
+                "prior_mean_resolved": prior_mean,
+                "prior_variance_resolved": prior_variance,
+                "prior_std_resolved": math.sqrt(float(prior_variance)),
+                "estimated_prior_std": estimated_prior_std,
+                "raw_estimated_prior_variance": raw_estimated_prior_variance,
+                "prior_variance_was_floored": prior_variance_was_floored,
+                "prior_variance_source": prior_variance_source,
+                "fixed_prior_mean": fixed_prior_mean,
+                "fixed_prior_variance": fixed_prior_variance,
                 "prior_source": prior_source,
                 "warm_start_enabled": bool(warm_start_columns is not None),
-                "warm_start_batch_size_per_arm": (
-                    int(warm_start_columns.numel()) if warm_start_columns is not None else 0
+                "warm_start_columns": (
+                    warm_start_columns.cpu().tolist() if warm_start_columns is not None else []
                 ),
-                "warm_start_total_evaluations": (
-                    int(n_arms * warm_start_columns.numel())
-                    if warm_start_columns is not None
-                    else 0
-                ),
+                "experiment_variant": reported_experiment_variant,
                 "mmlu_task": mmlu_task,
                 "mmlu_size_bucket": size_bucket,
-                "matrix_seed": matrix_seed,
-                "run_seed": int(args.run_seed),
-                "experiment_variant": reported_experiment_variant,
-                "gittins_stop_cum_eval": result["natural_stop_cum_eval"],
-                "gittins_stop_cum_original_cost": result["natural_stop_cum_original_cost"],
-                "gittins_recommendation_aware_stop_cum_eval": result["recommendation_aware_stop_cum_eval"],
-                "gittins_recommendation_aware_stop_cum_original_cost": result[
-                    "recommendation_aware_stop_cum_original_cost"
-                ],
-            }
+            },
+            "summary": summary,
+            "history": result,
+            "true_arm_means": ground_truth.mean(dim=1).cpu().tolist(),
+        }
+        output_tmp.write_text(
+            json.dumps(output_payload, allow_nan=True, separators=(",", ":")),
+            encoding="utf-8",
         )
-        run.finish()
+        output_tmp.replace(output_path)
 
     return 0
 

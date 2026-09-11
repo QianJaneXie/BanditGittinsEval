@@ -514,7 +514,12 @@ def write_manifest_diagnostics(raw_dir: Path, candidate_rows: list[dict[str, Any
 def build_manifest(args: argparse.Namespace, manifest_path: Path, task_buckets: dict[str, str]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     print("Building W&B run manifest. This happens only on the first run or with --refresh-manifest.")
     api = wandb.Api()
-    runs = api.runs(path=f"{args.entity}/{args.project}", filters={"sweep": args.sweep_id})
+    filters: dict[str, Any] = {"sweep": args.sweep_id}
+    if args.variant:
+        filters["config.experiment_variant"] = {"$in": list(args.variant)}
+    if args.matrix:
+        filters["config.matrix"] = {"$in": list(args.matrix)}
+    runs = api.runs(path=f"{args.entity}/{args.project}", filters=filters)
 
     candidate_rows: list[dict[str, Any]] = []
     unique_rows: list[dict[str, Any]] = []
@@ -1124,6 +1129,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--sleep", type=float, default=8.0)
     p.add_argument("--print-every", type=int, default=50)
     p.add_argument("--max-new-runs", type=int, default=None)
+    p.add_argument(
+        "--variant",
+        action="append",
+        default=[],
+        help="Exact experiment_variant to keep server-side; repeat as needed.",
+    )
+    p.add_argument(
+        "--matrix",
+        action="append",
+        default=[],
+        help="Exact matrix config value to keep server-side; repeat as needed.",
+    )
 
     # Expected-grid completeness and targeted recovery.
     p.add_argument("--expected-grid-yaml", type=Path, default=None, help="Sweep YAML used to generate expected matrix x run_seed x experiment_variant configs.")
@@ -1219,6 +1236,8 @@ def main() -> int:
         "raw_dir": str(args.raw_dir),
         "out_root": None if args.out_root is None else str(args.out_root),
         "states": args.states,
+        "variants": list(args.variant),
+        "matrices": list(args.matrix),
         "task_metadata": None if args.task_metadata is None else str(args.task_metadata),
         "manifest_path": str(manifest_path),
         "completed_path": str(completed_path),
