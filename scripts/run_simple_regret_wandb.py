@@ -306,6 +306,7 @@ def build_policy(
         batch_observation_model=True,
         natural_stop_cum_eval_holder=natural_stop_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+        recommendation_std_penalty=float(getattr(args, "recommendation_std_penalty", 0.0)),
     )
 
     def step_fn(obs: torch.Tensor, _sim_cum_eval: int):
@@ -351,6 +352,7 @@ def build_policy(
         prior_mean=float(prior_mean),
         prior_variance=float(prior_variance),
         tau_sq_cell=float(tau_sq_cell),
+        std_penalty=float(getattr(args, "recommendation_std_penalty", 0.0)),
     )
     return step_fn, recommend_fn, post_pull_fn, lookup_table_s
 
@@ -501,6 +503,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gittins-obs-noise-variance", "--gittins_obs_noise_variance", type=float, default=None)
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument(
+        "--recommendation-std-penalty",
+        "--recommendation_std_penalty",
+        type=float,
+        default=0.0,
+        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
+        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+    )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
     p.add_argument("--no-log-step-metrics", "--no_log_step_metrics", dest="log_step_metrics", action="store_false")
@@ -509,7 +519,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--wandb-group", "--wandb_group", default=None)
     p.add_argument("--wandb-name", "--wandb_name", default=None)
     p.add_argument("--wandb-mode", "--wandb_mode", choices=["online", "offline", "disabled"], default="online")
-    return p.parse_args()
+    args = p.parse_args()
+    if (
+        not math.isfinite(args.recommendation_std_penalty)
+        or args.recommendation_std_penalty < 0.0
+    ):
+        p.error("--recommendation-std-penalty must be finite and nonnegative")
+    return args
 
 
 def main() -> int:
@@ -574,7 +590,23 @@ def main() -> int:
         if dataset_tag == "mmlu" and mmlu_task
         else f"seed{matrix_seed}" if matrix_seed else "seedNA"
     )
-    run_name = args.wandb_name or f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
+    recommendation_suffix = ""
+    recommendation_rule = "empirical_mean"
+    recommendation_std_penalty = 0.0
+    if variant.policy_family == "gittins":
+        recommendation_std_penalty = float(args.recommendation_std_penalty)
+        recommendation_rule = "posterior_mean"
+        if recommendation_std_penalty > 0.0:
+            recommendation_suffix = f"_recstd{recommendation_std_penalty:g}"
+            recommendation_rule = "posterior_mean_minus_std"
+    recommendation_config = {
+        "recommendation_rule": recommendation_rule,
+        "recommendation_std_penalty": recommendation_std_penalty,
+    }
+    run_name = args.wandb_name or (
+        f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
+        f"{recommendation_suffix}"
+    )
     group = args.wandb_group or f"{dataset_tag}_simple_regret_sweep"
 
     run: wandb.sdk.wandb_run.Run | None = None
@@ -589,6 +621,7 @@ def main() -> int:
             config={
                 **vars(args),
                 **asdict(variant),
+                **recommendation_config,
                 "dataset_tag_resolved": dataset_tag,
                 "matrix_seed": matrix_seed,
                 "n_arms": n_arms,
@@ -639,6 +672,7 @@ def main() -> int:
     if run is not None:
         run.summary.update(
             {
+                **recommendation_config,
                 "final_simple_regret": final_simple_regret,
                 "best_seen_regret": best_seen_regret,
                 "final_cum_eval": int(result["x"][-1]) if result["x"] else None,

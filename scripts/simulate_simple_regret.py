@@ -4,13 +4,15 @@
 Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
-- Gittins: arm selection by Gittins index, recommendation by posterior mean E[θ_k | D_t].
+- Gittins: arm selection by Gittins index, recommendation by posterior mean minus
+  an optional multiple of posterior std.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from dataclasses import dataclass
 from functools import partial
@@ -238,6 +240,13 @@ def main() -> int:
     p.add_argument("--gittins-prior-mean", type=float, default=0.5)
     p.add_argument("--gittins-prior-variance", type=float, default=0.04)
     p.add_argument(
+        "--recommendation-std-penalty",
+        type=float,
+        default=0.0,
+        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
+        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+    )
+    p.add_argument(
         "--cost-vector",
         type=Path,
         default=None,
@@ -263,6 +272,11 @@ def main() -> int:
         choices=["ucb", "sysrs", "gittins"],
     )
     args = p.parse_args()
+    if (
+        not math.isfinite(args.recommendation_std_penalty)
+        or args.recommendation_std_penalty < 0.0
+    ):
+        p.error("--recommendation-std-penalty must be finite and nonnegative")
 
     mat = np.load(args.matrix)
     ground_truth = torch.tensor(mat, dtype=torch.float32)
@@ -303,6 +317,12 @@ def main() -> int:
         "ucb_batch_size": int(args.batch_size),
         "gittins_prior_mean": float(args.gittins_prior_mean),
         "gittins_prior_variance": float(args.gittins_prior_variance),
+        "recommendation_rule": (
+            "posterior_mean_minus_std"
+            if args.recommendation_std_penalty > 0.0
+            else "posterior_mean"
+        ),
+        "recommendation_std_penalty": float(args.recommendation_std_penalty),
     }
 
     if "ucb" in args.algorithms:
@@ -446,6 +466,7 @@ def main() -> int:
             batch_observation_model=True,
             natural_stop_cum_eval_holder=stop_holder,
             recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+            recommendation_std_penalty=float(args.recommendation_std_penalty),
         )
 
         def gittins_post_pull(obs: torch.Tensor, pulled_arm: int, cum_eval: int) -> None:
@@ -470,6 +491,7 @@ def main() -> int:
                 prior_mean=float(args.gittins_prior_mean),
                 prior_variance=float(args.gittins_prior_variance),
                 tau_sq_cell=float(tau_sq_cell),
+                std_penalty=float(args.recommendation_std_penalty),
             ),
             pass_sim_cum_eval=False,
             natural_stop_cum_eval_holder=stop_holder,
@@ -523,4 +545,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

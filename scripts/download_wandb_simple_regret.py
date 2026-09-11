@@ -82,6 +82,11 @@ HISTORY_KEYS = [
     "posterior_mean_pulled",
 ]
 
+RECOMMENDATION_COLUMNS = [
+    "recommendation_rule",
+    "recommendation_std_penalty",
+]
+
 BASE_COLUMNS = [
     "run_id",
     "run_name",
@@ -113,7 +118,7 @@ BASE_COLUMNS = [
     "budget_max_evals",
     "eval_budget_fraction",
     "warmup_percentage",
-]
+] + RECOMMENDATION_COLUMNS
 
 SUMMARY_COLUMNS = BASE_COLUMNS + [
     "final_simple_regret",
@@ -180,7 +185,7 @@ FULL_CONFIG_DIAGNOSTIC_COLUMNS = [
     "prior_mean_resolved",
     "prior_variance_resolved",
     "eval_budget_fraction",
-]
+] + RECOMMENDATION_COLUMNS
 
 
 def safe_token(s: str) -> str:
@@ -354,6 +359,7 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "budget_max_evals": get_field(cfg, summary, "budget_max_evals"),
         "eval_budget_fraction": get_field(cfg, summary, "eval_budget_fraction"),
         "warmup_percentage": get_field(cfg, summary, "warmup_percentage"),
+        **{key: get_field(cfg, summary, key) for key in RECOMMENDATION_COLUMNS},
     }
 
 
@@ -416,6 +422,14 @@ def keep_mmlu_size(row: dict[str, Any], size_arg: str, task_buckets: dict[str, s
 def ensure_csv_header(path: Path, columns: list[str], *, gzip_file: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.stat().st_size > 0:
+        opener = gzip.open if gzip_file else open
+        with opener(path, "rt", newline="", encoding="utf-8") as f:
+            existing_columns = next(csv.reader(f), [])
+        if existing_columns != columns:
+            raise ValueError(
+                f"CSV schema mismatch at {path}; use a new --raw-dir (and --out-root "
+                "when splitting by task) so recommendation metadata is saved correctly."
+            )
         return
     if gzip_file:
         with gzip.open(path, "wt", newline="", encoding="utf-8") as f:
@@ -724,14 +738,28 @@ def scan_history_with_retry(run: wandb.apis.public.Run, *, page_size: int, retri
 def summary_existing_keys(summary_path: Path) -> set[tuple[str, ...]]:
     keys: set[tuple[str, ...]] = set()
     for row in read_csv_rows(summary_path):
+        require_baseline_recommendations_for_recovery(row)
         keys.add(config_key(row))
     return keys
+
+
+def require_baseline_recommendations_for_recovery(row: dict[str, Any]) -> None:
+    """The legacy completeness/recovery key does not encode the std penalty."""
+    penalty = normalize_scalar(row.get("recommendation_std_penalty"))
+    if penalty and float(penalty) != 0.0:
+        raise ValueError(
+            "Expected-grid completeness and targeted recovery do not yet support "
+            "nonzero recommendation std penalties. Download these runs without "
+            "--expected-grid-yaml, --expected-configs-csv, or --recover-missing-targeted; "
+            "the normal download preserves each run and its recommendation std penalty."
+        )
 
 
 def load_expected_rows_from_csv(path: Path, dataset: str) -> list[dict[str, Any]]:
     rows = read_csv_rows(path)
     out: list[dict[str, Any]] = []
     for row in rows:
+        require_baseline_recommendations_for_recovery(row)
         matrix = row.get("matrix") or ""
         matrix_seed = row.get("matrix_seed") or infer_matrix_seed(matrix)
         out.append(
@@ -767,6 +795,8 @@ def load_expected_rows_from_sweep_yaml(path: Path, dataset: str) -> list[dict[st
         raise FileNotFoundError(f"expected grid YAML not found: {path}")
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     params = data.get("parameters", {}) if isinstance(data, dict) else {}
+    for value in _yaml_param_values(params, "recommendation_std_penalty"):
+        require_baseline_recommendations_for_recovery({"recommendation_std_penalty": value})
     matrices = _yaml_param_values(params, "matrix")
     run_seeds = _yaml_param_values(params, "run_seed") or _yaml_param_values(params, "seed")
     variants = _yaml_param_values(params, "experiment_variant") or _yaml_param_values(params, "policy_variant")
@@ -895,6 +925,7 @@ def find_target_runs_within_sweep(args: argparse.Namespace, missing_rows: list[d
             row = base_row(run)
             if not keep_dataset(row, args.dataset):
                 continue
+            require_baseline_recommendations_for_recovery(row)
             valid.append((run, row))
 
         if not valid:
