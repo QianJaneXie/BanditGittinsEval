@@ -20,6 +20,7 @@ from gittins_shrinking_posterior import (
     transition_stds_shrinking_gaussian_posterior,
 )
 from gittins_lookup import compute_roots_lookup_table
+from simple_regret_recommend import recommend_from_posterior
 
 
 def _cost_vector_per_arm(
@@ -157,8 +158,12 @@ def evaluate_gittins_stopping_rules(
     sim_cum_eval: int,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    recommended_arm: int | None = None,
 ) -> None:
-    """Record nominal stop times using **post-pull** Γ and μ (``sim_cum_eval`` after the batch)."""
+    """Record post-pull stop times, comparing Γ with the selected recommendation's μ.
+
+    If ``recommended_arm`` is omitted, use the unrestricted maximum posterior mean.
+    """
     if (
         recommendation_aware_stop_cum_eval_holder is not None
         and len(recommendation_aware_stop_cum_eval_holder) == 1
@@ -167,7 +172,11 @@ def evaluate_gittins_stopping_rules(
         incomplete = ~completely_sensed_mask
         if bool(incomplete.any()):
             max_gittins = float(scores[incomplete].max().item())
-            max_mu = float(mus_posterior.max().item())
+            max_mu = float(
+                mus_posterior.max().item()
+                if recommended_arm is None
+                else mus_posterior[recommended_arm].item()
+            )
             if max_gittins < max_mu:
                 recommendation_aware_stop_cum_eval_holder[0] = int(sim_cum_eval)
 
@@ -200,6 +209,7 @@ def gittins_post_pull_update(
     sim_cum_eval: int,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    recommendation_std_penalty: float = 0.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """After a batch is revealed: refresh μ, update Γ, and evaluate stopping rules."""
     observed_matrix = observed_matrix.detach()
@@ -268,6 +278,14 @@ def gittins_post_pull_update(
         roots_lookup_table=roots_lookup_table,
         n_examples=n_examples,
     )
+    recommended_arm = None
+    if recommendation_std_penalty != 0:
+        variances = 1.0 / (1.0 / float(prior_variance) + counts.to(torch.float64) / tau_sq_cell)
+        recommended_arm, _ = recommend_from_posterior(
+            mus_posterior,
+            variances,
+            std_penalty=recommendation_std_penalty,
+        )
     evaluate_gittins_stopping_rules(
         scores,
         mus_posterior,
@@ -275,6 +293,7 @@ def gittins_post_pull_update(
         sim_cum_eval=int(sim_cum_eval),
         natural_stop_cum_eval_holder=natural_stop_cum_eval_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_cum_eval_holder,
+        recommended_arm=recommended_arm,
     )
     return mus_posterior, scores
 

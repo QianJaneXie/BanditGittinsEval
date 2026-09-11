@@ -39,6 +39,9 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 - `--cost-vector <.json/.npy>` — heterogeneous per-arm costs; omit for unit cost (1 per evaluation).
 - `--gittins-prior-mean` / `--gittins-prior-variance` — Gittins prior; MMLU bucket priors in [`docs/mmlu_prior_buckets.md`](docs/mmlu_prior_buckets.md).
 - `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
+- `--recommendation-std-penalty 1` — recommend the Gittins arm with the largest posterior mean minus posterior standard deviation; `0` (default) uses posterior mean alone.
+
+Both simulation and W&B runners support this lower-bound recommendation. Sampling still uses Gittins indices. See [the rule and GSM8K comparison](docs/posterior_lcb_recommendation.md) for the formula and reproduction commands.
 
 ## Examples
 

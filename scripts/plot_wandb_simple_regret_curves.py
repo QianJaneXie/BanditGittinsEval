@@ -75,8 +75,12 @@ def derive_method_label_row(row: pd.Series) -> str:
         if acq == "logeipc":
             return "BO LogEIPC"
         return f"BO {variant or acq}"
-    if family == "gittins":
-        return "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
+    if family == "gittins" or variant.startswith("gittins"):
+        label = "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
+        penalty = pd.to_numeric(row.get("recommendation_std_penalty"), errors="coerce")
+        if pd.notna(penalty) and np.isfinite(penalty) and penalty > 0.0:
+            return f"{label} [recommend: mean - {float(penalty):g} std]"
+        return label
     if family == "lrf":
         return "Bandit UCB-E-LRF (cost)" if "cost" in variant else "Bandit UCB-E-LRF"
     if family == "sysrs" or variant.startswith("sysrs"):

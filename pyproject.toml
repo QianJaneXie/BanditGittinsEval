@@ -29,5 +29,6 @@ py-modules = [
     "gittins_index_computation",
     "gittins_shrinking_posterior",
     "gittins_policy",
+    "simple_regret_recommend",
     "stable_pbgi",
 ]
