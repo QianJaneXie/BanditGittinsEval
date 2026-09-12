@@ -117,10 +117,14 @@ Key points:
 A<sub>t</sub> = argmax<sub>k</sub> Γ<sub>k,n<sub>k</sub>(t)</sub>
 
 ### Recommendation (reporting)
-k̂<sub>t</sub> = argmax<sub>k</sub> μ<sub>k,t</sub>
+k̂<sub>t</sub> = argmax<sub>k</sub> E[F<sub>k</sub> | D<sub>t</sub>], where F<sub>k</sub> is the full fixed test-set mean.
+
+For N examples per arm and n<sub>k</sub> observations, this mean is
+(sum of observed scores + (N − n<sub>k</sub>) μ<sub>k,t</sub>) / N.
+Completed arms therefore use the exact empirical row mean. An optional standard-deviation penalty uses the posterior uncertainty of F<sub>k</sub>, including the unrevealed cells' variation. See [the finite-test-set recommendation](finite_population_recommendation.md).
 
 - Index → exploration decision  
-- Posterior mean → final choice  
+- Full-test-set posterior mean → final choice (default, no std penalty)
 
 ---
 
@@ -214,4 +218,4 @@ The algorithm adaptively balances:
 
 - uncertainty reduction  
 - evaluation cost  
-- final decision quality  
+- final decision quality

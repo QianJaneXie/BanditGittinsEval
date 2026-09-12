@@ -4,8 +4,9 @@
 Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
-- Gittins: arm selection by Gittins index, recommendation by posterior mean minus
-  an optional multiple of posterior std.
+- Gittins: arm selection by Gittins index, recommendation by the posterior mean
+  of the full fixed test-set average, with an optional posterior predictive std
+  penalty for that same average.
 """
 
 from __future__ import annotations
@@ -243,8 +244,9 @@ def main() -> int:
         "--recommendation-std-penalty",
         type=float,
         default=0.0,
-        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
-        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+        help="Gittins recommendation: maximize the full fixed test-set average's "
+        "posterior mean minus this nonnegative multiple of its posterior predictive "
+        "std. Use 0 for mean only (default), 1 for mean - std.",
     )
     p.add_argument(
         "--cost-vector",
@@ -318,9 +320,9 @@ def main() -> int:
         "gittins_prior_mean": float(args.gittins_prior_mean),
         "gittins_prior_variance": float(args.gittins_prior_variance),
         "recommendation_rule": (
-            "posterior_mean_minus_std"
+            "finite_population_posterior_mean_minus_std"
             if args.recommendation_std_penalty > 0.0
-            else "posterior_mean"
+            else "finite_population_posterior_mean"
         ),
         "recommendation_std_penalty": float(args.recommendation_std_penalty),
     }

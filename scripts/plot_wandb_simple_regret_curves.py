@@ -61,10 +61,27 @@ def infer_benchmark_key_row(row: pd.Series) -> str:
 
 
 def derive_method_label_row(row: pd.Series) -> str:
-    if pd.notna(row.get("method_label")) and str(row.get("method_label")).strip():
-        return str(row.get("method_label")).strip()
+    existing_label = row.get("method_label")
+    existing_label = str(existing_label).strip() if pd.notna(existing_label) else ""
     family = str(row.get("policy_family") or "").strip().lower()
     variant = str(row.get("experiment_variant") or "").strip()
+    if family == "gittins" or variant.startswith("gittins"):
+        label = existing_label or (
+            "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
+        )
+        # Recompute a prior derived suffix so metadata survives pre-labelled CSVs.
+        label = re.sub(r" \[recommend: [^\]]+\]$", "", label)
+        rule = str(row.get("recommendation_rule") or "")
+        target = "full test-set mean" if rule.startswith("finite_population_") else "latent mean"
+        penalty = pd.to_numeric(row.get("recommendation_std_penalty"), errors="coerce")
+        score = (
+            f"{target} - {float(penalty):g} std"
+            if pd.notna(penalty) and np.isfinite(penalty) and penalty > 0.0
+            else target
+        )
+        return f"{label} [recommend: {score}]"
+    if existing_label:
+        return existing_label
     if family == "bo":
         acq = str(row.get("acquisition") or variant).lower()
         cost_mode = str(row.get("cost_mode") or "unit").lower()
@@ -75,12 +92,6 @@ def derive_method_label_row(row: pd.Series) -> str:
         if acq == "logeipc":
             return "BO LogEIPC"
         return f"BO {variant or acq}"
-    if family == "gittins" or variant.startswith("gittins"):
-        label = "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
-        penalty = pd.to_numeric(row.get("recommendation_std_penalty"), errors="coerce")
-        if pd.notna(penalty) and np.isfinite(penalty) and penalty > 0.0:
-            return f"{label} [recommend: mean - {float(penalty):g} std]"
-        return label
     if family == "lrf":
         return "Bandit UCB-E-LRF (cost)" if "cost" in variant else "Bandit UCB-E-LRF"
     if family == "sysrs" or variant.startswith("sysrs"):
@@ -88,6 +99,25 @@ def derive_method_label_row(row: pd.Series) -> str:
     if family == "ucb" or variant.startswith("ucb"):
         return "Bandit UCB-E (cost)" if "cost" in variant else "Bandit UCB-E"
     return variant or family or "unknown"
+
+
+def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
+    """Prevent custom aggregation keys from pooling distinct Gittins rules."""
+    is_gittins = (_str_series(df, "policy_family").str.lower() == "gittins") | (
+        _str_series(df, "experiment_variant").str.startswith("gittins")
+    )
+    for label, group in df.loc[is_gittins].groupby(group_by):
+        rules = group.get("recommendation_rule", pd.Series(index=group.index, dtype=str))
+        rules = rules.fillna("posterior_mean").replace("", "posterior_mean")
+        penalties = pd.to_numeric(
+            group.get("recommendation_std_penalty", pd.Series(index=group.index, dtype=float)),
+            errors="coerce",
+        ).fillna(0.0)
+        if len(set(zip(rules, penalties))) > 1:
+            raise ValueError(
+                f"Group {label!r} mixes Gittins recommendation rules or std penalties; "
+                "use --group-by method_label or filter to one recommendation rule."
+            )
 
 
 def load_history_csv(path: Path) -> pd.DataFrame:
@@ -435,6 +465,7 @@ def main() -> int:
     df = filter_common(df, args)
 
     df = df.dropna(subset=[args.x_axis, args.y_axis, args.group_by, "run_id"])
+    validate_recommendation_groups(df, args.group_by)
     variants = sorted(df[args.group_by].dropna().astype(str).unique().tolist())
 
     if len(variants) > args.max_variants:
@@ -491,6 +522,9 @@ def main() -> int:
         summary_df = pd.concat(summary_frames, ignore_index=True, sort=False)
         summary_df = add_derived_columns(summary_df)
         summary_df = filter_common(summary_df, args)
+        validate_recommendation_groups(
+            pd.concat([df, summary_df], ignore_index=True), args.group_by
+        )
         stop_rows = plot_stopping_overlays(
             ax=ax,
             summary_df=summary_df,

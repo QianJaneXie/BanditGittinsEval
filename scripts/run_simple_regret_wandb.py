@@ -2,6 +2,8 @@
 """W&B runner for matrix-bandit simple-regret experiments.
 
 One W&B run = one concrete experiment configuration.
+Gittins recommendations target the full fixed test-set average; sampling
+diagnostics such as posterior_mean_pulled still describe the latent arm mean.
 """
 
 from __future__ import annotations
@@ -508,8 +510,9 @@ def parse_args() -> argparse.Namespace:
         "--recommendation_std_penalty",
         type=float,
         default=0.0,
-        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
-        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+        help="Gittins recommendation: maximize the full fixed test-set average's "
+        "posterior mean minus this nonnegative multiple of its posterior predictive "
+        "std. Use 0 for mean only (default), 1 for mean - std.",
     )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
@@ -595,10 +598,11 @@ def main() -> int:
     recommendation_std_penalty = 0.0
     if variant.policy_family == "gittins":
         recommendation_std_penalty = float(args.recommendation_std_penalty)
-        recommendation_rule = "posterior_mean"
+        recommendation_suffix = "_recfinite"
+        recommendation_rule = "finite_population_posterior_mean"
         if recommendation_std_penalty > 0.0:
-            recommendation_suffix = f"_recstd{recommendation_std_penalty:g}"
-            recommendation_rule = "posterior_mean_minus_std"
+            recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
+            recommendation_rule = "finite_population_posterior_mean_minus_std"
     recommendation_config = {
         "recommendation_rule": recommendation_rule,
         "recommendation_std_penalty": recommendation_std_penalty,

@@ -7,8 +7,8 @@ Example (no W&B or network):
              data/MMLU_matrices/computer_security.npy \
     --prior-types default dataset --seeds 10
 
-The recommendation never changes sampling or stopping. Compare the original
-posterior-mean rule with posterior mean minus a configurable posterior-std penalty.
+The recommendation never changes sampling or stopping. Compare latent-arm and
+full-test-set posterior means. Add --include-lcb to also compare std penalties.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration  # noqa: E402
 from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 from simple_regret_recommend import (  # noqa: E402
+    finite_population_posterior_moments,
     posterior_moments,
     recommend_from_posterior,
 )
@@ -80,6 +81,7 @@ def run_trajectory(truth, roots, prior, args, rules, seed):
     history = {key: [] for key in (
         "evaluations", "pulled_arm", "regret", "recommendation",
         "recommended_mean", "recommended_std", "recommended_count",
+        "finite_mean_affine_max_abs_error",
     )}
     while evaluated < max_evaluations:
         batch = gittins_index_exploration(
@@ -99,13 +101,20 @@ def run_trajectory(truth, roots, prior, args, rules, seed):
         previous_arm = int(row[0])
         evaluated += len(row)
         counts[previous_arm] += len(row)
-        means, variances = posterior_moments(
-            obs, prior_mean=prior[0], prior_variance=prior[1], tau_sq_cell=args.tau_sq_cell,
-        )
+        moments = {
+            target: helper(
+                obs, prior_mean=prior[0], prior_variance=prior[1], tau_sq_cell=args.tau_sq_cell,
+            )
+            for target, helper in (
+                ("latent", posterior_moments),
+                ("finite", finite_population_posterior_moments),
+            )
+        }
         recommendations, regrets = [], []
         recommended_means, recommended_stds, recommended_counts = [], [], []
         for _, rule_kw in rules:
-            arm, _ = recommend_from_posterior(means, variances, **rule_kw)
+            means, variances = moments[rule_kw["target"]]
+            arm, _ = recommend_from_posterior(means, variances, std_penalty=rule_kw["std_penalty"])
             recommendations.append(arm)
             regrets.append(best_mean - float(true_means[arm]))
             recommended_means.append(float(means[arm]))
@@ -118,6 +127,12 @@ def run_trajectory(truth, roots, prior, args, rules, seed):
         history["recommended_mean"].append(recommended_means)
         history["recommended_std"].append(recommended_stds)
         history["recommended_count"].append(recommended_counts)
+        affine_means = prior[0] + (1 + args.tau_sq_cell / (truth.shape[1] * prior[1])) * (
+            moments["latent"][0].to(torch.float64) - prior[0]
+        )
+        history["finite_mean_affine_max_abs_error"].append(
+            float((moments["finite"][0].to(torch.float64) - affine_means).abs().max())
+        )
     return {key: np.asarray(value) for key, value in history.items()}
 
 
@@ -155,7 +170,7 @@ def plot_results(results, rules, out):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    colors = ["#303a52", "#007f76", "#cf6a28"]
+    colors = ["#34445d", "#008579", "#c06a35", "#8d62a8"]
     labels = [name for name, _ in rules]
     columns = min(2, len(results))
     rows = int(np.ceil(len(results) / columns))
@@ -169,7 +184,8 @@ def plot_results(results, rules, out):
                 if paired:
                     values = values - regrets[:, :, 0]
                 means = values.mean(axis=0)
-                ax.step(x, means, where="post", color=colors[rule_index], label=labels[rule_index], linewidth=1.2)
+                ax.step(x, means, where="post", color=colors[rule_index], label=labels[rule_index],
+                        linewidth=1.2, linestyle="--" if rule_index % 2 else "-")
                 if len(values) > 1:
                     errors = values.std(axis=0, ddof=1) / np.sqrt(len(values))
                     ax.fill_between(x, means-errors, means+errors, color=colors[rule_index], alpha=0.13, step="post")
@@ -188,12 +204,12 @@ def plot_results(results, rules, out):
         for ax in list(axes.flat)[len(results):]:
             ax.set_visible(False)
         handles, legend_labels = axes.flat[0].get_legend_handles_labels()
-        fig.legend(handles, legend_labels, loc="lower center", ncol=len(legend_labels), frameon=False)
+        fig.legend(handles, legend_labels, loc="lower center", ncol=min(2, len(legend_labels)), frameon=False)
         trajectory_label = ("Paired Gittins trajectories; mean ± 1 SE across seeds"
                             if results[0]["regret"].shape[0] > 1
                             else "Same Gittins observations within each prior; one run seed; unsmoothed")
         fig.suptitle(trajectory_label + ("; negative = better" if paired else ""), fontsize=11)
-        fig.tight_layout(rect=(0, 0.055, 1, 0.96))
+        fig.tight_layout(rect=(0, 0.11, 1, 0.93))
         fig.savefig(out / ("paired_regret_difference.png" if paired else "simple_regret.png"), dpi=170)
         plt.close(fig)
 
@@ -218,9 +234,9 @@ def plot_results(results, rules, out):
             for ax in list(axes.flat)[len(results):]:
                 ax.set_visible(False)
             handles, legend_labels = axes.flat[0].get_legend_handles_labels()
-            fig.legend(handles, legend_labels, loc="lower center", ncol=len(legend_labels), frameon=False)
+            fig.legend(handles, legend_labels, loc="lower center", ncol=min(2, len(legend_labels)), frameon=False)
             fig.suptitle("One run seed; raw post-pull recommendations", fontsize=11)
-            fig.tight_layout(rect=(0, 0.055, 1, 0.96))
+            fig.tight_layout(rect=(0, 0.11, 1, 0.93))
             fig.savefig(out / ("recommendation_switches.png" if cumulative else "recommended_arm.png"), dpi=170)
             plt.close(fig)
 
@@ -232,7 +248,7 @@ def main() -> int:
     parser.add_argument("--dataset-tag", choices=("auto", "mmlu", "gsm8k"), default="auto")
     parser.add_argument("--task-metadata", type=Path, default=REPO_ROOT / "data/MMLU_matrices/task_metadata.json")
     parser.add_argument("--out-dir", type=Path, default=REPO_ROOT / "outputs/recommendation_lcb_pilot")
-    parser.add_argument("--seeds", type=int, default=10)
+    parser.add_argument("--seeds", type=int, default=1)
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--budget-fraction", type=float, default=0.1)
     parser.add_argument("--batch-size", type=int, default=4)
@@ -240,6 +256,8 @@ def main() -> int:
     parser.add_argument("--cost-scaling-factor", type=float, default=1e-4)
     parser.add_argument("--grid-points", type=int, default=1025)
     parser.add_argument("--std-penalty", type=float, default=1.0)
+    parser.add_argument("--include-lcb", action="store_true",
+                        help="Also replay latent and full-test mean minus std-penalty times std.")
     args = parser.parse_args()
     if args.seeds < 1 or args.batch_size < 1 or not 0 < args.budget_fraction <= 1:
         parser.error("Require seeds >= 1, batch-size >= 1, and budget-fraction in (0, 1].")
@@ -254,9 +272,14 @@ def main() -> int:
                 if "dataset" in args.prior_types and args.dataset_tag != "gsm8k" else {})
     buckets = {row["task"]: row["dataset_prior_bucket"] for row in metadata.get("tasks", [])}
     rules = [
-        ("Posterior mean (baseline)", {"std_penalty": 0.0}),
-        (f"Posterior mean − {args.std_penalty:g} × std", {"std_penalty": args.std_penalty}),
+        ("Latent mean (baseline)", {"target": "latent", "std_penalty": 0.0}),
+        ("Full-test mean", {"target": "finite", "std_penalty": 0.0}),
     ]
+    if args.include_lcb:
+        rules.extend([
+        (f"Latent mean − {args.std_penalty:g} × std", {"target": "latent", "std_penalty": args.std_penalty}),
+        (f"Full-test mean − {args.std_penalty:g} × std", {"target": "finite", "std_penalty": args.std_penalty}),
+        ])
     checkpoints, summaries, results, setups = [], [], [], []
     started = time.perf_counter()
     for matrix in args.matrix:
@@ -312,6 +335,12 @@ def main() -> int:
                 prior_mean=prior[0], prior_variance=prior[1], evaluation_budget=int(x[-1]),
                 raw_final_evaluations=[int(history["evaluations"][-1]) for history in histories],
                 raw_history_pattern=str(raw_dir / f"{matrix.stem}_{prior_type}_seed{{seed}}.npz"),
+                raw_post_pull_states=sum(len(history["evaluations"]) for history in histories),
+                mean_only_recommendation_disagreements=sum(int(np.count_nonzero(
+                    history["recommendation"][:, 0] != history["recommendation"][:, 1]
+                )) for history in histories),
+                finite_mean_affine_max_abs_error=max(float(history["finite_mean_affine_max_abs_error"].max())
+                                                     for history in histories),
             ))
             targets = sorted({
                 4, 20, 40, 100, 500, 1000, int(x[-1]),
@@ -361,7 +390,12 @@ def main() -> int:
     payload = dict(
         config=config,
         sampling_policy="Gittins, unit cost; fixed budget; recommendations replayed on identical observations",
-        recommendation_score="posterior_mean - std_penalty * sqrt(posterior_variance)",
+        recommendation_score="Target-specific posterior mean - std_penalty * sqrt(target-specific posterior variance)",
+        recommendation_rules=[dict(name=name, **rule) for name, rule in rules],
+        posterior_targets={
+            "latent": "Latent arm mean theta; normal-normal posterior moments",
+            "finite": "Full fixed test-set mean: (observed_sum + (N-n)*latent_mean)/N; variance=((N-n)/N)^2*latent_variance + (N-n)*tau_sq_cell/N^2",
+        },
         standard_error=("sample standard deviation across seeds / sqrt(number of seeds)"
                         if args.seeds > 1 else "undefined for one seed; reported as null; no error shading"),
         budget_convention="Raw runs complete the final batch crossing the requested budget, as in simulate_simple_regret.py; aggregate stops at the requested budget",

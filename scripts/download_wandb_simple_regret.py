@@ -744,14 +744,16 @@ def summary_existing_keys(summary_path: Path) -> set[tuple[str, ...]]:
 
 
 def require_baseline_recommendations_for_recovery(row: dict[str, Any]) -> None:
-    """The legacy completeness/recovery key does not encode the std penalty."""
+    """Legacy recovery keys encode neither recommendation target nor std penalty."""
     penalty = normalize_scalar(row.get("recommendation_std_penalty"))
-    if penalty and float(penalty) != 0.0:
+    rule = normalize_scalar(row.get("recommendation_rule"))
+    if rule not in {"", "empirical_mean", "posterior_mean"} or (penalty and float(penalty) != 0.0):
         raise ValueError(
             "Expected-grid completeness and targeted recovery do not yet support "
-            "nonzero recommendation std penalties. Download these runs without "
+            "finite-population recommendation rules or nonzero recommendation std "
+            "penalties. Download these runs without "
             "--expected-grid-yaml, --expected-configs-csv, or --recover-missing-targeted; "
-            "the normal download preserves each run and its recommendation std penalty."
+            "the normal download preserves each run and its recommendation metadata."
         )
 
 
@@ -797,6 +799,8 @@ def load_expected_rows_from_sweep_yaml(path: Path, dataset: str) -> list[dict[st
     params = data.get("parameters", {}) if isinstance(data, dict) else {}
     for value in _yaml_param_values(params, "recommendation_std_penalty"):
         require_baseline_recommendations_for_recovery({"recommendation_std_penalty": value})
+    for value in _yaml_param_values(params, "recommendation_rule"):
+        require_baseline_recommendations_for_recovery({"recommendation_rule": value})
     matrices = _yaml_param_values(params, "matrix")
     run_seeds = _yaml_param_values(params, "run_seed") or _yaml_param_values(params, "seed")
     variants = _yaml_param_values(params, "experiment_variant") or _yaml_param_values(params, "policy_variant")
