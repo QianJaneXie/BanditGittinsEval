@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "validated_utc": "2026-09-13T13:53:53.805325+00:00",
+  "verified_rows": {
+    "per_run_metrics": 4640,
+    "aggregate_summary": 60,
+    "per_subject_summary": 1160,
+    "regressions": 29
+  },
+  "verified_seed_grid": {
+    "benchmarks": 58,
+    "mmlu_subjects": 57,
+    "priors": 2,
+    "sampling_seeds": 20,
+    "methods": 2
+  },
+  "maximum_absolute_numeric_discrepancy": 8.526512829121202e-14,
+  "absolute_comparison_tolerance": 1e-10,
+  "positive_regression_count": 29,
+  "primary_stability_comparisons": {
+    "total": 16,
+    "improved_mean": 16,
+    "paired_interval_entirely_below_zero": 12
+  },
+  "sha256": {
+    "per_run_metrics.csv": "f2f49de02f63a170b3f3e8c0960c21f0fcc602ef2724dbb0269ed8633a6ef47e",
+    "aggregate_summary.csv": "e6d5b98ad12d5676393fbb49ece92439ca5ed99e8972c98ea46ff8041f40b5c9",
+    "per_subject_summary.csv": "bc1545c761f450e3676222152db3be9dcbb6648986d718cee080acad219ede8a",
+    "regressions.csv": "ce6e8732a62ed3ad26c1eba0b86618162c1268f9c26b07ce3817199d11262766"
+  },
+  "numpy_version": "2.3.5",
+  "method": "Independent CSV-only reconstruction using Python csv and NumPy; did not import summarize_full_suite. Verified unique complete benchmark/prior/seed/method grid, rebuilt equal-subject and question-weighted seed-level aggregates, and recomputed every mean, p90, paired difference, percentage reduction and 10,000-draw PCG64 seed-20260913 multinomial seed-block bootstrap interval. Recomputed every aggregate per-subject better/tie/worse count with absolute tolerance 1e-10. Verified regressions.csv contains exactly every positive per-subject mean difference. Checked report conclusions against these values.",
+  "scope_limit": "This review validates aggregation from the per-run metric CSV, not metric extraction from trajectories or Gittins simulation. Those have separate checks. Checkpoint CSVs were not reviewed here.",
+  "report_review": "No numerical issues or substantive overclaims found. Improvements apply to four primary stability metrics, not universally to every metric; regret and budget-averaged drawdown have recorded regressions. AlpacaEval dataset-prior confidence intervals can include zero."
+}

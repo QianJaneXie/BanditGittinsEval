@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "validated_utc": "2026-09-13T13:48:27.896524+00:00",
+  "benchmark": "mmlu_high_school_government_and_politics",
+  "validated_runs": 40,
+  "validated_post_pull_states": 291411,
+  "validated_observed_cells": 1158000,
+  "elapsed_seconds": 45.07867260003695,
+  "manifest_sha256": "f6e701fd0d093b8c95d0c6e06627b8b7c8c0bcbe948d3efdd9bb638402e50a7a",
+  "auditor_sha256": "e0e70cb91bdc140826fa484013c46931c4ec177055902620f14f44e8de5a18f7",
+  "numpy_version": "2.3.5",
+  "checks": [
+    "complete unique prior/matrix/run seed grid",
+    "input and source hashes",
+    "bounded raw reward matrix and exact oracle means",
+    "every seeded PCG64 cell sample",
+    "unique observed cells and exact cell budgets",
+    "every Gittins allocation from rebuilt statistics",
+    "every float32 posterior-mean recommendation",
+    "every float64 Gaussian LCB recommendation",
+    "every recommended score, observation count and variance",
+    "every oracle regret",
+    "final counts and float64 reward sums",
+    "saved root-table hashes"
+  ],
+  "note": "Independent chunked posterior reconstruction; no sampling of audit steps. Index DP root generation is validated separately."
+}

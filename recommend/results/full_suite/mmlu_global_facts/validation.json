@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "validated_utc": "2026-09-13T13:47:37.307629+00:00",
+  "benchmark": "mmlu_global_facts",
+  "validated_runs": 40,
+  "validated_post_pull_states": 150000,
+  "validated_observed_cells": 600000,
+  "elapsed_seconds": 22.92549269995652,
+  "manifest_sha256": "11c25e5064341bf1c88bd10b8f924758a7c817c9e62008c6c70bba28f0719e35",
+  "auditor_sha256": "e0e70cb91bdc140826fa484013c46931c4ec177055902620f14f44e8de5a18f7",
+  "numpy_version": "2.3.5",
+  "checks": [
+    "complete unique prior/matrix/run seed grid",
+    "input and source hashes",
+    "bounded raw reward matrix and exact oracle means",
+    "every seeded PCG64 cell sample",
+    "unique observed cells and exact cell budgets",
+    "every Gittins allocation from rebuilt statistics",
+    "every float32 posterior-mean recommendation",
+    "every float64 Gaussian LCB recommendation",
+    "every recommended score, observation count and variance",
+    "every oracle regret",
+    "final counts and float64 reward sums",
+    "saved root-table hashes"
+  ],
+  "note": "Independent chunked posterior reconstruction; no sampling of audit steps. Index DP root generation is validated separately."
+}

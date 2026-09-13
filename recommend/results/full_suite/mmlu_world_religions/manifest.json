@@ -1,0 +1,104 @@
+{
+  "created_utc": "2026-09-13T13:44:52.951829+00:00",
+  "status": "complete",
+  "config": {
+    "benchmark": "mmlu_world_religions",
+    "benchmark_label": "MMLU: World Religions",
+    "priors": [
+      "default",
+      "dataset"
+    ],
+    "matrix_seeds": [
+      1
+    ],
+    "run_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "batch_size": 4,
+    "budget_fraction": 0.1,
+    "cost_scale": 0.0001,
+    "tau_sq_cell": 0.25,
+    "grid_points": 1025,
+    "primary_method": "gaussian_lcb_1.645",
+    "dp_backend": "NumPy/SciPy float64 m-diff FFT",
+    "sampling_generator": "numpy.random.PCG64",
+    "input_arithmetic": "float64 scores, batch sums, and oracle means",
+    "trace_format": "compact-primary-v1"
+  },
+  "priors": {
+    "default": [
+      0.5,
+      0.04
+    ],
+    "dataset": [
+      0.75,
+      0.01
+    ]
+  },
+  "methods": [
+    {
+      "key": "posterior_mean",
+      "label": "Current posterior mean",
+      "family": "baseline",
+      "parameter": null
+    },
+    {
+      "key": "gaussian_lcb_1.645",
+      "label": "Gaussian lower bound: mean - 1.645 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 1.645
+    }
+  ],
+  "matrices": {
+    "1": {
+      "path": "data\\MMLU_matrices\\world_religions.npy",
+      "sha256": "607fc0121d913fcdefdeb22681ed038a0fa97ac8af2c94bd9be3fe13d417ad0c",
+      "shape": [
+        1500,
+        171
+      ],
+      "best_mean": 0.9064327485380117,
+      "binary": true
+    }
+  },
+  "source_sha256": {
+    "recommend\\run_full_suite.py": "691c35f4c85705ab9d0e43382d0bc28124e9194c4c4e7d63333e89b3aa5db9f4",
+    "recommend\\full_suite_engine.py": "c51965d5b19c0812bf86d5c741da297db87244706f3bbccce2b8537e13ce05c0",
+    "recommend\\portable_gittins.py": "db529cb7cd21e772a08b01896a7a2c430323190f1a64484fb4f955174d789570",
+    "recommend\\methods.py": "7db3b01a49f70867344f8200722cd972f730eda10a27361f1aa072a43b996a0b",
+    "data\\MMLU_matrices\\task_metadata.json": "50042d54b80b4dcde816c5bff8d6c3cbedbb7823e27edbc65c42d500e9aaf83e"
+  },
+  "versions": {
+    "numpy": "2.3.5",
+    "scipy": "1.18.1"
+  },
+  "git_commit": "376ec1fe6d8de8fc2ffbfe85622b0a68c94d152d",
+  "design": "Fixed Gaussian Gittins allocation; paired posterior mean vs fixed z=1.645 latent Gaussian LCB; exact round(10% matrix cells), no early stop.",
+  "completed_runs": 40,
+  "post_pull_states": 256539,
+  "roots_sha256": {
+    "roots\\default_N171.npy": "89a7a64f9e3ebb000dbe85fc515dddbc65352d635e97effa8e774514a351a63f",
+    "roots\\dataset_N171.npy": "5ab07754487f894818eaeae5ca916c545e99728a8392f5c18ee0711f445d8f7b"
+  },
+  "elapsed_seconds": 6.530897999997251,
+  "completed_utc": "2026-09-13T13:44:59.527450+00:00"
+}

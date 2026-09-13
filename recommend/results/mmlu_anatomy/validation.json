@@ -1,0 +1,38 @@
+{
+  "validated_runs": 40,
+  "validated_post_pull_states": 202520,
+  "native_policy_pulls_verified": 0,
+  "checks": [
+    "input and source hashes",
+    "complete seed grid",
+    "exact budgets",
+    "unique observed cells",
+    "reconstructed counts and sums",
+    "regret against full matrix oracle",
+    "abstention encoding",
+    "selected-arm observation counts",
+    "ordered confidence intervals"
+  ],
+  "confidence_coverage_violation_runs": [],
+  "final_zero_regret_certificates": {
+    "posterior_mean": 0,
+    "empirical_mean": 0,
+    "variance_gate_0.5": 0,
+    "variance_gate_0.2": 0,
+    "variance_gate_0.1": 0,
+    "variance_gate_0.05": 0,
+    "mean_variance_1": 0,
+    "mean_variance_5": 0,
+    "mean_variance_10": 0,
+    "mean_variance_20": 0,
+    "gaussian_lcb_1": 0,
+    "gaussian_lcb_1.645": 0,
+    "gaussian_lcb_1.96": 0,
+    "gaussian_lcb_2.576": 0,
+    "finite_gaussian_lcb_1": 0,
+    "finite_gaussian_lcb_1.645": 0,
+    "finite_gaussian_lcb_1.96": 0,
+    "finite_population_lcb": 0
+  },
+  "note": "Observed confidence coverage is a diagnostic, not proof of nominal coverage; the guarantee follows the stated sampling model and union bound."
+}

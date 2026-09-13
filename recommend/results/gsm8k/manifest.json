@@ -1,0 +1,234 @@
+{
+  "created_utc": "2026-09-11T13:42:20.310294+00:00",
+  "config": {
+    "matrix_seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "run_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "priors": [
+      "default",
+      "dataset"
+    ],
+    "batch_size": 16,
+    "budget_fraction": 0.1,
+    "cost_scale": 0.0001,
+    "tau_sq_cell": 0.25,
+    "grid_points": 1025,
+    "validate_native_steps": 128
+  },
+  "methods": [
+    {
+      "key": "posterior_mean",
+      "label": "Current posterior mean",
+      "family": "baseline",
+      "parameter": null
+    },
+    {
+      "key": "empirical_mean",
+      "label": "Observed sample mean",
+      "family": "baseline",
+      "parameter": null
+    },
+    {
+      "key": "variance_gate_0.5",
+      "label": "Variance gate: v/v0 <= 0.5",
+      "family": "variance_gate",
+      "parameter": 0.5
+    },
+    {
+      "key": "variance_gate_0.2",
+      "label": "Variance gate: v/v0 <= 0.2",
+      "family": "variance_gate",
+      "parameter": 0.2
+    },
+    {
+      "key": "variance_gate_0.1",
+      "label": "Variance gate: v/v0 <= 0.1",
+      "family": "variance_gate",
+      "parameter": 0.1
+    },
+    {
+      "key": "variance_gate_0.05",
+      "label": "Variance gate: v/v0 <= 0.05",
+      "family": "variance_gate",
+      "parameter": 0.05
+    },
+    {
+      "key": "mean_variance_1",
+      "label": "Mean - 1 x variance",
+      "family": "mean_variance",
+      "parameter": 1.0
+    },
+    {
+      "key": "mean_variance_5",
+      "label": "Mean - 5 x variance",
+      "family": "mean_variance",
+      "parameter": 5.0
+    },
+    {
+      "key": "mean_variance_10",
+      "label": "Mean - 10 x variance",
+      "family": "mean_variance",
+      "parameter": 10.0
+    },
+    {
+      "key": "mean_variance_20",
+      "label": "Mean - 20 x variance",
+      "family": "mean_variance",
+      "parameter": 20.0
+    },
+    {
+      "key": "gaussian_lcb_1",
+      "label": "Gaussian lower bound: mean - 1 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 1.0
+    },
+    {
+      "key": "gaussian_lcb_1.645",
+      "label": "Gaussian lower bound: mean - 1.645 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 1.645
+    },
+    {
+      "key": "gaussian_lcb_1.96",
+      "label": "Gaussian lower bound: mean - 1.96 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 1.96
+    },
+    {
+      "key": "gaussian_lcb_2.576",
+      "label": "Gaussian lower bound: mean - 2.576 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 2.576
+    },
+    {
+      "key": "finite_gaussian_lcb_1",
+      "label": "Finite-row Gaussian bound: mean - 1 x SD",
+      "family": "finite_gaussian_lcb",
+      "parameter": 1.0
+    },
+    {
+      "key": "finite_gaussian_lcb_1.645",
+      "label": "Finite-row Gaussian bound: mean - 1.645 x SD",
+      "family": "finite_gaussian_lcb",
+      "parameter": 1.645
+    },
+    {
+      "key": "finite_gaussian_lcb_1.96",
+      "label": "Finite-row Gaussian bound: mean - 1.96 x SD",
+      "family": "finite_gaussian_lcb",
+      "parameter": 1.96
+    },
+    {
+      "key": "finite_population_lcb",
+      "label": "Anytime finite-population lower bound (delta=0.05)",
+      "family": "confidence",
+      "parameter": 0.05
+    }
+  ],
+  "priors": {
+    "default": [
+      0.5,
+      0.04
+    ],
+    "dataset": [
+      0.2,
+      0.01
+    ]
+  },
+  "matrices": {
+    "1": {
+      "path": "data\\BanditEval_matrices\\gsm8k_1_samples_various_models_seed1.npy",
+      "sha256": "224273dc7a3ca6226f34f820655dab519b2e9dc2f11ae365df9cb190e9470f99",
+      "shape": [
+        122,
+        1000
+      ],
+      "best_mean": 0.413
+    },
+    "2": {
+      "path": "data\\BanditEval_matrices\\gsm8k_1_samples_various_models_seed2.npy",
+      "sha256": "1a35da3630e6622e1496df9ce5db4992f4a1f49d2bb8226032d56924b6057d75",
+      "shape": [
+        122,
+        1000
+      ],
+      "best_mean": 0.413
+    },
+    "3": {
+      "path": "data\\BanditEval_matrices\\gsm8k_1_samples_various_models_seed3.npy",
+      "sha256": "5e281909373a9edfb844c3a69998e8f8844737be0635097c4406e2a04e5a9b15",
+      "shape": [
+        122,
+        1000
+      ],
+      "best_mean": 0.413
+    },
+    "4": {
+      "path": "data\\BanditEval_matrices\\gsm8k_1_samples_various_models_seed4.npy",
+      "sha256": "4546be9bd8ba8c66732523cee8683100599e429a3e68d93289fef3e258109ffc",
+      "shape": [
+        122,
+        1000
+      ],
+      "best_mean": 0.413
+    },
+    "5": {
+      "path": "data\\BanditEval_matrices\\gsm8k_1_samples_various_models_seed5.npy",
+      "sha256": "a4e8cc929689cb89a277920376b5ba1d92c7212f9b9a89322d64d51775944bcc",
+      "shape": [
+        122,
+        1000
+      ],
+      "best_mean": 0.413
+    }
+  },
+  "source_sha256": {
+    "recommend\\run_gsm8k.py": "800a01a216277700de1479dd2aac714384a3df14ede1f32b369ac45428facc5e",
+    "recommend\\methods.py": "7db3b01a49f70867344f8200722cd972f730eda10a27361f1aa072a43b996a0b",
+    "src\\gittins_lookup.py": "3c80de03f56298170361121c625b28ce6f31ce4d11960cce0278234dda771512",
+    "src\\gittins_policy.py": "7aaf54e94b100c7e76955443e821756af98fe6df31baec27253a565083c42563",
+    "src\\q_estimation.py": "ddc4b953788b9bdfc3450f705b45e1fff0902e0976d066310785b4c9214d80ff",
+    "src\\gittins_shrinking_posterior.py": "fa9cb412ba8c27f465f0ff302559179a01577edc054f2112fc5d805247b838d9"
+  },
+  "versions": {
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "matplotlib": "3.11.1",
+    "torch": "2.14.0",
+    "jax": "0.11.1",
+    "jaxlib": "0.11.1",
+    "jaxtyping": "0.3.11"
+  },
+  "git_commit": "376ec1fe6d8de8fc2ffbfe85622b0a68c94d152d",
+  "design": "Identical Gittins observations for every recommendation; 10% exact unit-cost budget; final batch truncated; no diagnostic early stop.",
+  "status": "complete",
+  "completed_runs": 200,
+  "elapsed_seconds": 40.905483999988064,
+  "completed_utc": "2026-09-11T13:43:01.258599+00:00"
+}

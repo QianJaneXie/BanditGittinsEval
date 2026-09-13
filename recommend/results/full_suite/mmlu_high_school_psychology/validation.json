@@ -1,0 +1,27 @@
+{
+  "status": "passed",
+  "validated_utc": "2026-09-13T13:50:33.600104+00:00",
+  "benchmark": "mmlu_high_school_psychology",
+  "validated_runs": 40,
+  "validated_post_pull_states": 820493,
+  "validated_observed_cells": 3270000,
+  "elapsed_seconds": 130.4670969999861,
+  "manifest_sha256": "1af3126a9aa7d13fef6a42c94d9448c96a267a83a9e373a6eabdfc811d8a1511",
+  "auditor_sha256": "e0e70cb91bdc140826fa484013c46931c4ec177055902620f14f44e8de5a18f7",
+  "numpy_version": "2.3.5",
+  "checks": [
+    "complete unique prior/matrix/run seed grid",
+    "input and source hashes",
+    "bounded raw reward matrix and exact oracle means",
+    "every seeded PCG64 cell sample",
+    "unique observed cells and exact cell budgets",
+    "every Gittins allocation from rebuilt statistics",
+    "every float32 posterior-mean recommendation",
+    "every float64 Gaussian LCB recommendation",
+    "every recommended score, observation count and variance",
+    "every oracle regret",
+    "final counts and float64 reward sums",
+    "saved root-table hashes"
+  ],
+  "note": "Independent chunked posterior reconstruction; no sampling of audit steps. Index DP root generation is validated separately."
+}

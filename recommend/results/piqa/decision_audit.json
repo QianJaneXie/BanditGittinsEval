@@ -1,0 +1,13 @@
+{
+  "runs": 200,
+  "states": 129592,
+  "method_decisions": 2332656,
+  "checks": [
+    "all 18 recommendation choices, scores and eligibility counts",
+    "latent selected variances",
+    "confidence bounds and regret certificates",
+    "Gittins allocation from prior observations",
+    "exact PCG64 sampled columns"
+  ],
+  "status": "passed"
+}

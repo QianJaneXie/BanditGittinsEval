@@ -1,0 +1,71 @@
+{
+  "status": "passed",
+  "checks": [
+    "exact evaluation budgets",
+    "every pulled arm",
+    "every sampled column",
+    "every paired recommended arm"
+  ],
+  "cases": [
+    {
+      "benchmark": "mmlu_computer_security",
+      "prior": "default",
+      "seed": 0,
+      "post_pull_states": 3750,
+      "old_trace": "recommend\\results\\mmlu_computer_security\\traces\\default_matrix1_run00.npz",
+      "old_sha256": "ad53c1a0e468468b680081629b9773f28fb97b9f1afcbb51a497bd3ba2f1f25d",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_computer_security\\traces\\default_matrix1_run00.npz",
+      "new_sha256": "dbb75140c6256260fd1d806c6abfba936ed9820fbc761ca1994f48b8d96d122a"
+    },
+    {
+      "benchmark": "mmlu_computer_security",
+      "prior": "dataset",
+      "seed": 0,
+      "post_pull_states": 3750,
+      "old_trace": "recommend\\results\\mmlu_computer_security\\traces\\dataset_matrix1_run00.npz",
+      "old_sha256": "8828566fc71004bb94de5a760b483171b64db4589a09160a0e07eed834781104",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_computer_security\\traces\\dataset_matrix1_run00.npz",
+      "new_sha256": "7b4cb9f82b0a46e06c0d1f04d2f43c1305c51f0b7ed87b72ed0bbc9013dcf505"
+    },
+    {
+      "benchmark": "mmlu_anatomy",
+      "prior": "default",
+      "seed": 0,
+      "post_pull_states": 5063,
+      "old_trace": "recommend\\results\\mmlu_anatomy\\traces\\default_matrix1_run00.npz",
+      "old_sha256": "358993b28233c7edb31fcad67bac0aa37af669b12a9dc439638e4bc08a91a432",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_anatomy\\traces\\default_matrix1_run00.npz",
+      "new_sha256": "ffcf8d71146b99a21a9bb63ca3c0e667dff6e0d0e99cec1241ce6c3f9be48988"
+    },
+    {
+      "benchmark": "mmlu_anatomy",
+      "prior": "dataset",
+      "seed": 0,
+      "post_pull_states": 5063,
+      "old_trace": "recommend\\results\\mmlu_anatomy\\traces\\dataset_matrix1_run00.npz",
+      "old_sha256": "1ecbefe6e5bd00299a6c88a8fda5325b655d0ca4c8d95386fdd99af00ccb91de",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_anatomy\\traces\\dataset_matrix1_run00.npz",
+      "new_sha256": "6ae196939ddf31fd7984b1803183fa86ae3a72594bdaa9ef015e9fe955c5952d"
+    },
+    {
+      "benchmark": "mmlu_business_ethics",
+      "prior": "default",
+      "seed": 0,
+      "post_pull_states": 3750,
+      "old_trace": "recommend\\results\\mmlu_business_ethics\\traces\\default_matrix1_run00.npz",
+      "old_sha256": "7945439bcae6eb68975f1b87750ef786e28c691a6ed4b9ccd07d08c3ad055539",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_business_ethics\\traces\\default_matrix1_run00.npz",
+      "new_sha256": "006988d1ccc617598ccd995b974e16ea289303841baf8b86260e6a238451776a"
+    },
+    {
+      "benchmark": "mmlu_business_ethics",
+      "prior": "dataset",
+      "seed": 0,
+      "post_pull_states": 3750,
+      "old_trace": "recommend\\results\\mmlu_business_ethics\\traces\\dataset_matrix1_run00.npz",
+      "old_sha256": "4ecb5baa5c2c69b57feef6890953939cabc4321c32097ad84f2aacec9e573569",
+      "new_trace": "recommend\\results\\full_suite\\mmlu_business_ethics\\traces\\dataset_matrix1_run00.npz",
+      "new_sha256": "6c05b25d2dae9952ff6f87ee5995a7e92cd035e2ecf9eef23c1e1a182c88806c"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+# Versions used for the September 11, 2026 GSM8K experiment (Python 3.12).
+numpy==2.5.3
+scipy==1.18.1
+matplotlib==3.11.1
+torch==2.14.0
+jax==0.11.1
+jaxlib==0.11.1
+jaxtyping==0.3.11

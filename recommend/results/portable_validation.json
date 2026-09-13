@@ -1,0 +1,22 @@
+{
+  "analytic_relu_convolution": "passed",
+  "native_reference_comparisons": {
+    "default": {
+      "max_root_difference": 0.0020457375794649124,
+      "one_grid_spacing": 0.00204568275890323,
+      "roots_differing_above_1e_6": 11,
+      "n_roots": 1001,
+      "archived_native_allocation_decisions_reproduced_with_saved_roots": 766,
+      "portable_root_decision_disagreements_on_archived_states": 0
+    },
+    "dataset": {
+      "max_root_difference": 0.001063227653503418,
+      "one_grid_spacing": 0.0010632124967281148,
+      "roots_differing_above_1e_6": 13,
+      "n_roots": 1001,
+      "archived_native_allocation_decisions_reproduced_with_saved_roots": 767,
+      "portable_root_decision_disagreements_on_archived_states": 0
+    }
+  },
+  "limitation": "Numerical agreement within one grid cell, not bitwise equivalence. New runs use PCG64, not Torch randomness; no new native-policy execution was possible."
+}

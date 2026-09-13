@@ -1,0 +1,4 @@
+# Versions used for September 13, 2026 PIQA/MMLU (Python 3.12).
+numpy==2.3.5
+scipy==1.18.1
+matplotlib==3.11.1

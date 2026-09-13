@@ -1,0 +1,721 @@
+prior_tag,matrix_seed,run_seed,method_key,method_label,family,parameter,final_evaluations,final_budget_fraction,final_recommended_arm,final_regret,final_coverage,top1_correct,final_selected_n,final_selected_variance,final_score,paired_final_delta
+dataset,1,0,posterior_mean,Current posterior mean,baseline,,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,0,empirical_mean,Observed sample mean,baseline,,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,0,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,0,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,0,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,0,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,0,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,0,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,0,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,0,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,0,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,0,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,0,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,0,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,222,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,0,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,0,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,0,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,0,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,1,posterior_mean,Current posterior mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,1,empirical_mean,Observed sample mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,1,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,1,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,1,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,1,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,1,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,1,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,1,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,1,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,1,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,1,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,1,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,1,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,217,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,1,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,1,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,1,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,1,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,219,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,2,posterior_mean,Current posterior mean,baseline,,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,2,empirical_mean,Observed sample mean,baseline,,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,2,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,2,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,2,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,2,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,2,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,2,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,2,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,2,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,2,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,2,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,2,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,2,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,242,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,2,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,2,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,2,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,2,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,3,posterior_mean,Current posterior mean,baseline,,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,3,empirical_mean,Observed sample mean,baseline,,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,3,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,3,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,3,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,3,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,3,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,3,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,3,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,3,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,3,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,3,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,3,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,3,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,3,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,3,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,3,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,3,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,203,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,4,posterior_mean,Current posterior mean,baseline,,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,4,empirical_mean,Observed sample mean,baseline,,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,4,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,4,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,4,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,4,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,4,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,4,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,4,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,4,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,4,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,4,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,4,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,4,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,4,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,4,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,4,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,4,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,5,posterior_mean,Current posterior mean,baseline,,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8277512192726135,0.0
+dataset,1,5,empirical_mean,Observed sample mean,baseline,,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8586956521739131,0.0
+dataset,1,5,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8277511961722488,0.0
+dataset,1,5,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8277511961722488,0.0
+dataset,1,5,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,5,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,5,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8253588516746412,0.0
+dataset,1,5,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8157894736842105,0.0
+dataset,1,5,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.8038277511961722,0.0
+dataset,1,5,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.7799043062200957,0.0
+dataset,1,5,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.778839597367797,0.0
+dataset,1,5,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.7472916161389255,0.0
+dataset,1,5,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.7318844625155232,0.0
+dataset,1,5,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,221,0.0,1,1.0,92.0,0.0023923444976076554,0.7017549176519808,0.0
+dataset,1,5,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,242,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,5,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,242,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,5,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,242,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,5,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,242,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,6,posterior_mean,Current posterior mean,baseline,,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,6,empirical_mean,Observed sample mean,baseline,,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,6,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,6,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,6,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,6,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,6,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,6,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,6,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,6,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,6,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,6,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,6,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,6,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,6,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,6,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,6,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,6,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,208,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,7,posterior_mean,Current posterior mean,baseline,,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,7,empirical_mean,Observed sample mean,baseline,,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,7,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,7,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,7,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,7,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,7,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,7,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,7,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,7,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,7,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,7,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,7,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,7,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,7,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,7,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,7,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,7,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,225,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,8,posterior_mean,Current posterior mean,baseline,,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,8,empirical_mean,Observed sample mean,baseline,,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,8,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,8,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,8,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,8,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,8,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,8,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,8,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,8,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,8,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,8,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,8,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,8,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,8,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,8,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,8,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,8,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,203,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,9,posterior_mean,Current posterior mean,baseline,,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,9,empirical_mean,Observed sample mean,baseline,,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,9,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,9,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,9,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,9,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,9,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,9,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,9,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,9,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,9,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,9,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,9,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,9,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,9,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,9,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,9,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,9,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,220,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,10,posterior_mean,Current posterior mean,baseline,,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,10,empirical_mean,Observed sample mean,baseline,,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,10,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,10,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,10,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,10,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,10,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,10,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,10,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,10,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,10,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,10,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,10,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,10,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,10,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,10,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,10,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,10,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,212,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,11,posterior_mean,Current posterior mean,baseline,,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,11,empirical_mean,Observed sample mean,baseline,,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,11,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,11,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,11,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,11,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,11,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,11,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,11,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,11,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,11,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,11,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,11,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,11,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,216,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,11,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,11,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,11,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,11,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,12,posterior_mean,Current posterior mean,baseline,,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,12,empirical_mean,Observed sample mean,baseline,,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,12,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,12,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,12,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,12,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,12,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,12,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,12,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,12,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,12,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,12,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,12,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,12,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,12,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,12,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8466135738428091,0.0
+dataset,1,12,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.8434060348404565,0.0
+dataset,1,12,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,221,0.0,1,1.0,96.0,0.002304147465437788,0.83,0.0
+dataset,1,13,posterior_mean,Current posterior mean,baseline,,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,13,empirical_mean,Observed sample mean,baseline,,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,13,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,13,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,13,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,13,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,13,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,13,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,13,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,13,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,13,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,13,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,13,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,13,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,13,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,96.0,0.002304147465437788,0.8531813918000072,0.0
+dataset,1,13,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,247,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,13,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,247,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,13,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,247,0.010000000000000009,1,0.0,100.0,0.0022222222222222222,0.85,0.010000000000000009
+dataset,1,14,posterior_mean,Current posterior mean,baseline,,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,14,empirical_mean,Observed sample mean,baseline,,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,14,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,14,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,14,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,14,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,14,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,14,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,14,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,14,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,14,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,14,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,14,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,14,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,227,0.020000000000000018,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,14,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.020000000000000018
+dataset,1,14,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.020000000000000018
+dataset,1,14,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.020000000000000018
+dataset,1,14,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.020000000000000018
+dataset,1,15,posterior_mean,Current posterior mean,baseline,,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111330986023,0.0
+dataset,1,15,empirical_mean,Observed sample mean,baseline,,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,15,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,15,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,15,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,15,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,15,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8288888888888889,0.0
+dataset,1,15,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8200000000000001,0.0
+dataset,1,15,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.8088888888888889,0.0
+dataset,1,15,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.7866666666666667,0.0
+dataset,1,15,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.7839706590320079,0.0
+dataset,1,15,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.7535650674409864,0.0
+dataset,1,15,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.7387158250360689,0.0
+dataset,1,15,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.7096773065553413,0.0
+dataset,1,15,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,15,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,15,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,15,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,200,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,16,posterior_mean,Current posterior mean,baseline,,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111330986023,0.0
+dataset,1,16,empirical_mean,Observed sample mean,baseline,,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,16,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,16,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,16,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,16,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,16,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8288888888888889,0.0
+dataset,1,16,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8200000000000001,0.0
+dataset,1,16,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.8088888888888889,0.0
+dataset,1,16,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.7866666666666667,0.0
+dataset,1,16,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.7839706590320079,0.0
+dataset,1,16,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.7535650674409864,0.0
+dataset,1,16,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.7387158250360689,0.0
+dataset,1,16,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.7096773065553413,0.0
+dataset,1,16,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,16,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,16,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,16,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,208,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,17,posterior_mean,Current posterior mean,baseline,,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111330986023,0.0
+dataset,1,17,empirical_mean,Observed sample mean,baseline,,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,17,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,17,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8311111111111111,0.0
+dataset,1,17,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,17,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,17,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8288888888888889,0.0
+dataset,1,17,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8200000000000001,0.0
+dataset,1,17,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.8088888888888889,0.0
+dataset,1,17,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.7866666666666667,0.0
+dataset,1,17,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.7839706590320079,0.0
+dataset,1,17,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.7535650674409864,0.0
+dataset,1,17,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.7387158250360689,0.0
+dataset,1,17,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.7096773065553413,0.0
+dataset,1,17,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,17,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,17,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,17,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,220,0.0,1,1.0,100.0,0.0022222222222222222,0.86,0.0
+dataset,1,18,posterior_mean,Current posterior mean,baseline,,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,18,empirical_mean,Observed sample mean,baseline,,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,18,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,18,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,18,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,18,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,18,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,18,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,18,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,18,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,18,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,18,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,18,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,18,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,259,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,18,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,18,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,18,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,18,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,210,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,19,posterior_mean,Current posterior mean,baseline,,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013789176941,0.0
+dataset,1,19,empirical_mean,Observed sample mean,baseline,,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8645833333333334,0.0
+dataset,1,19,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,19,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8341013824884793,0.0
+dataset,1,19,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,19,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+dataset,1,19,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8317972350230415,0.0
+dataset,1,19,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8225806451612904,0.0
+dataset,1,19,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.8110599078341014,0.0
+dataset,1,19,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7880184331797235,0.0
+dataset,1,19,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7860998464147474,0.0
+dataset,1,19,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7551388556471903,0.0
+dataset,1,19,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7400183717839647,0.0
+dataset,1,19,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,283,0.010000000000000009,1,0.0,96.0,0.002304147465437788,0.7104494255625459,0.0
+dataset,1,19,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,212,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,19,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,212,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,19,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,212,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+dataset,1,19,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,212,0.0,1,1.0,100.0,0.0022222222222222222,0.86,-0.010000000000000009
+default,1,0,posterior_mean,Current posterior mean,baseline,,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8501326441764832,0.0
+default,1,0,empirical_mean,Observed sample mean,baseline,,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.875,0.0
+default,1,0,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,0,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,0,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,0,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,0,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8474801061007957,0.0
+default,1,0,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8368700265251989,0.0
+default,1,0,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8236074270557029,0.0
+default,1,0,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7970822281167109,0.0
+default,1,0,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7986300057322345,0.0
+default,1,0,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7654108156629474,0.0
+default,1,0,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7491874902802724,0.0
+default,1,0,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7174618761985968,0.0
+default,1,0,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8536258012950243,0.0
+default,1,0,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8417641778783256,0.0
+default,1,0,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8359712920236587,0.0
+default,1,0,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,209,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.77,0.0
+default,1,1,posterior_mean,Current posterior mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8460559844970703,0.0
+default,1,1,empirical_mean,Observed sample mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8695652173913043,0.0
+default,1,1,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,1,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,1,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,1,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,1,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,1,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8333333333333335,0.0
+default,1,1,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8206106870229009,0.0
+default,1,1,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7951653944020357,0.0
+default,1,1,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7956126524132342,0.0
+default,1,1,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7630767063495412,0.0
+default,1,1,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7471870582719236,0.0
+default,1,1,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.716113968697916,0.0
+default,1,1,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8529778476466428,0.0
+default,1,1,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8434920708291089,0.0
+default,1,1,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8388594821507785,0.0
+default,1,1,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,217,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8,0.0
+default,1,2,posterior_mean,Current posterior mean,baseline,,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8460559844970703,0.0
+default,1,2,empirical_mean,Observed sample mean,baseline,,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8695652173913043,0.0
+default,1,2,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,2,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,2,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,2,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,2,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,2,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8333333333333335,0.0
+default,1,2,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8206106870229009,0.0
+default,1,2,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.7951653944020357,0.0
+default,1,2,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.7956126524132342,0.0
+default,1,2,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.7630767063495412,0.0
+default,1,2,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.7471870582719236,0.0
+default,1,2,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.716113968697916,0.0
+default,1,2,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8529778476466428,0.0
+default,1,2,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8434920708291089,0.0
+default,1,2,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8388594821507785,0.0
+default,1,2,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,249,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8,0.0
+default,1,3,posterior_mean,Current posterior mean,baseline,,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8395225405693054,0.0
+default,1,3,empirical_mean,Observed sample mean,baseline,,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8636363636363636,0.0
+default,1,3,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,3,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,3,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,3,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,3,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8368700265251988,0.0
+default,1,3,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.826259946949602,0.0
+default,1,3,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.812997347480106,0.0
+default,1,3,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.786472148541114,0.0
+default,1,3,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.7880199261566376,0.0
+default,1,3,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.7548007360873505,0.0
+default,1,3,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.7385774107046755,0.0
+default,1,3,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.7068517966229999,0.0
+default,1,3,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8423525917459527,0.0
+default,1,3,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.830490968329254,0.0
+default,1,3,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.8246980824745871,0.0
+default,1,3,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,205,0.020000000000000018,1,0.0,88.0,0.002652519893899204,0.76,0.0
+default,1,4,posterior_mean,Current posterior mean,baseline,,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8422982692718506,0.0
+default,1,4,empirical_mean,Observed sample mean,baseline,,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8645833333333334,0.0
+default,1,4,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8422982885085575,0.0
+default,1,4,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8422982885085575,0.0
+default,1,4,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8422982885085575,0.0
+default,1,4,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,4,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8398533007334964,0.0
+default,1,4,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8300733496332519,0.0
+default,1,4,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8178484107579462,0.0
+default,1,4,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.793398533007335,0.0
+default,1,4,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.7928514708651426,0.0
+default,1,4,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.76095827348514,0.0
+default,1,4,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.7453825259274643,0.0
+default,1,4,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.7149232862591208,0.0
+default,1,4,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8534982089406197,0.0
+default,1,4,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8469232578637985,0.0
+default,1,4,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.8437122352448859,0.0
+default,1,4,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,292,0.010000000000000009,1,0.0,96.0,0.0024449877750611247,0.83,0.0
+default,1,5,posterior_mean,Current posterior mean,baseline,,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.856234073638916,0.0
+default,1,5,empirical_mean,Observed sample mean,baseline,,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8804347826086957,0.0
+default,1,5,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,5,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,5,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,5,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,5,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8536895674300256,0.0
+default,1,5,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,5,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8307888040712469,0.0
+default,1,5,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8053435114503817,0.0
+default,1,5,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8057907694615802,0.0
+default,1,5,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.7732548233978872,0.0
+default,1,5,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.7573651753202697,0.0
+default,1,5,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.726292085746262,0.0
+default,1,5,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8637920970105104,0.0
+default,1,5,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8543063201929766,0.0
+default,1,5,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.8496737315146462,0.0
+default,1,5,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,218,0.0,1,1.0,92.0,0.002544529262086514,0.81,0.0
+default,1,6,posterior_mean,Current posterior mean,baseline,,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.856234073638916,0.0
+default,1,6,empirical_mean,Observed sample mean,baseline,,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8804347826086957,0.0
+default,1,6,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,6,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,6,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,6,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,6,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8536895674300256,0.0
+default,1,6,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,6,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8307888040712469,0.0
+default,1,6,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8053435114503817,0.0
+default,1,6,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8057907694615802,0.0
+default,1,6,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.7732548233978872,0.0
+default,1,6,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.7573651753202697,0.0
+default,1,6,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.726292085746262,0.0
+default,1,6,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8637920970105104,0.0
+default,1,6,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8543063201929766,0.0
+default,1,6,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8496737315146462,0.0
+default,1,6,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.81,0.0
+default,1,7,posterior_mean,Current posterior mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8434903025627136,0.0
+default,1,7,empirical_mean,Observed sample mean,baseline,,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8690476190476191,0.0
+default,1,7,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,7,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,7,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,7,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,7,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8407202216066483,0.0
+default,1,7,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.829639889196676,0.0
+default,1,7,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8157894736842106,0.0
+default,1,7,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7880886426592798,0.0
+default,1,7,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.790858725761773,0.0
+default,1,7,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7569113573407202,0.0
+default,1,7,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7403324099722992,0.0
+default,1,7,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7079113573407203,0.0
+default,1,7,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,217,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8432578928291592,0.0
+default,1,7,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,224,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8326778214652413,0.010000000000000009
+default,1,7,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,224,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.8280452327869109,0.010000000000000009
+default,1,7,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,224,0.020000000000000018,1,0.0,92.0,0.002544529262086514,0.79,0.010000000000000009
+default,1,8,posterior_mean,Current posterior mean,baseline,,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8395225405693054,0.0
+default,1,8,empirical_mean,Observed sample mean,baseline,,15000,0.1,211,0.0,1,1.0,56.0,0.004016064257028112,0.875,0.0
+default,1,8,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,8,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,8,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,8,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,8,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8368700265251988,0.0
+default,1,8,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.826259946949602,0.0
+default,1,8,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.812997347480106,0.0
+default,1,8,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.786472148541114,0.0
+default,1,8,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.7880199261566376,0.0
+default,1,8,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.7548007360873505,0.0
+default,1,8,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.7385774107046755,0.0
+default,1,8,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.7068517966229999,0.0
+default,1,8,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8423525917459527,0.0
+default,1,8,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.830490968329254,0.0
+default,1,8,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.8246980824745871,0.0
+default,1,8,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.76,0.0
+default,1,9,posterior_mean,Current posterior mean,baseline,,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8501326441764832,0.0
+default,1,9,empirical_mean,Observed sample mean,baseline,,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.875,0.0
+default,1,9,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,9,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,9,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,9,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,9,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8474801061007957,0.0
+default,1,9,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8368700265251989,0.0
+default,1,9,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8236074270557029,0.0
+default,1,9,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7970822281167109,0.0
+default,1,9,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7986300057322345,0.0
+default,1,9,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7654108156629474,0.0
+default,1,9,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7491874902802724,0.0
+default,1,9,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.7174618761985968,0.0
+default,1,9,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,213,0.010000000000000009,1,0.0,88.0,0.002652519893899204,0.8536258012950243,0.0
+default,1,9,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,294,0.0,1,1.0,96.0,0.0024449877750611247,0.8469232578637985,-0.010000000000000009
+default,1,9,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,294,0.0,1,1.0,96.0,0.0024449877750611247,0.8437122352448859,-0.010000000000000009
+default,1,9,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,294,0.0,1,1.0,96.0,0.0024449877750611247,0.83,-0.010000000000000009
+default,1,10,posterior_mean,Current posterior mean,baseline,,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8395225405693054,0.0
+default,1,10,empirical_mean,Observed sample mean,baseline,,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8636363636363636,0.0
+default,1,10,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,10,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,10,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8395225464190981,0.0
+default,1,10,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,10,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8368700265251988,0.0
+default,1,10,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.826259946949602,0.0
+default,1,10,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.812997347480106,0.0
+default,1,10,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.786472148541114,0.0
+default,1,10,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.7880199261566376,0.0
+default,1,10,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.7548007360873505,0.0
+default,1,10,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.7385774107046755,0.0
+default,1,10,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.7068517966229999,0.0
+default,1,10,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8423525917459527,0.0
+default,1,10,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8326778214652413,0.0
+default,1,10,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.8280452327869109,0.0
+default,1,10,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,219,0.0,1,1.0,92.0,0.002544529262086514,0.79,0.0
+default,1,11,posterior_mean,Current posterior mean,baseline,,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8460559844970703,0.0
+default,1,11,empirical_mean,Observed sample mean,baseline,,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8695652173913043,0.0
+default,1,11,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,11,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,11,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,11,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,11,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,11,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8333333333333335,0.0
+default,1,11,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8206106870229009,0.0
+default,1,11,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.7951653944020357,0.0
+default,1,11,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.7956126524132342,0.0
+default,1,11,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.7630767063495412,0.0
+default,1,11,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.7471870582719236,0.0
+default,1,11,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.716113968697916,0.0
+default,1,11,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8529778476466428,0.0
+default,1,11,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8434920708291089,0.0
+default,1,11,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8388594821507785,0.0
+default,1,11,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,212,0.0,1,1.0,92.0,0.002544529262086514,0.8,0.0
+default,1,12,posterior_mean,Current posterior mean,baseline,,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8501326441764832,0.0
+default,1,12,empirical_mean,Observed sample mean,baseline,,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.875,0.0
+default,1,12,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,12,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,12,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.850132625994695,0.0
+default,1,12,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,12,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8474801061007957,0.0
+default,1,12,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8368700265251989,0.0
+default,1,12,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8236074270557029,0.0
+default,1,12,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.7970822281167109,0.0
+default,1,12,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.7986300057322345,0.0
+default,1,12,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.7654108156629474,0.0
+default,1,12,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.7491874902802724,0.0
+default,1,12,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.7174618761985968,0.0
+default,1,12,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8536258012950243,0.0
+default,1,12,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8417641778783256,0.0
+default,1,12,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.8359712920236587,0.0
+default,1,12,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,216,0.0,1,1.0,88.0,0.002652519893899204,0.77,0.0
+default,1,13,posterior_mean,Current posterior mean,baseline,,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8460559844970703,0.0
+default,1,13,empirical_mean,Observed sample mean,baseline,,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8695652173913043,0.0
+default,1,13,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,13,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,13,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.846055979643766,0.0
+default,1,13,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,13,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,13,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8333333333333335,0.0
+default,1,13,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8206106870229009,0.0
+default,1,13,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.7951653944020357,0.0
+default,1,13,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.7956126524132342,0.0
+default,1,13,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.7630767063495412,0.0
+default,1,13,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.7471870582719236,0.0
+default,1,13,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.716113968697916,0.0
+default,1,13,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8529778476466428,0.0
+default,1,13,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8434920708291089,0.0
+default,1,13,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8388594821507785,0.0
+default,1,13,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,200,0.0,1,1.0,92.0,0.002544529262086514,0.8,0.0
+default,1,14,posterior_mean,Current posterior mean,baseline,,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8434903025627136,0.0
+default,1,14,empirical_mean,Observed sample mean,baseline,,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8690476190476191,0.0
+default,1,14,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,14,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,14,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8434903047091413,0.0
+default,1,14,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,14,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8407202216066483,0.0
+default,1,14,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.829639889196676,0.0
+default,1,14,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8157894736842106,0.0
+default,1,14,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.7880886426592798,0.0
+default,1,14,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.790858725761773,0.0
+default,1,14,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.7569113573407202,0.0
+default,1,14,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.7403324099722992,0.0
+default,1,14,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.7079113573407203,0.0
+default,1,14,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,221,0.0,1,1.0,84.0,0.002770083102493075,0.8432578928291592,0.0
+default,1,14,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.830490968329254,0.0
+default,1,14,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.8246980824745871,0.0
+default,1,14,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,281,0.0,1,1.0,88.0,0.002652519893899204,0.76,0.0
+default,1,15,posterior_mean,Current posterior mean,baseline,,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782589912415,0.0
+default,1,15,empirical_mean,Observed sample mean,baseline,,15000,0.1,203,0.0,1,1.0,88.0,0.002652519893899204,0.875,0.0
+default,1,15,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,15,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,15,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,15,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,15,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8496332518337408,0.0
+default,1,15,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8398533007334963,0.0
+default,1,15,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8276283618581907,0.0
+default,1,15,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8031784841075794,0.0
+default,1,15,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8026314219653871,0.0
+default,1,15,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.7707382245853844,0.0
+default,1,15,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.7551624770277088,0.0
+default,1,15,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.7247032373593651,0.0
+default,1,15,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8638894069846293,0.0
+default,1,15,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8573144559078082,0.0
+default,1,15,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.8541034332888956,0.0
+default,1,15,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,216,0.0,1,1.0,96.0,0.0024449877750611247,0.84,0.0
+default,1,16,posterior_mean,Current posterior mean,baseline,,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.856234073638916,0.0
+default,1,16,empirical_mean,Observed sample mean,baseline,,15000,0.1,208,0.0,1,1.0,84.0,0.002770083102493075,0.8809523809523809,-0.010000000000000009
+default,1,16,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,16,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,16,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.856234096692112,0.0
+default,1,16,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,16,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8536895674300256,0.0
+default,1,16,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8435114503816795,0.0
+default,1,16,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8307888040712469,0.0
+default,1,16,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8053435114503817,0.0
+default,1,16,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8057907694615802,0.0
+default,1,16,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7732548233978872,0.0
+default,1,16,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.7573651753202697,0.0
+default,1,16,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.726292085746262,0.0
+default,1,16,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8637920970105104,0.0
+default,1,16,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8543063201929766,0.0
+default,1,16,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.8496737315146462,0.0
+default,1,16,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,209,0.010000000000000009,1,0.0,92.0,0.002544529262086514,0.81,0.0
+default,1,17,posterior_mean,Current posterior mean,baseline,,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8478260636329651,0.0
+default,1,17,empirical_mean,Observed sample mean,baseline,,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.875,0.0
+default,1,17,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8478260869565217,0.0
+default,1,17,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8478260869565217,0.0
+default,1,17,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8478260869565217,0.0
+default,1,17,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,17,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8449275362318841,0.0
+default,1,17,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8333333333333334,0.0
+default,1,17,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8188405797101449,0.0
+default,1,17,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.7898550724637681,0.0
+default,1,17,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.7939878967507051,0.0
+default,1,17,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.7592622640679535,0.0
+default,1,17,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.7423032341531213,0.0
+default,1,17,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.7091389089863382,0.0
+default,1,17,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8447470379861686,0.0
+default,1,17,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8287393122698559,0.0
+default,1,17,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,200,0.0,1,1.0,80.0,0.002898550724637681,0.8209215857572382,0.0
+default,1,17,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,222,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.72,0.010000000000000009
+default,1,18,posterior_mean,Current posterior mean,baseline,,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782589912415,0.0
+default,1,18,empirical_mean,Observed sample mean,baseline,,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.875,0.0
+default,1,18,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,18,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,18,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8520782396088019,0.0
+default,1,18,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,18,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8496332518337408,0.0
+default,1,18,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8398533007334963,0.0
+default,1,18,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8276283618581907,0.0
+default,1,18,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8031784841075794,0.0
+default,1,18,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8026314219653871,0.0
+default,1,18,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.7707382245853844,0.0
+default,1,18,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.7551624770277088,0.0
+default,1,18,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.7247032373593651,0.0
+default,1,18,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8638894069846293,0.0
+default,1,18,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8573144559078082,0.0
+default,1,18,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.8541034332888956,0.0
+default,1,18,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,203,0.0,1,1.0,96.0,0.0024449877750611247,0.84,0.0
+default,1,19,posterior_mean,Current posterior mean,baseline,,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8545706272125244,0.0
+default,1,19,empirical_mean,Observed sample mean,baseline,,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8809523809523809,0.0
+default,1,19,variance_gate_0.5,Variance gate: v/v0 <= 0.5,variance_gate,0.5,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8545706371191136,0.0
+default,1,19,variance_gate_0.2,Variance gate: v/v0 <= 0.2,variance_gate,0.2,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8545706371191136,0.0
+default,1,19,variance_gate_0.1,Variance gate: v/v0 <= 0.1,variance_gate,0.1,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8545706371191136,0.0
+default,1,19,variance_gate_0.05,Variance gate: v/v0 <= 0.05,variance_gate,0.05,15000,0.1,-1,nan,0,nan,nan,nan,nan,nan
+default,1,19,mean_variance_1,Mean - 1 x variance,mean_variance,1.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8518005540166206,0.0
+default,1,19,mean_variance_5,Mean - 5 x variance,mean_variance,5.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8407202216066483,0.0
+default,1,19,mean_variance_10,Mean - 10 x variance,mean_variance,10.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8268698060941829,0.0
+default,1,19,mean_variance_20,Mean - 20 x variance,mean_variance,20.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7991689750692521,0.0
+default,1,19,gaussian_lcb_1,Gaussian lower bound: mean - 1 x SD,gaussian_lcb,1.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8019390581717452,0.0
+default,1,19,gaussian_lcb_1.645,Gaussian lower bound: mean - 1.645 x SD,gaussian_lcb,1.645,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7679916897506925,0.0
+default,1,19,gaussian_lcb_1.96,Gaussian lower bound: mean - 1.96 x SD,gaussian_lcb,1.96,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7514127423822715,0.0
+default,1,19,gaussian_lcb_2.576,Gaussian lower bound: mean - 2.576 x SD,gaussian_lcb,2.576,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7189916897506926,0.0
+default,1,19,finite_gaussian_lcb_1,Finite-row Gaussian bound: mean - 1 x SD,finite_gaussian_lcb,1.0,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8550307460147548,0.0
+default,1,19,finite_gaussian_lcb_1.645,Finite-row Gaussian bound: mean - 1.645 x SD,finite_gaussian_lcb,1.645,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.841033887443579,0.0
+default,1,19,finite_gaussian_lcb_1.96,Finite-row Gaussian bound: mean - 1.96 x SD,finite_gaussian_lcb,1.96,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.8341982123274234,0.0
+default,1,19,finite_population_lcb,Anytime finite-population lower bound (delta=0.05),confidence,0.05,15000,0.1,274,0.010000000000000009,1,0.0,84.0,0.002770083102493075,0.7425527463531245,0.0

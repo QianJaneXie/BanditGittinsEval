@@ -1,0 +1,26 @@
+{
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "bootstrap_repeats": 1000,
+  "bootstrap_seed": 20260911,
+  "bootstrap_unit": "sampling-seed blocks with fixed matrices",
+  "intervals": "pointwise, unadjusted",
+  "primary_method": "gaussian_lcb_1.645",
+  "source_sha256": {
+    "recommend/plot_results.py": "581481bceb89e4045444e59b05bd16745737e57d35091f2febf756dd964e6a18",
+    "recommend/summarize_benchmarks.py": "8f145701bc0527ada1239b6e633c9ddf302f9f65fb0fcac02071977dc8487535",
+    "recommend/validate_results.py": "1b442e64a147d6fc8ddc87819756226f644d0ed3eee4fa4d7771698a2c3d1f79",
+    "recommend/audit_benchmarks.py": "89c4ddcdf211e2b3e113cce939c0f2eebd2c1fe47a784e86dcc8f32e411ce432",
+    "recommend/validate_portable.py": "62ca72e7afab3ed1094144260b5c5ae314119d0d43647d751a1b4e148952c4c5"
+  },
+  "input_manifests_sha256": {
+    "piqa": "01990dcb988a4ae67b6ae5d4b8bec2ed4075a14b45ea703be608d79de5217785",
+    "mmlu_computer_security": "d44e1a739092a2038567ac1cd239fd10f3f1680ef1a342136938ef299f227bb9",
+    "mmlu_anatomy": "04664ce734c57bb8b9ba10ccad4b85496d23b2db19988d0b1546f2086fcde022",
+    "mmlu_business_ethics": "7ad2490cfd2bc190cf758073f315ca56aed9cc3b13f7775335fdd7df4421aff9"
+  },
+  "audit_totals": {
+    "runs": 320,
+    "states": 632112,
+    "recommendation_decisions": 11378016
+  }
+}

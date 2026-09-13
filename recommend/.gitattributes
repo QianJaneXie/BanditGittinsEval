@@ -1,0 +1,3 @@
+# Experiment manifests hash exact file bytes, including CSV line endings.
+# Preserve those bytes when staging and checking out the archived experiments.
+* -text

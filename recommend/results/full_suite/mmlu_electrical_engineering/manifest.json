@@ -1,0 +1,104 @@
+{
+  "created_utc": "2026-09-13T13:45:03.651409+00:00",
+  "status": "complete",
+  "config": {
+    "benchmark": "mmlu_electrical_engineering",
+    "benchmark_label": "MMLU: Electrical Engineering",
+    "priors": [
+      "default",
+      "dataset"
+    ],
+    "matrix_seeds": [
+      1
+    ],
+    "run_seeds": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "batch_size": 4,
+    "budget_fraction": 0.1,
+    "cost_scale": 0.0001,
+    "tau_sq_cell": 0.25,
+    "grid_points": 1025,
+    "primary_method": "gaussian_lcb_1.645",
+    "dp_backend": "NumPy/SciPy float64 m-diff FFT",
+    "sampling_generator": "numpy.random.PCG64",
+    "input_arithmetic": "float64 scores, batch sums, and oracle means",
+    "trace_format": "compact-primary-v1"
+  },
+  "priors": {
+    "default": [
+      0.5,
+      0.04
+    ],
+    "dataset": [
+      0.6,
+      0.02
+    ]
+  },
+  "methods": [
+    {
+      "key": "posterior_mean",
+      "label": "Current posterior mean",
+      "family": "baseline",
+      "parameter": null
+    },
+    {
+      "key": "gaussian_lcb_1.645",
+      "label": "Gaussian lower bound: mean - 1.645 x SD",
+      "family": "gaussian_lcb",
+      "parameter": 1.645
+    }
+  ],
+  "matrices": {
+    "1": {
+      "path": "data\\MMLU_matrices\\electrical_engineering.npy",
+      "sha256": "02af622b0aaf778d799d16e20fab7ae6faba614c8c8444f344f2176284cbf90f",
+      "shape": [
+        1500,
+        145
+      ],
+      "best_mean": 0.7862068965517242,
+      "binary": true
+    }
+  },
+  "source_sha256": {
+    "recommend\\run_full_suite.py": "691c35f4c85705ab9d0e43382d0bc28124e9194c4c4e7d63333e89b3aa5db9f4",
+    "recommend\\full_suite_engine.py": "c51965d5b19c0812bf86d5c741da297db87244706f3bbccce2b8537e13ce05c0",
+    "recommend\\portable_gittins.py": "db529cb7cd21e772a08b01896a7a2c430323190f1a64484fb4f955174d789570",
+    "recommend\\methods.py": "7db3b01a49f70867344f8200722cd972f730eda10a27361f1aa072a43b996a0b",
+    "data\\MMLU_matrices\\task_metadata.json": "50042d54b80b4dcde816c5bff8d6c3cbedbb7823e27edbc65c42d500e9aaf83e"
+  },
+  "versions": {
+    "numpy": "2.3.5",
+    "scipy": "1.18.1"
+  },
+  "git_commit": "376ec1fe6d8de8fc2ffbfe85622b0a68c94d152d",
+  "design": "Fixed Gaussian Gittins allocation; paired posterior mean vs fixed z=1.645 latent Gaussian LCB; exact round(10% matrix cells), no early stop.",
+  "completed_runs": 40,
+  "post_pull_states": 217522,
+  "roots_sha256": {
+    "roots\\default_N145.npy": "77a7e0e3268c4ff29b8da04fa21073d463adc909aa79cac8fe172b9dc9058e96",
+    "roots\\dataset_N145.npy": "4532ee08732c3bcaaf4471ad5ad60863c71a656c82d1ba2beb854b6ca5fa09de"
+  },
+  "elapsed_seconds": 5.398479699972086,
+  "completed_utc": "2026-09-13T13:45:09.096405+00:00"
+}
