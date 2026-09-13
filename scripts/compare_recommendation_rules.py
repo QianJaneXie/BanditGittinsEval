@@ -28,9 +28,8 @@ import torch
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration  # noqa: E402
-from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import (  # noqa: E402
     finite_population_posterior_moments,
     posterior_moments,
@@ -292,12 +291,10 @@ def main() -> int:
         for prior_type in args.prior_types:
             prior = (0.5, 0.04) if prior_type == "default" else dataset_prior(matrix, args.dataset_tag, buckets)
             print(f"{matrix.stem}/{prior_type}: {tuple(truth.shape)}, prior={prior}; computing lookup", flush=True)
-            transition_stds = transition_stds_shrinking_gaussian_posterior(
-                np.float32(prior[1]), np.float32(args.tau_sq_cell), truth.shape[1],
-            )
             roots = torch.tensor(
-                np.array(compute_roots_lookup_table(
-                    transition_stds=transition_stds,
+                np.array(compute_finite_population_roots_lookup_table(
+                    prior_variance=prior[1], tau_sq_cell=args.tau_sq_cell,
+                    n_examples=truth.shape[1],
                     costs_per_arm=np.float32(args.cost_scaling_factor),
                     n_points=args.grid_points,
                 )), dtype=torch.float32,
@@ -312,6 +309,7 @@ def main() -> int:
                     raw_dir / f"{matrix.stem}_{prior_type}_seed{seed}.npz",
                     **histories[-1], seed=np.asarray(seed),
                     rules=np.array([name for name, _ in rules]),
+                    gittins_index_target=np.asarray("finite_population_mean"),
                 )
                 print(f"  seed {seed}: {len(histories[-1]['evaluations'])} pulls in {time.perf_counter()-seed_started:.1f}s", flush=True)
             requested_budget = int(np.ceil(truth.numel() * args.budget_fraction))
@@ -320,6 +318,7 @@ def main() -> int:
                 args.out_dir / f"{matrix.stem}_{prior_type}.npz", **stacked,
                 rules=np.array([name for name, _ in rules]),
                 seeds=np.arange(args.seed_start, args.seed_start + args.seeds),
+                gittins_index_target=np.asarray("finite_population_mean"),
             )
             result = dict(
                 dataset=matrix.stem, prior_type=prior_type, prior=prior,
@@ -389,7 +388,10 @@ def main() -> int:
     }
     payload = dict(
         config=config,
-        sampling_policy="Gittins, unit cost; fixed budget; recommendations replayed on identical observations",
+        sampling_policy="Full-test-set Gittins, unit cost; fixed budget; recommendations replayed on identical observations",
+        acquisition_target="full_test_set_mean",
+        gittins_index_target="finite_population_mean",
+        acquisition_cost_semantics="The numerical cost scaling is unchanged and is expressed in full-test-set-mean reward units.",
         recommendation_score="Target-specific posterior mean - std_penalty * sqrt(target-specific posterior variance)",
         recommendation_rules=[dict(name=name, **rule) for name, rule in rules],
         posterior_targets={

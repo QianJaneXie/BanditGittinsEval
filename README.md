@@ -29,7 +29,7 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | UCB-E | UCB bound | Empirical mean |
 | SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
-| Gittins | Gittins index | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
+| Gittins | Gittins index for the full test-set mean | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
 
@@ -41,7 +41,7 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 - `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
 - `--recommendation-std-penalty 1` — recommend the Gittins arm with the largest full-test-set posterior mean minus its posterior standard deviation; `0` (default) uses this mean alone.
 
-Both simulation and W&B runners use the full-test-set posterior mean: observed scores count directly, and the latent posterior predicts the remaining scores. Completed arms use their exact empirical mean and have zero recommendation variance. Sampling still uses the existing latent-mean Gittins indices. See [the finite-test-set rule and GSM8K comparison](docs/finite_population_recommendation.md) for formulas and reproduction commands; [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
+Both simulation and W&B runners use the full-test-set posterior mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. Completed arms have index equal to their exact empirical mean and zero posterior variance. The DP uses the full-test-set mean's transition variance, with the numerical evaluation cost unchanged. This can change sampling and stopping even with no LCB penalty. See [the unified index and seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
 
 ## Examples
 

@@ -245,29 +245,27 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
                         recommendation_aware_stop_cum_eval_holder=stop,
                         recommendation_std_penalty=penalty,
                     )
-                    torch.testing.assert_close(means, torch.tensor([0.94, 0.75]))
+                    torch.testing.assert_close(means, torch.tensor([1.175, 0.9375]))
                     self.assertIs(scores, cached_scores)
                     self.assertEqual(stop, [expected_stop])
 
-    def test_finite_recommendation_diagnostic_preserves_latent_natural_stop(self):
+    def test_finite_indices_and_stopping_share_the_completed_empirical_payoff(self):
         obs = torch.tensor([[1.0] * 4, [1.0, 1.0, 1.0, float("nan")]])
-        for unfinished_score, expected_natural in ((0.9, None), (0.7, 7)):
+        for unfinished_score, expected_stop in ((1.1, None), (0.9, 7)):
             with self.subTest(unfinished_score=unfinished_score):
                 natural_stop = [None]
                 recommendation_stop = [None]
-                latent_means, scores = gittins_post_pull_update(
+                means, scores = gittins_post_pull_update(
                     obs, cached_scores=torch.tensor([0.0, unfinished_score]), recompute_arms=[],
                     prior_mean=0.0, prior_variance=1.0, obs_noise_variance=1.0,
                     roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=7,
                     natural_stop_cum_eval_holder=natural_stop,
                     recommendation_aware_stop_cum_eval_holder=recommendation_stop,
                 )
-                torch.testing.assert_close(latent_means, torch.tensor([0.8, 0.75]))
-                torch.testing.assert_close(scores, torch.tensor([0.8, unfinished_score]))
-                # The default zero-penalty recommendation is the completed row
-                # with finite mean 1; its latent acquisition score remains .8.
-                self.assertEqual(recommendation_stop, [7])
-                self.assertEqual(natural_stop, [expected_natural])
+                torch.testing.assert_close(means, torch.tensor([1.0, 0.9375]))
+                torch.testing.assert_close(scores, torch.tensor([1.0, unfinished_score]))
+                self.assertEqual(recommendation_stop, [expected_stop])
+                self.assertEqual(natural_stop, [expected_stop])
 
 
 if __name__ == "__main__":

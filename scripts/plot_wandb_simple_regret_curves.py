@@ -70,7 +70,14 @@ def derive_method_label_row(row: pd.Series) -> str:
             "Bandit Gittins (cost)" if "cost" in variant or "aware" in variant else "Bandit Gittins"
         )
         # Recompute a prior derived suffix so metadata survives pre-labelled CSVs.
-        label = re.sub(r" \[recommend: [^\]]+\]$", "", label)
+        label = re.sub(r" \[(?:recommend|index): [^\]]+\]$", "", label)
+        index_target = row.get("gittins_index_target")
+        index_target = str(index_target).strip() if pd.notna(index_target) else "latent_mean"
+        index_label = (
+            "finite index" if index_target == "finite_population_mean"
+            else "latent index" if index_target in {"", "latent_mean"}
+            else index_target
+        )
         rule = str(row.get("recommendation_rule") or "")
         target = "full test-set mean" if rule.startswith("finite_population_") else "latent mean"
         penalty = pd.to_numeric(row.get("recommendation_std_penalty"), errors="coerce")
@@ -79,7 +86,7 @@ def derive_method_label_row(row: pd.Series) -> str:
             if pd.notna(penalty) and np.isfinite(penalty) and penalty > 0.0
             else target
         )
-        return f"{label} [recommend: {score}]"
+        return f"{label} [index: {index_label}; recommend: {score}]"
     if existing_label:
         return existing_label
     if family == "bo":
@@ -109,14 +116,16 @@ def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
     for label, group in df.loc[is_gittins].groupby(group_by):
         rules = group.get("recommendation_rule", pd.Series(index=group.index, dtype=str))
         rules = rules.fillna("posterior_mean").replace("", "posterior_mean")
+        index_targets = group.get("gittins_index_target", pd.Series(index=group.index, dtype=str))
+        index_targets = index_targets.fillna("latent_mean").replace("", "latent_mean")
         penalties = pd.to_numeric(
             group.get("recommendation_std_penalty", pd.Series(index=group.index, dtype=float)),
             errors="coerce",
         ).fillna(0.0)
-        if len(set(zip(rules, penalties))) > 1:
+        if len(set(zip(rules, penalties, index_targets))) > 1:
             raise ValueError(
-                f"Group {label!r} mixes Gittins recommendation rules or std penalties; "
-                "use --group-by method_label or filter to one recommendation rule."
+                f"Group {label!r} mixes Gittins recommendation rules, index targets, or std penalties; "
+                "use --group-by method_label or filter to one index/recommendation rule."
             )
 
 

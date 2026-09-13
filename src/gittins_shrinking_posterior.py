@@ -17,6 +17,7 @@ import jax.numpy as jnp
 from jaxtyping import Array, Float, Scalar, UInt
 
 from gittins_index_computation import compute_gittins_for_random_walk
+from gittins_lookup import compute_roots_lookup_table
 
 
 def transition_stds_batch_mean_sequence(
@@ -119,6 +120,68 @@ def transition_stds_shrinking_gaussian_posterior(
     t = jnp.arange(n_transitions, dtype=initial_variance.dtype)
     v_t = 1.0 / (1.0 / initial_variance + t / obs_noise_variance)
     return jnp.sqrt((v_t * v_t) / (v_t + obs_noise_variance))
+
+
+def finite_population_mean_scale(
+    prior_variance: float,
+    tau_sq_cell: float,
+    n_examples: int,
+) -> float:
+    """Slope mapping the latent mean process to the full fixed-row mean process."""
+    if n_examples <= 0:
+        raise ValueError("n_examples must be positive")
+    return 1.0 + float(tau_sq_cell) / (int(n_examples) * float(prior_variance))
+
+
+def transition_stds_finite_population_posterior(
+    initial_variance: Float[Scalar, ""],
+    obs_noise_variance: Float[Scalar, ""],
+    n_transitions: int,
+) -> Float[Array, " n_transitions"]:
+    """Per-cell transition SDs of the full fixed-row posterior mean.
+
+    ``n_transitions`` is the full number N of cells, not the remaining horizon.
+    The finite mean is a*mu_t + (1-a)*mu_0 at every stage, with
+    a = 1 + tau_cell**2/(N*v_0), so each latent transition SD is multiplied by a.
+    Transition costs stay in their supplied absolute units.
+    """
+    initial_variance = jnp.asarray(initial_variance, dtype=jnp.float32)
+    obs_noise_variance = jnp.asarray(obs_noise_variance, dtype=jnp.float32)
+    scale = 1.0 + obs_noise_variance / (int(n_transitions) * initial_variance)
+    return scale * transition_stds_shrinking_gaussian_posterior(
+        initial_variance, obs_noise_variance, n_transitions
+    )
+
+
+def compute_finite_population_roots_lookup_table(
+    *,
+    prior_variance: float,
+    tau_sq_cell: float,
+    n_examples: int,
+    costs_per_arm: Float[Array, " n_arms"] | Float[Scalar, ""],
+    n_points: int,
+) -> Float[Array, " n_roots_arms n_examples_plus_one"]:
+    """Precompute finite-row Gittins roots with unchanged absolute costs.
+
+    Returns one shared row for identical costs, otherwise one row per arm.
+    These roots must be subtracted from full-row posterior means. Historical
+    latent roots are incompatible. The completed-stage root is exactly zero.
+    """
+    if n_examples <= 0:
+        raise ValueError("n_examples must be positive")
+    costs = jnp.asarray(costs_per_arm, dtype=jnp.float32).reshape(-1)
+    if costs.size == 0:
+        raise ValueError("costs_per_arm must contain at least one cost")
+    if bool(jnp.all(costs == costs[0])):
+        costs = costs[:1]
+    roots = compute_roots_lookup_table(
+        transition_stds=transition_stds_finite_population_posterior(
+            jnp.float32(prior_variance), jnp.float32(tau_sq_cell), int(n_examples)
+        ),
+        costs_per_arm=costs,
+        n_points=int(n_points),
+    )
+    return roots.at[:, -1].set(0.0)
 
 
 def compute_gittins_shrinking_posterior_walk_per_observation(

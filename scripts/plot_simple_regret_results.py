@@ -19,9 +19,11 @@ def gittins_recommendation_label(traces) -> str:
     """Label old latent-mean and new full-test-set trace bundles accurately."""
     rule = str(np.asarray(traces.get("recommendation_rule", "posterior_mean")).reshape(()))
     penalty = float(np.asarray(traces.get("recommendation_std_penalty", 0.0)).reshape(()))
+    index_target = str(np.asarray(traces.get("gittins_index_target", "latent_mean")).reshape(()))
+    index_label = "finite index" if index_target == "finite_population_mean" else "latent index"
     target = "full test-set mean" if rule.startswith("finite_population_") else "latent mean"
     score = f"{target} - {penalty:g} std" if penalty > 0.0 else target
-    return f"Gittins (recommend: posterior {score})"
+    return f"Gittins ({index_label}; recommend: posterior {score})"
 
 
 def main() -> int:

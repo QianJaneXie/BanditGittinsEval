@@ -1,6 +1,6 @@
 # Historical latent posterior mean minus standard deviation recommendation
 
-This document records the earlier **latent-mean** recommendation and its experiments. Current runners instead recommend using the **full fixed test-set mean**, with no standard-deviation penalty by default; see [the current rule and GSM8K comparison](finite_population_recommendation.md). The historical results below remain unchanged. The comparison script now evaluates both targets on the same trajectory, so its latent-mean rows still reproduce these baselines. The simulation command below now produces a full-test-set LCB trace, not the historical latent-mean trace.
+This document records the earlier **latent-mean** recommendation and its experiments. Current runners use the **full fixed test-set mean** for acquisition, stopping, and recommendation, with no standard-deviation penalty by default; see [the current recommendation rule](finite_population_recommendation.md) and [the unified index](finite_population_gittins.md). The historical results below remain unchanged. To reproduce the latent-acquisition comparison commands below, use commit `f4833e4`; the current comparison script also changes acquisition, so its latent-recommendation rows no longer reproduce these historical baselines. The simulation command below uses the current full-test-set index and LCB recommendation.
 
 The earlier Gittins recommendation maximized
 

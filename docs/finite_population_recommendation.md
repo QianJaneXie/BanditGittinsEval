@@ -1,6 +1,6 @@
 # Full fixed test-set posterior mean recommendation
 
-Gittins recommendations now target the full realized row mean used to compute simple regret. By default, recommend the arm with the largest posterior expectation of that mean, without subtracting a standard deviation. This changes recommendation, while retaining the existing latent-mean Gittins sampling policy.
+Gittins recommendations target the full realized row mean used to compute simple regret. By default, recommend the arm with the largest posterior expectation of that mean, without subtracting a standard deviation. Sampling and stopping now use this same target; see [the unified Gittins index](finite_population_gittins.md). The experiments recorded below predate that acquisition change: they isolate recommendation changes on the historical latent-index sampling trajectory from commit `f4833e4`.
 
 ## Posterior moments
 
@@ -30,19 +30,21 @@ All arms in the current model share N, prior mean mu0, prior variance v0, and ce
 = \left(1+\frac{c}{N}\right)\mu - \frac{c}{N}\mu_0.
 \]
 
-This is the same strictly increasing affine transformation for every arm, even when their observed counts differ. Consequently, the mean-only recommendation ranking is identical in exact arithmetic. Changing the estimand corrects the reported means and the completed-arm uncertainty, but cannot itself remove mean-only recommendation oscillation in this shared-parameter model. Different arm-specific priors, noise variances, or test-set sizes would remove this particular invariance; those are not introduced here. The full-test-set std correction can change LCB rankings.
+This is the same strictly increasing affine transformation for every arm, even when their observed counts differ. Consequently, the mean-only recommendation ranking is identical in exact arithmetic **for the same observed data**. Changing only the recommendation estimand corrects the reported means and the completed-arm uncertainty, but cannot itself remove mean-only recommendation oscillation in this shared-parameter model. Updating the acquisition DP at fixed cost can change the observed data and therefore the recommendation trajectory. Different arm-specific priors, noise variances, or test-set sizes would remove this particular invariance; those are not introduced here. The full-test-set std correction can change LCB rankings.
 
 ## Runners and optional LCB
 
-Both simulation and W&B runners default to `--recommendation-std-penalty 0`. A positive coefficient lambda recommends the maximum of `finite_mean - lambda * sqrt(finite_variance)`. Returned and logged `recommended_mean` values are the unpenalized full-test-set means. `posterior_mean_pulled` remains the latent-mean sampling diagnostic.
+Both simulation and W&B runners default to `--recommendation-std-penalty 0`. A positive coefficient lambda recommends the maximum of `finite_mean - lambda * sqrt(finite_variance)`. Returned and logged `recommended_mean` and `posterior_mean_pulled` values are now the unpenalized full-test-set means. Before the unified acquisition change, `posterior_mean_pulled` described the latent mean.
 
-The recommendation-aware stopping diagnostic compares the largest unfinished latent Gittins index to the selected arm's unpenalized full-test-set mean. It remains a diagnostic, not a newly derived optimal stopping rule for the finite-population objective. Fixed-budget runners do not stop at this crossing. The original index-induced stopping diagnostic retains its latent-mean semantics.
+The recommendation-aware stopping diagnostic compares the largest unfinished full-test-set Gittins index to the selected arm's unpenalized full-test-set mean. Fixed-budget runners log this crossing without terminating the trajectory. Natural stopping uses the same finite-target indices and occurs when a completed arm wins the index comparison. LCB only selects the recommended arm; it does not change the indices, sampling, or natural stopping. With LCB enabled, the recommendation-aware crossing may change because the selected arm changes.
 
-NPZ and W&B metadata use `finite_population_posterior_mean` or `finite_population_posterior_mean_minus_std`, distinguishing these runs from historical latent-mean runs.
+NPZ and W&B metadata use `finite_population_posterior_mean` or `finite_population_posterior_mean_minus_std` for recommendation, and `gittins_index_target = finite_population_mean` for acquisition. Missing historical index-target metadata denotes `latent_mean`. The two fields distinguish changes to acquisition from changes to recommendation.
 
 Normal W&B downloads retain this metadata, and plotting separates the recommendation targets. Legacy expected-grid completeness and targeted-recovery keys cannot distinguish targets: those optional modes reject finite-population runs, including zero-penalty runs, rather than pooling them with latent-mean experiments.
 
 ## GSM8K paired experiment
+
+These historical commands reproduce the results below when run from commit `f4833e4`, where acquisition still used the latent target. Running the current comparison script uses the unified finite-target index and produces a different experiment; use a fresh output directory. The new old-versus-unified comparison is recorded [separately](finite_population_gittins.md).
 
 The comparison uses the README's GSM8K matrix `gsm8k_1_samples_various_models_seed1.npy` (122 arms × 1,000 examples), sampling seed 0, batch size 16, unit costs, Gittins cost scale `1e-4`, and a 10% evaluation budget. It compares the general prior `Normal(0.5, 0.04)` and the README's data-specific prior `Normal(0.2, 0.01)`, with particular attention to the stronger oscillation under the general prior. Each prior has exactly one sampling trajectory on the fixed matrix; the old and new recommendation rules share that trajectory.
 
