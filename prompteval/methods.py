@@ -1,9 +1,17 @@
 import copy
 import numpy as np
 from sklearn.linear_model import LogisticRegression as LR  # type: ignore
+from sklearn.decomposition import PCA
 from tqdm import tqdm  # type: ignore
-try: from .utils import check_multicolinearity
-except ImportError: from utils import check_multicolinearity
+
+
+def check_multicolinearity(X, tol=1e-6):
+    """Check full column rank without importing optional transformer dependencies."""
+    pca = PCA().fit(X)
+    assert np.mean(pca.explained_variance_ratio_ > tol) == 1, (
+        "The covariance matrix of X should be full rank. "
+        f"Minimum explained variance ratio: {pca.explained_variance_ratio_.min()}"
+    )
 
 class LogisticRegression:
     """

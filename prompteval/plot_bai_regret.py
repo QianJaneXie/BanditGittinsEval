@@ -9,7 +9,7 @@ updates (chosen arm, mean, regret, budget) are in the raw results file.
 File layout:
     - MMLU: one processed file per subject, e.g.
       ``bai_processed_results_MMLU_abstract_algebra_combined.npy``
-    - GSM8K / PIQA: one multi-task file, e.g.
+    - GSM8K / PIQA / ALPACA: one multi-task file, e.g.
       ``bai_processed_results_GSM8K_unitcost.npy``
 
 Plotting policy:
@@ -136,7 +136,7 @@ def load_multitask_curves(
     tag: str,
     tasks: list[str] | None,
 ) -> tuple[np.ndarray, list[str] | None]:
-    """Load a single multi-task processed file (GSM8K / PIQA / legacy MMLU)."""
+    """Load a single multi-task processed file (GSM8K / PIQA / ALPACA / legacy MMLU)."""
     proc_file = results_path / f"bai_processed_results_{bench}{tag}.npy"
     curves, file_tasks = load_processed_dict(proc_file)
     if tasks is not None and file_tasks is not None and list(tasks) != list(file_tasks):
@@ -315,13 +315,13 @@ def parse_args() -> argparse.Namespace:
         description="Plot BAI simple regret vs budget from bai_evaluation.py results.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p.add_argument("--bench", default="MMLU", choices=["MMLU", "GSM8K", "PIQA"])
+    p.add_argument("--bench", default="MMLU", choices=["MMLU", "GSM8K", "PIQA", "ALPACA"])
     p.add_argument(
         "--tasks",
         default=None,
         help="Comma-separated task names. MMLU: loads one processed file per subject "
         f"(default: {','.join(DEFAULT_MMLU_TASKS)}). "
-        "GSM8K/PIQA: optional subset of the multi-task file (default: all, then average).",
+        "GSM8K/PIQA/ALPACA: optional subset of the multi-task file (default: all, then average).",
     )
     p.add_argument("--data-path", type=Path, default=None, help="Dir with Ys.pickle (default per bench).")
     p.add_argument("--results-path", type=Path, default=REPO_ROOT / "prompteval" / "results")
@@ -330,7 +330,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--no-combined",
         action="store_true",
-        help="Results were produced with --no-combine-models (MMLU only; GSM8K/PIQA never combine).",
+        help=(
+            "Results were produced with --no-combine-models "
+            "(MMLU only; GSM8K/PIQA/ALPACA never combine)."
+        ),
     )
     p.add_argument(
         "--cost-aware",
@@ -341,19 +344,20 @@ def parse_args() -> argparse.Namespace:
         "--per-task",
         action="store_true",
         help="One panel per task instead of averaging over tasks "
-        "(GSM8K/PIQA aggregate by default; MMLU is always per task).",
+        "(GSM8K/PIQA/ALPACA aggregate by default; MMLU is always per task).",
     )
     return p.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    is_banditeval = args.bench in ("GSM8K", "PIQA")
+    is_banditeval = args.bench in ("GSM8K", "PIQA", "ALPACA")
     combined = False if is_banditeval else not args.no_combined
     data_path = args.data_path or (
         REPO_ROOT / "prompteval" / ("banditeval_pickle" if is_banditeval else "data")
     )
-    # GSM8K/PIQA: `_unitcost` XOR `_costaware`. MMLU cost-aware: `_costaware` (+ `_combined` later).
+    # GSM8K/PIQA/ALPACA: `_unitcost` XOR `_costaware`.
+    # MMLU cost-aware: `_costaware` (+ `_combined` later).
     if args.results_tag is not None:
         results_tag = args.results_tag
     elif is_banditeval:

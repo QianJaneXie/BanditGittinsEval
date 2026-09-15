@@ -8,12 +8,18 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 from sklearn.exceptions import ConvergenceWarning
 
-from methods import LogReg, StratSample
+try:
+    from .methods import LogReg, StratSample
+except ImportError:
+    from methods import LogReg, StratSample
 
 try:
-    from methods_gpu import LogRegTorch
+    from .methods_gpu import LogRegTorch
 except ImportError:
-    LogRegTorch = None  # type: ignore[misc, assignment]
+    try:
+        from methods_gpu import LogRegTorch
+    except ImportError:
+        LogRegTorch = None  # type: ignore[misc, assignment]
 
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
@@ -26,6 +32,9 @@ OBSERVATION_BUDGET_MAX_FRACTION = 0.1
 # examples by ~round 5 (ceil(log2(K)) may be larger, e.g. 7 for K~100), so later
 # rounds produce no new fits.
 MAX_BAI_PHASES = 5
+# PromptEval paper, section 6.1: fit the binary correctness model after thresholding
+# AlpacaEval 2.0 instance scores at 1/2, while retaining raw scores at evaluation time.
+ALPACA_FIT_BINARIZE_THRESHOLD = 0.5
 
 
 def budgets_from_y(Y: np.ndarray, max_fraction: float = OBSERVATION_BUDGET_MAX_FRACTION) -> List[int]:
@@ -45,6 +54,7 @@ DEFAULT_COST_FILES = {
     "MMLU": "data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json",
     "GSM8K": "data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json",
     "PIQA": "data_analysis/pricing/piqa_various_models_configurations_input_price.json",
+    "ALPACA": "data_analysis/pricing/alpaca_153_models_no_rounding_debias_price_1to8.json",
 }
 
 
@@ -58,7 +68,9 @@ def load_arm_costs(cost_file: str) -> np.ndarray:
     """
     with open(cost_file, "r", encoding="utf-8") as handle:
         cfg = json.load(handle)
-    idx = sorted(cfg.keys(), key=int)
+    idx = sorted((key for key in cfg if str(key).isdigit()), key=int)
+    if not idx:
+        raise ValueError(f"{cost_file}: no numeric arm keys found.")
     if [int(k) for k in idx] != list(range(len(idx))):
         raise ValueError(f"{cost_file}: configuration keys are not contiguous 0..{len(idx) - 1}.")
     return np.array([float(cfg[k]["estimated_cost_per_1m_input_tokens"]) for k in idx])
@@ -82,10 +94,12 @@ def slice_costs_for_llm(costs: Optional[np.ndarray], n_arms: int, llm: int) -> O
 # Used by run_bai_evaluation() when no tasks= / tasks_csv / only_task / max_tasks / all_tasks / default_task_subset.
 DEFAULT_TASK_SUBSET = ("abstract_algebra", "professional_law")
 
-# BanditEval GSM8K/PIQA pickles from build_banditeval_pickle.py (no prompt-template covariates).
+# BanditEval GSM8K/PIQA/ALPACA pickles from build_banditeval_pickle.py
+# (no prompt-template covariates).
 DEFAULT_BANDITEVAL_PICKLE_DIR = "prompteval/banditeval_pickle/"
 
-# CLI: python prompteval/bai_evaluation.py --bench {MMLU,GSM8K,PIQA} [--tasks ...] (see parse_args / --help).
+# CLI: python prompteval/bai_evaluation.py --bench {MMLU,GSM8K,PIQA,ALPACA} [--tasks ...]
+# (see parse_args / --help).
 
 UPDATE_FIELDS = [
     "phase",
@@ -175,6 +189,7 @@ def save_bai_raw(
     out_by_task: Optional[list] = None,
     cost_file: Optional[str] = None,
     total_wall_time_s: Optional[Sequence[float]] = None,
+    fit_binarize_threshold: Optional[float] = None,
 ) -> None:
     payload: Dict[str, Any] = {
         "out": out,
@@ -187,6 +202,13 @@ def save_bai_raw(
         "costs_recorded": costs_recorded,
         "cost_file": cost_file,
         "update_fields": UPDATE_FIELDS,
+        "fit_binarize_threshold": fit_binarize_threshold,
+        "fit_target_transform": (
+            "identity"
+            if fit_binarize_threshold is None
+            else f"indicator(score >= {float(fit_binarize_threshold):g})"
+        ),
+        "evaluation_target_transform": "raw",
         "note": (
             "Each phase update stores budget_obs (observation count) and budget_cost "
             "(cost-weighted spend when costs were loaded). Sampling is always unit-cost; "
@@ -215,6 +237,7 @@ def save_bai_processed(
     n_models_stacked: int,
     raw_path: str,
     total_wall_time_s: Optional[Sequence[float]] = None,
+    fit_binarize_threshold: Optional[float] = None,
 ) -> None:
     if cost_aware:
         note = (
@@ -245,6 +268,13 @@ def save_bai_processed(
         "aggregation": aggregation,
         "n_models_stacked": n_models_stacked,
         "update_fields": UPDATE_FIELDS,
+        "fit_binarize_threshold": fit_binarize_threshold,
+        "fit_target_transform": (
+            "identity"
+            if fit_binarize_threshold is None
+            else f"indicator(score >= {float(fit_binarize_threshold):g})"
+        ),
+        "evaluation_target_transform": "raw",
         "note": note,
     }
     if total_wall_time_s is not None:
@@ -262,6 +292,7 @@ def evaluate_bai_combined_one_seed(
     backend,
     torch_device,
     torch_fit_log_interval: int = 0,
+    fit_binarize_threshold: Optional[float] = None,
     costs=None,
 ) -> Tuple[list, float]:
     """One parallel worker job: BAI on an already-stacked (LLM×template) matrix for a single seed.
@@ -277,6 +308,7 @@ def evaluate_bai_combined_one_seed(
         backend=backend,
         torch_device=torch_device,
         torch_fit_log_interval=torch_fit_log_interval,
+        fit_binarize_threshold=fit_binarize_threshold,
         costs=costs,
     )
     total_wall_time_s = float(time.perf_counter() - wall_t0)
@@ -288,7 +320,16 @@ def evaluate_bai_combined_one_seed(
 
 
 def evaluate_bai_combined_one_task(
-    Ys, Xs, bench: str, task: str, random_seeds, backend, torch_device, torch_fit_log_interval: int = 0, costs=None
+    Ys,
+    Xs,
+    bench: str,
+    task: str,
+    random_seeds,
+    backend,
+    torch_device,
+    torch_fit_log_interval: int = 0,
+    fit_binarize_threshold: Optional[float] = None,
+    costs=None,
 ):
     """Stack all models for one benchmark task, then run evaluate_bai for each seed (serial helper).
 
@@ -310,6 +351,7 @@ def evaluate_bai_combined_one_task(
             backend,
             torch_device,
             torch_fit_log_interval,
+            fit_binarize_threshold,
             costs=costs,
         )
         outs.append(out)
@@ -387,6 +429,7 @@ def compute_regrets(
     backend="sklearn",
     torch_device="auto",
     torch_fit_log_interval: int = 0,
+    fit_binarize_threshold: Optional[float] = None,
     costs=None,
 ):
     """
@@ -397,7 +440,8 @@ def compute_regrets(
 
     Parameters:
     budget (int): The total budget for evaluation.
-    Y (numpy.ndarray): The labels or responses for each format-example pair.
+    Y (numpy.ndarray): Original labels or responses for each format-example pair. These values
+        are always used for arm means and simple regret.
     X (numpy.ndarray): The format covariates. If not provided, an identity matrix is used.
     Z (numpy.ndarray, optional): Unused.
     random_seed (int, optional): The seed for random operations to ensure reproducibility.
@@ -405,6 +449,9 @@ def compute_regrets(
     torch_device (str): "auto", "cpu", or "cuda" when backend is "torch".
     torch_fit_log_interval (int): When ``backend=="torch"``, print training loss every this many
         epochs inside ``TorchLogisticRegression`` (0 = silent).
+    fit_binarize_threshold (float, optional): If set, fit the logistic correctness model with
+        ``1[Y >= threshold]`` while retaining original ``Y`` for evaluation. This is the
+        PromptEval paper's AlpacaEval 2.0 adaptation (threshold 0.5).
     costs (numpy.ndarray, optional): Per-arm cost of one observation, used for **accounting
         only**. Sampling and the observation budget are identical with or without costs.
         When provided, each phase records both observation count and cost-weighted spend.
@@ -427,6 +474,26 @@ def compute_regrets(
     use_torch = backend == "torch"
     if use_torch and LogRegTorch is None:
         raise ImportError("methods_gpu / torch backend unavailable (import failed).")
+
+    Y = np.asarray(Y)
+    if Y.ndim != 2:
+        raise ValueError(f"Y must be a 2D matrix, got shape {Y.shape}.")
+    if not np.all(np.isfinite(Y)):
+        raise ValueError("Y contains non-finite values.")
+    if fit_binarize_threshold is None:
+        Y_fit = Y
+    else:
+        threshold = float(fit_binarize_threshold)
+        if not 0.0 <= threshold <= 1.0:
+            raise ValueError(f"fit_binarize_threshold must be in [0, 1], got {threshold}.")
+        y_min = float(np.min(Y))
+        y_max = float(np.max(Y))
+        if y_min < 0.0 or y_max > 1.0:
+            raise ValueError(
+                "Fit-time binarization requires bounded scores in [0, 1], "
+                f"got min={y_min}, max={y_max}."
+            )
+        Y_fit = (Y >= threshold).astype(np.int8)
 
     n_formats, n_examples = Y.shape
     if costs is not None:
@@ -494,7 +561,7 @@ def compute_regrets(
             rasch_model = LogRegTorch(device=torch_device, fit_log_interval=torch_fit_log_interval)
         else:
             rasch_model = LogReg()
-        rasch_model.fit(seen_examples, Y, X)
+        rasch_model.fit(seen_examples, Y_fit, X)
         mu = np.asarray(rasch_model.thetas)[active_arms]
         best_local = int(np.argmax(mu))
         ba_logreg = int(active_arms[best_local])
@@ -729,7 +796,14 @@ def aggregate_curves(
 
 
 def evaluate_bai(
-    Y, Xs, random_seed, backend="sklearn", torch_device="auto", torch_fit_log_interval: int = 0, costs=None
+    Y,
+    Xs,
+    random_seed,
+    backend="sklearn",
+    torch_device="auto",
+    torch_fit_log_interval: int = 0,
+    fit_binarize_threshold: Optional[float] = None,
+    costs=None,
 ):
     """
     Evaluates the Best Arm Identification (BAI) performance across multiple budgets and contexts.
@@ -745,6 +819,8 @@ def evaluate_bai(
     Xs (list of numpy.ndarray): A list of feature matrices representing the formats covariates used when fitting models.
     random_seed (int): An integer seed for ensuring deterministic behavior in randomized processes.
     torch_fit_log_interval (int): Passed to ``compute_regrets`` when using the torch backend (see there).
+    fit_binarize_threshold (float, optional): Fit logistic models on ``1[Y >= threshold]``;
+        retain raw ``Y`` for arm means/regret.
     costs (numpy.ndarray, optional): Per-arm costs, recorded per phase for accounting only
         (sampling is unaffected; see ``compute_regrets``).
 
@@ -771,6 +847,7 @@ def evaluate_bai(
                 backend=backend,
                 torch_device=torch_device,
                 torch_fit_log_interval=torch_fit_log_interval,
+                fit_binarize_threshold=fit_binarize_threshold,
                 costs=costs,
             )
         )
@@ -786,6 +863,7 @@ def evaluate_bai(
                     backend=backend,
                     torch_device=torch_device,
                     torch_fit_log_interval=torch_fit_log_interval,
+                    fit_binarize_threshold=fit_binarize_threshold,
                     costs=costs,
                 )
             )
@@ -812,6 +890,7 @@ def run_bai_evaluation(
     torch_fit_log_interval: int = 0,
     cost_aware: bool = False,
     cost_file: Optional[str] = None,
+    fit_binarize_threshold: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Run the BAI evaluation pipeline (same behavior as the CLI).
@@ -836,12 +915,19 @@ def run_bai_evaluation(
     One raw file is written; unit-cost and cost-aware **processed** files are derived from it.
     ``cost_aware`` is kept for API compatibility and is ignored (both views are written when
     costs are available).
+
+    ``fit_binarize_threshold`` separates model fitting from evaluation: logistic models see
+    ``1[Y >= threshold]`` while chosen/oracle means and regret use raw ``Y``. For ALPACA,
+    the default is 0.5, matching PromptEval section 6.1.
     """
     if seed is not None:
         random_seed_list = [int(seed)]
     else:
         random_seed_list = list(range(int(random_seeds)))
     del cost_aware  # unused; both processed views are written when costs exist
+
+    if fit_binarize_threshold is None and bench == "ALPACA":
+        fit_binarize_threshold = ALPACA_FIT_BINARIZE_THRESHOLD
 
     cost_path = cost_file or DEFAULT_COST_FILES.get(bench)
     costs_full: Optional[np.ndarray] = None
@@ -910,7 +996,7 @@ def run_bai_evaluation(
     # Strip accidental mode tags from a custom --results-tag; modes go only on processed files.
     for mode in ("_unitcost", "_costaware"):
         raw_tag = raw_tag.replace(mode, "")
-    banditeval = bench in ("GSM8K", "PIQA")
+    banditeval = bench in ("GSM8K", "PIQA", "ALPACA")
     costs_recorded = costs_full is not None
 
     n_llm_ref = len(Ys[bench][task_list[0]]) if task_list else 0
@@ -960,6 +1046,7 @@ def run_bai_evaluation(
                 n_models_stacked=n_llm_ref if combine_models else 1,
                 raw_path=raw_path,
                 total_wall_time_s=wall_flat,
+                fit_binarize_threshold=fit_binarize_threshold,
             )
             written.append(proc_path)
             print(
@@ -1034,6 +1121,7 @@ def run_bai_evaluation(
                     backend,
                     torch_device,
                     torch_fit_log_interval,
+                    fit_binarize_threshold,
                     costs=costs_full,
                 )
                 results.append(out)
@@ -1066,6 +1154,7 @@ def run_bai_evaluation(
                     out_by_task=[results],
                     cost_file=cost_path,
                     total_wall_time_s=walls,
+                    fit_binarize_threshold=fit_binarize_threshold,
                 )
                 raw_paths.append(raw_path)
                 proc_paths.extend(
@@ -1098,6 +1187,7 @@ def run_bai_evaluation(
                 out_by_task=out_by_task,
                 cost_file=cost_path,
                 total_wall_time_s=all_walls,
+                fit_binarize_threshold=fit_binarize_threshold,
             )
             raw_paths = [raw_path]
             proc_paths = save_processed_views(
@@ -1128,6 +1218,7 @@ def run_bai_evaluation(
                             backend=backend,
                             torch_device=torch_device,
                             torch_fit_log_interval=torch_fit_log_interval,
+                            fit_binarize_threshold=fit_binarize_threshold,
                             costs=slice_costs_for_llm(
                                 costs_full, np.asarray(Ys[bench][task][llm]).shape[0], llm
                             ),
@@ -1166,6 +1257,7 @@ def run_bai_evaluation(
                     n_models_stacked=1,
                     cost_file=cost_path,
                     total_wall_time_s=walls_by_task[task],
+                    fit_binarize_threshold=fit_binarize_threshold,
                 )
                 raw_paths.append(raw_path)
                 proc_paths.extend(
@@ -1196,6 +1288,7 @@ def run_bai_evaluation(
                 n_models_stacked=1,
                 cost_file=cost_path,
                 total_wall_time_s=all_walls,
+                fit_binarize_threshold=fit_binarize_threshold,
             )
             raw_paths = [raw_path]
             proc_paths = save_processed_views(
@@ -1214,20 +1307,25 @@ def run_bai_evaluation(
         "combine_models": combine_models,
         "n_work_items": n_work,
         "costs_recorded": costs_recorded,
+        "fit_binarize_threshold": fit_binarize_threshold,
     }
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run BAI evaluation on PromptEval (MMLU) or BanditEval (GSM8K/PIQA) pickles.",
+        description=(
+            "Run BAI evaluation on PromptEval (MMLU) or BanditEval "
+            "(GSM8K/PIQA/AlpacaEval) pickles."
+        ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "--bench",
         default="MMLU",
-        choices=["MMLU", "GSM8K", "PIQA"],
+        choices=["MMLU", "GSM8K", "PIQA", "ALPACA"],
         help="Dataset/benchmark name. MMLU uses prompteval/data/ with combine_models; "
-        "GSM8K/PIQA use prompteval/banditeval_pickle/ (build_banditeval_pickle.py) without.",
+        "GSM8K/PIQA/ALPACA use prompteval/banditeval_pickle/ "
+        "(build_banditeval_pickle.py) without.",
     )
     parser.add_argument(
         "--data-path",
@@ -1254,7 +1352,7 @@ def parse_args() -> argparse.Namespace:
         "--tasks",
         default=None,
         help="Comma-separated task names (e.g. 'abstract_algebra,professional_law'). "
-        "Default: all various_models_seed1-5 for GSM8K/PIQA; "
+        "Default: all tasks for GSM8K/PIQA/ALPACA; "
         "abstract_algebra + professional_law for MMLU.",
     )
     parser.add_argument("--all-tasks", action="store_true", help="Run every task in the benchmark.")
@@ -1270,7 +1368,7 @@ def parse_args() -> argparse.Namespace:
         "--no-combine-models",
         dest="combine_models",
         action="store_false",
-        help="One matrix per task (GSM8K/PIQA default).",
+        help="One matrix per task (GSM8K/PIQA/ALPACA default).",
     )
     parser.add_argument("--results-tag", default=None, help="Optional custom suffix for result filenames.")
     parser.add_argument(
@@ -1285,6 +1383,15 @@ def parse_args() -> argparse.Namespace:
         help="JSON with per-arm costs (configuration index -> estimated_cost_per_1m_input_tokens). "
         "Default depends on --bench (see DEFAULT_COST_FILES). If present, both processed views are written.",
     )
+    parser.add_argument(
+        "--fit-binarize-threshold",
+        type=float,
+        default=None,
+        help=(
+            "Fit logistic models on indicator(score >= threshold) while evaluating regret on raw scores. "
+            "Defaults to 0.5 for ALPACA and no transform for other benchmarks."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -1295,11 +1402,12 @@ def main() -> Dict[str, Any]:
         python prompteval/bai_evaluation.py --bench MMLU
         python prompteval/bai_evaluation.py --bench GSM8K
         python prompteval/bai_evaluation.py --bench PIQA --tasks various_models_seed1,various_models_seed2
+        python prompteval/bai_evaluation.py --bench ALPACA --random-seeds 20
         python prompteval/bai_evaluation.py --bench MMLU --all-tasks --random-seeds 20
         python prompteval/bai_evaluation.py --bench MMLU --tasks anatomy --seed 0
     """
     args = parse_args()
-    is_banditeval = args.bench in ("GSM8K", "PIQA")
+    is_banditeval = args.bench in ("GSM8K", "PIQA", "ALPACA")
 
     data_path = args.data_path or (DEFAULT_BANDITEVAL_PICKLE_DIR if is_banditeval else "prompteval/data/")
     combine_models = args.combine_models if args.combine_models is not None else not is_banditeval
@@ -1334,6 +1442,7 @@ def main() -> Dict[str, Any]:
         results_tag=results_tag,
         cost_aware=args.cost_aware,
         cost_file=args.cost_file,
+        fit_binarize_threshold=args.fit_binarize_threshold,
     )
 
 

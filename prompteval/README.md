@@ -6,7 +6,7 @@ Welcome to the [*PromptEval* GitHub repository](https://github.com/felipemaiapol
 
 ## Running BAI (this repo)
 
-Best-arm identification (BAI): successive **halving** + L2-regularized logistic regression, under a 10% observation budget. Supported benchmarks: **MMLU**, **GSM8K**, and **PIQA**.
+Best-arm identification (BAI): successive **halving** + L2-regularized logistic regression, under a 10% observation budget. Supported benchmarks: **MMLU**, **GSM8K**, **PIQA**, and **AlpacaEval 2.0**.
 
 Run all commands from the **BanditGittinsEval repo root**. Python deps: `numpy`, `scikit-learn`, `matplotlib` (for plotting).
 
@@ -71,6 +71,40 @@ python prompteval/plot_bai_regret.py --bench MMLU --tasks abstract_algebra,profe
 ```
 
 See [Output format](#output-format) below for result filenames and array layout.
+
+### AlpacaEval 2.0 continuous scores
+
+The default Alpaca matrix is
+`alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy`
+(153 arms × 805 examples). It contains the original continuous preferences in `[0, 1]`.
+
+Following PromptEval section 6.1, the runner separates fit targets from evaluation targets:
+
+```text
+Y_fit  = 1[Y_raw >= 0.5]   # logistic/IRT fitting and arm elimination
+Y_eval = Y_raw             # chosen mean, oracle mean, and simple regret
+```
+
+Build the shared pickles and run the same 20 sampling seeds (`0..19`) used by the
+other baselines:
+
+```bash
+python prompteval/build_banditeval_pickle.py
+python prompteval/bai_evaluation.py --bench ALPACA --random-seeds 20
+```
+
+The default Alpaca pricing file is loaded automatically, so the one run writes both
+unit-cost and cost-aware processed results:
+
+```text
+prompteval/results/bai_results_ALPACA.npy
+prompteval/results/bai_processed_results_ALPACA_unitcost.npy
+prompteval/results/bai_processed_results_ALPACA_costaware.npy
+```
+
+The raw and processed payloads record `fit_binarize_threshold=0.5`,
+`fit_target_transform="indicator(score >= 0.5)"`, and
+`evaluation_target_transform="raw"` for reproducibility.
 
 ### GSM8K and PIQA
 
