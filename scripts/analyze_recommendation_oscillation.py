@@ -125,7 +125,7 @@ def plot_artifacts(out, setup, config, seeds, rules, grid, regrets, raw):
     import matplotlib.pyplot as plt
 
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
-    colors = ["#34445d", "#008579", "#c06a35"]
+    colors = ["#34445d", "#008579", "#c06a35", "#8d62a8"]
     n_cells = int(np.prod(setup["shape"]))
     x = grid / n_cells * 100
     n = len(seeds)
@@ -134,7 +134,8 @@ def plot_artifacts(out, setup, config, seeds, rules, grid, regrets, raw):
     dataset_label = "GSM8K" if dataset.lower().startswith("gsm8k") else dataset.replace("_", " ")
     matrix_seed = re.search(r"(?:^|_)seed(\d+)(?:_|$)", dataset)
     matrix_label = f"fixed matrix seed {matrix_seed.group(1)}" if matrix_seed else "fixed reward matrix"
-    title = (f"{dataset_label} · {matrix_label} · {n} run seeds {seeds[0]}–{seeds[-1]}\n"
+    seed_label = f"{n} run seeds {seeds[0]}–{seeds[-1]}" if n > 1 else f"run seed {seeds[0]}"
+    title = (f"{dataset_label} · {matrix_label} · {seed_label}\n"
              f"{prior_label.capitalize()} prior N({setup['prior_mean']:g}, {setup['prior_variance']:g})"
              f" · batch size {config['batch_size']} · paired Gittins observations")
     early_percent = float(config["analysis_early_fraction"]) * 100
@@ -143,8 +144,10 @@ def plot_artifacts(out, setup, config, seeds, rules, grid, regrets, raw):
     def band(ax, values, color, label):
         mean = values.mean(axis=0)
         error = values.std(axis=0, ddof=1) / np.sqrt(n) if n > 1 else np.zeros_like(mean)
-        ax.step(x, mean, where="post", color=color, label=label, linewidth=1.35)
-        ax.fill_between(x, mean - error, mean + error, step="post", color=color, alpha=.15, linewidth=0)
+        style = "--" if "Full-test" in label else "-"
+        ax.step(x, mean, where="post", color=color, label=label, linewidth=1.35, linestyle=style)
+        if n > 1:
+            ax.fill_between(x, mean - error, mean + error, step="post", color=color, alpha=.15, linewidth=0)
 
     for paired in (False, True):
         fig, axes = plt.subplots(1, 2, figsize=(12.4, 4.5))
@@ -159,15 +162,17 @@ def plot_artifacts(out, setup, config, seeds, rules, grid, regrets, raw):
             ax.set_xlim(0, limit)
             ax.set_title(f"0–{limit:g}% evaluation budget")
             ax.set_xlabel("Evaluated matrix cells (%)")
-            ax.set_ylabel("LCB − posterior mean: simple regret" if paired else "Simple regret (accuracy gap)")
+            ax.set_ylabel("Simple regret difference vs. baseline" if paired else "Simple regret (accuracy gap)")
             ax.grid(alpha=.18)
         handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .045), ncol=len(labels), frameon=False)
+        fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .045), ncol=min(2, len(labels)), frameon=False)
         fig.suptitle(title, fontsize=11)
-        fig.text(.5, .012, "Unsmoothed mean ± 1 SE across paired run seeds; negative differences favor LCB."
-                 if paired else "Unsmoothed mean ± 1 SE across run seeds; exact event grid with post-pull values held between events.",
+        plot_note = ("Unsmoothed mean ± 1 SE across paired run seeds" if n > 1
+                     else "Raw single-seed trajectory; no smoothing or error bands")
+        fig.text(.5, .012, plot_note + ("; negative differences favor the compared rule."
+                 if paired else "; post-pull values held between events."),
                  ha="center", fontsize=9, color="#4c5665")
-        fig.tight_layout(rect=(0, .12, 1, .87))
+        fig.tight_layout(rect=(0, .17, 1, .87))
         name = "aggregate_paired_regret_difference" if paired else "aggregate_simple_regret"
         for extension in ("png", "pdf"):
             fig.savefig(out / f"{name}.{extension}", dpi=190)
@@ -191,24 +196,70 @@ def plot_artifacts(out, setup, config, seeds, rules, grid, regrets, raw):
         ax.set_ylabel(ylabel)
         ax.grid(alpha=.18)
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .045), ncol=len(labels), frameon=False)
+    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .045), ncol=min(2, len(labels)), frameon=False)
     fig.suptitle(title, fontsize=11)
-    fig.text(.5, .012, "Each seed is counted on its raw trajectory, then averaged; shading is ± 1 SE across seeds.",
+    fig.text(.5, .012, "Each seed is counted on its raw trajectory, then averaged; shading is ± 1 SE across seeds."
+             if n > 1 else "Cumulative counts on the individual raw trajectory; no smoothing or error bands.",
              ha="center", fontsize=9, color="#4c5665")
-    fig.tight_layout(rect=(0, .12, 1, .87))
+    fig.tight_layout(rect=(0, .17, 1, .87))
     for extension in ("png", "pdf"):
         fig.savefig(out / f"aggregate_oscillation.{extension}", dpi=190)
+    plt.close(fig)
+
+    # Keep an individual raw trace visible even in a multi-seed experiment.
+    seed_index = int(np.flatnonzero(seeds == 0)[0]) if np.any(seeds == 0) else 0
+    history = raw[seed_index]
+    seed = int(seeds[seed_index])
+    raw_mask = history["evaluations"] <= grid[-1]
+    seed_x = history["evaluations"][raw_mask] / n_cells * 100
+    fig, axes = plt.subplots(2, 2, figsize=(12.4, 7.2))
+    for rule, label in enumerate(rules):
+        color = colors[rule % len(colors)]
+        regret = history["regret"][raw_mask, rule]
+        arms = history["recommendation"][raw_mask, rule]
+        switches = np.r_[0, np.cumsum(arms[1:] != arms[:-1])]
+        for ax in axes[0]:
+            ax.step(seed_x, regret, where="post", label=label, color=color, linewidth=1.1,
+                    linestyle="--" if rule % 2 else "-")
+        axes[1, 0].step(seed_x, arms, where="post", label=label, color=color, linewidth=1.1,
+                        linestyle="--" if rule % 2 else "-")
+        axes[1, 1].step(seed_x, switches, where="post", label=label, color=color, linewidth=1.1,
+                        linestyle="--" if rule % 2 else "-")
+    for ax, limit, ylabel in zip(
+        axes.flat, (full_percent, early_percent, early_percent, full_percent),
+        ("Simple regret (accuracy gap)", "Simple regret (accuracy gap)",
+         "Recommended arm index", "Cumulative recommendation switches"),
+    ):
+        ax.set_xlim(0, limit)
+        ax.set_ylim(bottom=0)
+        ax.set_title(f"0–{limit:g}% evaluation budget")
+        ax.set_xlabel("Evaluated matrix cells (%)")
+        ax.set_ylabel(ylabel)
+        ax.grid(alpha=.18)
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(.5, .035), ncol=min(2, len(labels)), frameon=False)
+    fig.suptitle(title.replace(f"{n} run seeds {seeds[0]}–{seeds[-1]}", f"run seed {seed}"), fontsize=11)
+    fig.text(.5, .012, "Individual raw post-pull trajectory; no averaging, smoothing, or interpolation.",
+             ha="center", fontsize=9, color="#4c5665")
+    fig.tight_layout(rect=(0, .12, 1, .92))
+    for extension in ("png", "pdf"):
+        fig.savefig(out / f"seed{seed}_recommendation_comparison.{extension}", dpi=190)
     plt.close(fig)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out-dir", type=Path, required=True)
+    parser.add_argument("--analysis-dir", type=Path,
+                        help="Analysis destination; defaults to out-dir/prior-type when multiple priors are present.")
     parser.add_argument("--prior-type", choices=("default", "dataset"), default="default")
-    parser.add_argument("--expected-seeds", type=int, default=20)
+    parser.add_argument("--expected-seeds", type=int, default=1)
     parser.add_argument("--early-fraction", type=float, default=.03)
     args = parser.parse_args()
     summary, setup, aggregate, seeds, raw = load_sources(args.out_dir, args.prior_type, args.expected_seeds)
+    analysis_dir = args.analysis_dir or (args.out_dir / args.prior_type
+                                       if len(summary["setups"]) > 1 else args.out_dir)
+    analysis_dir.mkdir(parents=True, exist_ok=True)
     n_cells = int(np.prod(setup["shape"]))
     start = max(int(history["evaluations"][0]) for history in raw)
     end = min(int(setup["evaluation_budget"]), min(int(history["evaluations"][-1]) for history in raw))
@@ -268,7 +319,7 @@ def main():
         "setup": setup, "run_seeds": seeds.tolist(), "rules": rules,
         "common_domain_evaluations": [start, end], "exact_union_grid_points": int(grid.size),
         "definitions": {
-            "recommendation": "Post-pull posterior mean, or posterior mean minus posterior standard deviation; paired on identical sampling observations within each seed.",
+            "recommendation": "Post-pull posterior mean, optionally minus a posterior-std penalty, for the target named in each rule (latent arm mean or full fixed test-set mean); paired on identical sampling observations within each seed.",
             "regret": "Best full-matrix arm mean minus recommended arm full-matrix mean.",
             "alignment": "Exact union of raw evaluation events; forward hold the latest post-pull recommendation. No smoothing, interpolation, or rebinning.",
             "budget_weighted_mean_regret": "Integral of the post-pull step-held regret over the stated domain, divided by domain length. The final point has no positive-duration interval.",
@@ -278,21 +329,22 @@ def main():
             "settles_zero_evaluations": "First point after which regret remains <= 1e-12 through the clipped window; null if final regret is nonzero. This describes the observed finite window only.",
             "paired_statistics": "Comparison minus baseline per seed. SE is sample SD/sqrt(n); improved means a smaller metric. First/settles-zero pairs omit seeds with missing values; n is reported.",
             "unobserved_fraction": "Both raw-state fraction and evaluation-budget-weighted fraction are reported; these are not interchangeable.",
-            "uncertainty": "Mean ± 1 SE across sampling run seeds on one fixed reward matrix; not a confidence band across independent matrices.",
+            "uncertainty": ("Mean ± 1 SE across sampling run seeds on one fixed reward matrix; not a confidence band across independent matrices."
+                            if len(seeds) > 1 else "One sampling seed on one fixed matrix; no seed average or standard-error band."),
         },
         "aggregate_curve_metrics": aggregate_rows,
         "per_seed_metric_distributions": distribution_rows,
         "paired_seed_metric_deltas": paired_rows,
         "per_seed_metrics": per_seed,
     }
-    (args.out_dir / "oscillation_metrics.json").write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
+    (analysis_dir / "oscillation_metrics.json").write_text(json.dumps(payload, indent=2, allow_nan=False) + "\n")
     for name, rows in (("oscillation_per_seed", per_seed), ("oscillation_aggregate", aggregate_rows),
                        ("oscillation_seed_distributions", distribution_rows), ("oscillation_paired_deltas", paired_rows)):
-        write_csv(args.out_dir / f"{name}.csv", rows)
-    plot_artifacts(args.out_dir, setup, config, seeds, rules, grid, regrets, raw)
+        write_csv(analysis_dir / f"{name}.csv", rows)
+    plot_artifacts(analysis_dir, setup, config, seeds, rules, grid, regrets, raw)
     print(json.dumps({"aggregate_curve_metrics": aggregate_rows,
                       "paired_seed_metric_deltas_full": [x for x in paired_rows if x["window"] == "full"]}, indent=2))
-    print(f"Saved analysis and PNG/PDF plots in {args.out_dir}")
+    print(f"Saved analysis and PNG/PDF plots in {analysis_dir}")
 
 
 if __name__ == "__main__":

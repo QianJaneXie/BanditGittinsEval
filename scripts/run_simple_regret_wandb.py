@@ -2,6 +2,9 @@
 """W&B runner for matrix-bandit simple-regret experiments.
 
 One W&B run = one concrete experiment configuration.
+Gittins acquisition, recommendations, and posterior_mean_pulled all target the
+full fixed test-set average. Historical runs without gittins_index_target used
+the latent arm mean for acquisition and posterior_mean_pulled.
 """
 
 from __future__ import annotations
@@ -33,9 +36,8 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
-from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 
@@ -271,18 +273,15 @@ def build_policy(
         decision_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
 
     t0 = time.perf_counter()
-    transition_stds = transition_stds_shrinking_gaussian_posterior(
-        np.float32(float(prior_variance)),
-        np.float32(float(tau_sq_cell)),
-        int(ground_truth.shape[1]),
-    )
     dp_costs_per_arm = (
         decision_cost_per_arm.to(torch.float32).numpy() * float(variant.cost_scaling_factor)
     ).astype(np.float32)
     roots_torch = torch.tensor(
         np.array(
-            compute_roots_lookup_table(
-                transition_stds=transition_stds,
+            compute_finite_population_roots_lookup_table(
+                prior_variance=float(prior_variance),
+                tau_sq_cell=tau_sq_cell,
+                n_examples=int(ground_truth.shape[1]),
                 costs_per_arm=dp_costs_per_arm,
                 n_points=int(args.gittins_grid_points),
             )
@@ -508,8 +507,9 @@ def parse_args() -> argparse.Namespace:
         "--recommendation_std_penalty",
         type=float,
         default=0.0,
-        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
-        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+        help="Gittins recommendation: maximize the full fixed test-set average's "
+        "posterior mean minus this nonnegative multiple of its posterior predictive "
+        "std. Use 0 for mean only (default), 1 for mean - std.",
     )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
@@ -595,11 +595,15 @@ def main() -> int:
     recommendation_std_penalty = 0.0
     if variant.policy_family == "gittins":
         recommendation_std_penalty = float(args.recommendation_std_penalty)
-        recommendation_rule = "posterior_mean"
+        recommendation_suffix = "_idxfinite_recfinite"
+        recommendation_rule = "finite_population_posterior_mean"
         if recommendation_std_penalty > 0.0:
-            recommendation_suffix = f"_recstd{recommendation_std_penalty:g}"
-            recommendation_rule = "posterior_mean_minus_std"
+            recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
+            recommendation_rule = "finite_population_posterior_mean_minus_std"
     recommendation_config = {
+        "gittins_index_target": (
+            "finite_population_mean" if variant.policy_family == "gittins" else None
+        ),
         "recommendation_rule": recommendation_rule,
         "recommendation_std_penalty": recommendation_std_penalty,
     }

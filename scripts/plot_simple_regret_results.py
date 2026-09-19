@@ -15,6 +15,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def gittins_recommendation_label(traces) -> str:
+    """Label old latent-mean and new full-test-set trace bundles accurately."""
+    rule = str(np.asarray(traces.get("recommendation_rule", "posterior_mean")).reshape(()))
+    penalty = float(np.asarray(traces.get("recommendation_std_penalty", 0.0)).reshape(()))
+    index_target = str(np.asarray(traces.get("gittins_index_target", "latent_mean")).reshape(()))
+    index_label = "finite index" if index_target == "finite_population_mean" else "latent index"
+    target = "full test-set mean" if rule.startswith("finite_population_") else "latent mean"
+    score = f"{target} - {penalty:g} std" if penalty > 0.0 else target
+    return f"Gittins ({index_label}; recommend: posterior {score})"
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--traces", type=Path, required=True, help="Path to .npz from simulation.")
@@ -49,7 +60,7 @@ def main() -> int:
     plt.figure(figsize=(8, 5))
     _plot(x_ucb, "ucb_regret", "UCB-E (recommend: empirical mean)", color=color_ucb)
     _plot(x_sysrs, "sysrs_regret", "SySRs (recommend: active empirical mean)", color=color_sysrs)
-    _plot(x_gittins, "gittins_regret", "Gittins (recommend: posterior mean)", color=color_gittins)
+    _plot(x_gittins, "gittins_regret", gittins_recommendation_label(z), color=color_gittins)
     if args.x_axis == "original_cost":
         plt.xlabel("Cumulative cost (original units of cost vector)")
     else:
@@ -111,4 +122,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

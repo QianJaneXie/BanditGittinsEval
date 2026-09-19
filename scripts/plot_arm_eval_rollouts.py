@@ -8,6 +8,8 @@ and plots per-arm cumulative **batch pulls**:
 - y-axis: cumulative number of batches in which each arm was selected
 
 Supports UCB-E, SySRs, and Gittins (no LRF).
+Gittins replay requires a trace explicitly marked with the finite-population
+index target; historical latent-index traces need their original source version.
 """
 
 from __future__ import annotations
@@ -31,10 +33,20 @@ from banditeval.bandits import upper_confidence_bound_exploration
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
-from gittins_policy import gittins_index_exploration  # noqa: E402
-from gittins_lookup import compute_roots_lookup_table  # noqa: E402
-from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
+
+
+def require_supported_gittins_replay(traces) -> None:
+    """Do not silently replay a historical trace with a different acquisition."""
+    if not np.asarray(traces.get("gittins_regret", [])).size:
+        return
+    target = str(np.asarray(traces.get("gittins_index_target", "latent_mean")).reshape(()))
+    if target != "finite_population_mean":
+        raise ValueError(
+            f"Cannot replay Gittins trace with index target {target!r}: this version "
+            "uses finite_population_mean. Replay historical traces with the original "
+            "source version, or generate a new trace with simulate_simple_regret.py."
+        )
 
 
 def simulate_with_batch_pull_snapshots(
@@ -132,6 +144,11 @@ def main() -> int:
         print(f"Traces not found: {args.traces}", file=sys.stderr)
         return 1
     z = np.load(args.traces)
+    try:
+        require_supported_gittins_replay(z)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     matrix_path = args.matrix or Path(str(np.asarray(z["matrix"]).reshape(())))
     if not matrix_path.is_file():
         print(f"Matrix not found: {matrix_path} (pass --matrix to override)", file=sys.stderr)
@@ -226,15 +243,17 @@ def main() -> int:
 
     # Gittins rollout (per-cell DP with batch-observation model).
     if _has_trace("gittins"):
+        from gittins_policy import gittins_index_exploration
+        from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table
+
         snaps = []
         B = int(gittins_batch_size)
         tau_sq_cell = float(tau_sq_batch) * float(B)
-        transition_stds = transition_stds_shrinking_gaussian_posterior(
-            np.float32(prior_variance), np.float32(tau_sq_cell), int(ground_truth.shape[1])
-        )
         dp_costs_per_arm = np.asarray(cost_per_arm_original * cost_scaling_factor, dtype=np.float32)
-        roots = compute_roots_lookup_table(
-            transition_stds=transition_stds,
+        roots = compute_finite_population_roots_lookup_table(
+            prior_variance=prior_variance,
+            tau_sq_cell=tau_sq_cell,
+            n_examples=int(ground_truth.shape[1]),
             costs_per_arm=dp_costs_per_arm,
             n_points=int(2**10 + 1),
         )
@@ -278,7 +297,7 @@ def main() -> int:
         )
         if snaps:
             it = list(range(1, len(snaps) + 1))
-            panels.append(("Gittins", it, np.stack(snaps, axis=0)))
+            panels.append(("Gittins (finite index)", it, np.stack(snaps, axis=0)))
 
     if not panels:
         print("No algorithms in meta to plot.", file=sys.stderr)

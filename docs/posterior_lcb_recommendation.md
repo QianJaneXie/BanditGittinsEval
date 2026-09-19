@@ -1,12 +1,14 @@
-# Posterior mean minus standard deviation recommendation
+# Historical latent posterior mean minus standard deviation recommendation
 
-Gittins can recommend the arm maximizing
+This document records the earlier **latent-mean** recommendation and its experiments. Current runners use the **full fixed test-set mean** for acquisition, stopping, and recommendation, with no standard-deviation penalty by default; see [the current recommendation rule](finite_population_recommendation.md) and [the unified index](finite_population_gittins.md). The historical results below remain unchanged. To reproduce the latent-acquisition comparison commands below, use commit `f4833e4`; the current comparison script also changes acquisition, so its latent-recommendation rows no longer reproduce these historical baselines. The simulation command below uses the current full-test-set index and LCB recommendation.
+
+The earlier Gittins recommendation maximized
 
 \[
 S_{k,t}=\mu_{k,t}-\lambda\sigma_{k,t}.
 \]
 
-`lambda = 1` implements posterior mean minus posterior standard deviation. `lambda = 0` is the original posterior-mean rule and remains the runner default for backward compatibility. Every arm receives a score; there is no variance cutoff or candidate-set fallback. The earlier variance-filter implementation and its CLI parameters have been removed.
+For these historical results, `lambda = 1` implements latent posterior mean minus posterior standard deviation, and `lambda = 0` is the latent posterior-mean baseline. Every arm receives a score; there is no variance cutoff or candidate-set fallback. The earlier variance-filter implementation and its CLI parameters have been removed.
 
 The minus sign gives a lower-confidence-bound (LCB) style recommendation: uncertainty reduces the score. Gittins still chooses the next arm to sample using its index. UCB-E, SySRs, and LRF retain their existing recommendation rules.
 
@@ -58,7 +60,7 @@ Reproduce the comparison:
   --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
   --dataset-tag gsm8k --prior-types default dataset \
   --seeds 1 --seed-start 0 --batch-size 16 --budget-fraction 0.10 \
-  --std-penalty 1 --cost-scaling-factor 1e-4 --grid-points 1025 \
+  --include-lcb --std-penalty 1 --cost-scaling-factor 1e-4 --grid-points 1025 \
   --out-dir outputs/recommendation_lcb_gsm8k_seed1_run0
 ```
 
@@ -93,11 +95,11 @@ also contains four other matrix seeds, other batch sizes, and other cost scales.
   --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
   --dataset-tag gsm8k --prior-types default \
   --seeds 20 --seed-start 0 --batch-size 16 --budget-fraction 0.10 \
-  --std-penalty 1 --cost-scaling-factor 1e-4 --grid-points 1025 \
+  --include-lcb --std-penalty 1 --cost-scaling-factor 1e-4 --grid-points 1025 \
   --out-dir outputs/recommendation_lcb_gsm8k_seed1_20seeds
 
 .venv/bin/python scripts/analyze_recommendation_oscillation.py \
-  --out-dir outputs/recommendation_lcb_gsm8k_seed1_20seeds
+  --out-dir outputs/recommendation_lcb_gsm8k_seed1_20seeds --expected-seeds 20
 ```
 
 GSM8K has 1,000 examples per arm, so B16 produces partial eight-cell batches

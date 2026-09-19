@@ -1,4 +1,4 @@
-"""Regression tests for posterior mean minus standard-deviation recommendations."""
+"""Regression tests for finite-row posterior recommendations and optional LCBs."""
 
 import unittest
 
@@ -6,6 +6,7 @@ import torch
 
 from gittins_policy import evaluate_gittins_stopping_rules, gittins_post_pull_update
 from simple_regret_recommend import (
+    finite_population_posterior_moments,
     posterior_incumbent,
     posterior_means,
     posterior_moments,
@@ -31,6 +32,62 @@ class PosteriorLCBRecommendationTests(unittest.TestCase):
             means,
             posterior_means(obs, prior_mean=0.5, prior_variance=2.0, tau_sq_cell=2.0),
         )
+
+    def test_finite_moments_cover_unobserved_partial_and_complete_rows(self):
+        obs = torch.tensor(
+            [[float("nan")] * 3, [2.0, float("nan"), float("nan")], [3.0, 6.0, 9.0]],
+            dtype=torch.float64,
+        )
+        means, variances = finite_population_posterior_moments(
+            obs, prior_mean=0.5, prior_variance=2.0, tau_sq_cell=2.0
+        )
+        # The partial row's two unknown cells have latent variance 1 and
+        # individual noise variance 2: Var(full-row mean) = (4 + 4) / 9.
+        torch.testing.assert_close(means, torch.tensor([0.5, 1.5, 6.0]))
+        torch.testing.assert_close(
+            variances, torch.tensor([8.0 / 3.0, 8.0 / 9.0, 0.0], dtype=torch.float64)
+        )
+
+    def test_completed_rows_use_empirical_means_without_uncertainty_penalty(self):
+        obs = torch.tensor([[0.6, 0.8], [0.9, 0.7]])
+        for penalty in (0.0, 1.0, 100.0):
+            with self.subTest(penalty=penalty):
+                selected, means = posterior_incumbent(
+                    obs, prior_mean=0.0, prior_variance=0.01, tau_sq_cell=1.0,
+                    std_penalty=penalty,
+                )
+                self.assertEqual(selected, 1)
+                torch.testing.assert_close(means, obs.mean(dim=1))
+
+    def test_shared_prior_preserves_mean_ranking_when_target_changes(self):
+        obs = torch.tensor(
+            [[float("nan")] * 4, [0.7, float("nan"), float("nan"), float("nan")],
+             [0.4, 0.8, float("nan"), float("nan")], [0.4, 0.3, 0.5, 0.7]]
+        )
+        model = dict(prior_mean=0.5, prior_variance=0.01, tau_sq_cell=0.25)
+        latent_means, _ = posterior_moments(obs, **model)
+        selected, finite_means = posterior_incumbent(obs, **model)
+        # With common prior/noise/N, full-row means are a positive affine
+        # transformation of latent means, even though their values differ.
+        torch.testing.assert_close(
+            finite_means, 0.5 + (1.0 + 25.0 / 4) * (latent_means - 0.5)
+        )
+        self.assertEqual(selected, int(latent_means.argmax().item()))
+
+    def test_different_counts_preserve_equal_posterior_means(self):
+        obs = torch.tensor(
+            [[0.604, float("nan"), float("nan"), float("nan")],
+             [0.55, 0.558, float("nan"), float("nan")],
+             [0.52, 0.54, 0.552, float("nan")], [0.5, 0.52, 0.53, 0.566]],
+            dtype=torch.float64,
+        )
+        # Each sum is (n + 25)*.504 - 25*.5, so every latent posterior
+        # mean is .504 and every full-row posterior mean is .529.
+        selected, means = posterior_incumbent(
+            obs, prior_mean=0.5, prior_variance=0.01, tau_sq_cell=0.25
+        )
+        self.assertTrue(torch.equal(means, torch.full((4,), 0.529)))
+        self.assertEqual(selected, 0)
 
     def test_penalty_uses_standard_deviation_not_variance(self):
         # mu - sigma = [0, -0.05], but mu - variance = [0, 0.1375].
@@ -105,12 +162,14 @@ class PosteriorLCBRecommendationTests(unittest.TestCase):
             [[1.88, float("nan"), float("nan"), float("nan")],
              [1.0, 1.0, 1.0, float("nan")]]
         )
-        selected, means = posterior_incumbent(
-            obs, prior_mean=0.0, prior_variance=1.0, tau_sq_cell=1.0,
-            std_penalty=1.0,
-        )
-        self.assertEqual(selected, 1)
-        torch.testing.assert_close(means, torch.tensor([0.94, 0.75]))
+        for options, expected_arm in (({}, 0), ({"std_penalty": 0.0}, 0), ({"std_penalty": 1.0}, 1)):
+            with self.subTest(options=options):
+                selected, means = posterior_incumbent(
+                    obs, prior_mean=0.0, prior_variance=1.0, tau_sq_cell=1.0,
+                    **options,
+                )
+                self.assertEqual(selected, expected_arm)
+                torch.testing.assert_close(means, torch.tensor([1.175, 0.9375]))
 
     def test_invalid_std_penalties_are_rejected(self):
         for penalty in (-0.1, float("nan"), float("inf"), -float("inf")):
@@ -125,8 +184,15 @@ class PosteriorLCBRecommendationTests(unittest.TestCase):
             for value in (0.0, -1.0, float("nan"), float("inf")):
                 with self.subTest(name=name, value=value):
                     kwargs = {"prior_variance": 1.0, "tau_sq_cell": 1.0, name: value}
-                    with self.assertRaisesRegex(ValueError, name):
-                        posterior_moments(torch.tensor([[0.5]]), prior_mean=0.5, **kwargs)
+                    for moments in (posterior_moments, finite_population_posterior_moments):
+                        with self.assertRaisesRegex(ValueError, name):
+                            moments(torch.tensor([[0.5]]), prior_mean=0.5, **kwargs)
+
+    def test_finite_row_target_requires_nonempty_rows(self):
+        with self.assertRaisesRegex(ValueError, "at least one cell"):
+            finite_population_posterior_moments(
+                torch.empty((2, 0)), prior_mean=0.5, prior_variance=1.0, tau_sq_cell=1.0
+            )
 
 
 class RecommendationAwareStoppingTests(unittest.TestCase):
@@ -159,14 +225,13 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
             [[1.88, float("nan"), float("nan"), float("nan")],
              [1.0, 1.0, 1.0, float("nan")]]
         )
-        # Cell variance 1 gives posteriors (mu, var) = (.94, .5), (.75, .25).
-        # mu - sigma selects arm 1; forgetting batch-to-cell conversion in
-        # the variance calculation would instead select arm 0.
+        # Cell variance 1 gives full-row moments (1.175, .46875), (.9375, .078125).
+        # LCB selects arm 1; forgetting batch-to-cell conversion selects arm 0.
         for batch_model, noise in ((True, 0.25), (False, 1.0)):
             for penalty, maximum_score, expected_stop in (
-                (0.0, 0.9, 4),
-                (1.0, 0.9, None),
-                (1.0, 0.7, 4),  # .7 < selected raw mean .75, but > its LCB .25.
+                (0.0, 1.1, 4),
+                (1.0, 1.1, None),
+                (1.0, 0.9, 4),  # .9 < selected raw mean .9375, but > its LCB .658.
             ):
                 with self.subTest(batch_model=batch_model, penalty=penalty, score=maximum_score):
                     stop = [None]
@@ -180,9 +245,27 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
                         recommendation_aware_stop_cum_eval_holder=stop,
                         recommendation_std_penalty=penalty,
                     )
-                    torch.testing.assert_close(means, torch.tensor([0.94, 0.75]))
+                    torch.testing.assert_close(means, torch.tensor([1.175, 0.9375]))
                     self.assertIs(scores, cached_scores)
                     self.assertEqual(stop, [expected_stop])
+
+    def test_finite_indices_and_stopping_share_the_completed_empirical_payoff(self):
+        obs = torch.tensor([[1.0] * 4, [1.0, 1.0, 1.0, float("nan")]])
+        for unfinished_score, expected_stop in ((1.1, None), (0.9, 7)):
+            with self.subTest(unfinished_score=unfinished_score):
+                natural_stop = [None]
+                recommendation_stop = [None]
+                means, scores = gittins_post_pull_update(
+                    obs, cached_scores=torch.tensor([0.0, unfinished_score]), recompute_arms=[],
+                    prior_mean=0.0, prior_variance=1.0, obs_noise_variance=1.0,
+                    roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=7,
+                    natural_stop_cum_eval_holder=natural_stop,
+                    recommendation_aware_stop_cum_eval_holder=recommendation_stop,
+                )
+                torch.testing.assert_close(means, torch.tensor([1.0, 0.9375]))
+                torch.testing.assert_close(scores, torch.tensor([1.0, unfinished_score]))
+                self.assertEqual(recommendation_stop, [expected_stop])
+                self.assertEqual(natural_stop, [expected_stop])
 
 
 if __name__ == "__main__":

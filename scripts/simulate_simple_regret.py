@@ -4,8 +4,10 @@
 Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
-- Gittins: arm selection by Gittins index, recommendation by posterior mean minus
-  an optional multiple of posterior std.
+- Gittins: arm selection by a Gittins index for the full fixed test-set average,
+  recommendation by the posterior mean
+  of the full fixed test-set average, with an optional posterior predictive std
+  penalty for that same average.
 """
 
 from __future__ import annotations
@@ -28,9 +30,8 @@ _repo_root = Path(__file__).resolve().parents[1]
 if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
-from gittins_lookup import compute_roots_lookup_table  # noqa: E402
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
-from gittins_shrinking_posterior import transition_stds_shrinking_gaussian_posterior  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 
@@ -243,8 +244,9 @@ def main() -> int:
         "--recommendation-std-penalty",
         type=float,
         default=0.0,
-        help="Gittins recommendation: maximize posterior mean minus this nonnegative "
-        "multiple of posterior std. Use 0 for posterior mean (default), 1 for mean - std.",
+        help="Gittins recommendation: maximize the full fixed test-set average's "
+        "posterior mean minus this nonnegative multiple of its posterior predictive "
+        "std. Use 0 for mean only (default), 1 for mean - std.",
     )
     p.add_argument(
         "--cost-vector",
@@ -317,10 +319,11 @@ def main() -> int:
         "ucb_batch_size": int(args.batch_size),
         "gittins_prior_mean": float(args.gittins_prior_mean),
         "gittins_prior_variance": float(args.gittins_prior_variance),
+        "gittins_index_target": "finite_population_mean",
         "recommendation_rule": (
-            "posterior_mean_minus_std"
+            "finite_population_posterior_mean_minus_std"
             if args.recommendation_std_penalty > 0.0
-            else "posterior_mean"
+            else "finite_population_posterior_mean"
         ),
         "recommendation_std_penalty": float(args.recommendation_std_penalty),
     }
@@ -405,17 +408,14 @@ def main() -> int:
         # Convert to an equivalent per-cell variance τ²_cell = τ² * B so the per-cell DP/lookup
         # matches the posterior updates in `gittins_index_exploration(batch_observation_model=True)`.
         tau_sq_cell = float(tau_sq) * float(B)
-        transition_stds = transition_stds_shrinking_gaussian_posterior(
-            np.float32(float(args.gittins_prior_variance)),
-            np.float32(tau_sq_cell),
-            int(n_examples),
-        )
         dp_costs_per_arm = (
             torch.tensor(per_arm_original_cost.numpy(), dtype=torch.float32)
             * float(args.cost_scaling_factor)
         )
-        roots = compute_roots_lookup_table(
-            transition_stds=transition_stds,
+        roots = compute_finite_population_roots_lookup_table(
+            prior_variance=float(args.gittins_prior_variance),
+            tau_sq_cell=tau_sq_cell,
+            n_examples=int(n_examples),
             costs_per_arm=np.asarray(dp_costs_per_arm.numpy(), dtype=np.float32),
             n_points=int(2**10 + 1),
         )

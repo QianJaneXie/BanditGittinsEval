@@ -1,4 +1,4 @@
-"""Shared simple-regret recommendation helpers (empirical / posterior incumbent)."""
+"""Simple-regret recommendations for the complete, fixed evaluation matrix."""
 
 from __future__ import annotations
 
@@ -25,14 +25,14 @@ def empirical_incumbent(obs: torch.Tensor, _aux: Any = None) -> tuple[int, torch
     return recommend_from_means(mus)
 
 
-def posterior_moments(
+def _latent_posterior_moments_float64(
     obs: torch.Tensor,
     *,
     prior_mean: float,
     prior_variance: float,
     tau_sq_cell: float,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Normal-normal posterior means and variances using per-cell noise variance."""
+    """Compute latent moments without rounding the posterior mean to float32."""
     for name, value in (("prior_variance", prior_variance), ("tau_sq_cell", tau_sq_cell)):
         if not math.isfinite(value) or value <= 0:
             raise ValueError(f"{name} must be positive and finite")
@@ -43,7 +43,24 @@ def posterior_moments(
     v_t = 1.0 / prec
     mus = v_t * (float(prior_mean) / v0 + obs_sum / float(tau_sq_cell))
     mus[counts == 0] = float(prior_mean)
-    return mus.to(torch.float32), v_t
+    return mus, v_t
+
+
+def posterior_moments(
+    obs: torch.Tensor,
+    *,
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq_cell: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Latent normal-normal posterior moments using per-cell noise variance."""
+    means, variances = _latent_posterior_moments_float64(
+        obs,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
+    )
+    return means.to(torch.float32), variances
 
 
 def posterior_means(
@@ -61,6 +78,42 @@ def posterior_means(
     )[0]
 
 
+def finite_population_posterior_moments(
+    obs: torch.Tensor,
+    *,
+    prior_mean: float,
+    prior_variance: float,
+    tau_sq_cell: float,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Posterior moments of each full, realized row mean, including unrevealed cells.
+
+    For N cells, n observations with sum S, and latent posterior (mu, v), the
+    full-row mean has expectation (S + (N-n)*mu) / N and variance
+    ((N-n)**2*v + (N-n)*tau_sq_cell) / N**2. The second variance term accounts
+    for unrevealed cell noise. Completed rows have their empirical mean and
+    zero variance; wholly unobserved rows retain the prior mean.
+    """
+    if obs.ndim != 2 or obs.shape[1] == 0:
+        raise ValueError("obs must be a matrix with at least one cell per arm")
+    # Keep both observed sums and latent means in float64 until the final cast;
+    # intermediate rounding could split equal posterior means across counts.
+    observations = obs.to(torch.float64)
+    latent_means, latent_variances = _latent_posterior_moments_float64(
+        observations,
+        prior_mean=prior_mean,
+        prior_variance=prior_variance,
+        tau_sq_cell=tau_sq_cell,
+    )
+    n_cells = obs.shape[1]
+    remaining = (n_cells - (~obs.isnan()).sum(dim=1)).to(torch.float64)
+    observed_sum = torch.nan_to_num(observations, nan=0.0).sum(dim=1)
+    means = (observed_sum + remaining * latent_means) / n_cells
+    variances = (
+        remaining.square() * latent_variances + remaining * float(tau_sq_cell)
+    ) / n_cells**2
+    return means.to(torch.float32), variances
+
+
 def recommend_from_posterior(
     mus: torch.Tensor,
     variances: torch.Tensor,
@@ -69,7 +122,7 @@ def recommend_from_posterior(
 ) -> tuple[int, torch.Tensor]:
     """Maximize μ - std_penalty * σ over all arms (posterior lower bound).
 
-    A penalty of 1 gives μ - σ; 0 retains the original posterior-mean rule.
+    A penalty of 1 gives μ - σ; 0 selects the largest supplied posterior mean.
     Return the unmodified posterior means, not the penalized scores. Exact
     ties use the lowest arm index, and NaN scores are treated as -inf.
     """
@@ -93,8 +146,8 @@ def posterior_incumbent(
     tau_sq_cell: float,
     std_penalty: float = 0.0,
 ) -> tuple[int, torch.Tensor]:
-    """Recommend by posterior mean minus a configurable posterior-std penalty."""
-    mus, variances = posterior_moments(
+    """Recommend the full fixed-row posterior mean, with an optional std penalty."""
+    mus, variances = finite_population_posterior_moments(
         obs,
         prior_mean=prior_mean,
         prior_variance=prior_variance,
