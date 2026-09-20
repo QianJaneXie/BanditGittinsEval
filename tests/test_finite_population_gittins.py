@@ -158,15 +158,18 @@ class FinitePopulationGittinsTests(unittest.TestCase):
         with patch("gittins_policy._finite_roots_for_policy", side_effect=AssertionError("unused roots")):
             batch, means = gittins_index_exploration(obs, return_mus=True)
             natural_stop = [None]
+            lcb_stop = [None]
             updated_means, scores = gittins_post_pull_update(
                 obs, cached_scores=torch.zeros(2), recompute_arms=[0, 1], sim_cum_eval=4,
                 natural_stop_cum_eval_holder=natural_stop,
+                lcb_aligned_stop_cum_eval_holder=lcb_stop,
             )
         self.assertIsNone(batch)
         torch.testing.assert_close(means, obs.mean(dim=1))
         torch.testing.assert_close(updated_means, means)
         torch.testing.assert_close(scores, means)
         self.assertEqual(natural_stop, [4])
+        self.assertEqual(lcb_stop, [None])
 
     def test_recommendation_penalty_does_not_change_acquisition_or_natural_stop(self):
         obs = torch.tensor([[1.88, float("nan"), float("nan"), float("nan")],

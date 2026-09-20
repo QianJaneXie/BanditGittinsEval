@@ -47,6 +47,8 @@ class Trace:
     stop_cum_original_cost: float | None = None
     recommendation_aware_stop_cum_eval: int | None = None
     recommendation_aware_stop_cum_original_cost: float | None = None
+    lcb_aligned_stop_cum_eval: int | None = None
+    lcb_aligned_stop_cum_original_cost: float | None = None
 
 
 def simulate_simple_regret(
@@ -62,6 +64,7 @@ def simulate_simple_regret(
     pass_sim_cum_eval: bool = False,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    lcb_aligned_stop_cum_eval_holder: list[int | None] | None = None,
     post_pull_fn: Callable[[torch.Tensor, int, int], None] | None = None,
 ) -> Trace:
     torch.manual_seed(int(seed))
@@ -80,6 +83,8 @@ def simulate_simple_regret(
     stop_cum_original_cost: float | None = None
     recommendation_aware_stop_cum_eval: int | None = None
     recommendation_aware_stop_cum_original_cost: float | None = None
+    lcb_aligned_stop_cum_eval: int | None = None
+    lcb_aligned_stop_cum_original_cost: float | None = None
 
     while evaluated < max_evaluations:
         call_kw = dict(step_kwargs)
@@ -91,6 +96,10 @@ def simulate_simple_regret(
             if recommendation_aware_stop_cum_eval_holder is not None:
                 call_kw["recommendation_aware_stop_cum_eval_holder"] = (
                     recommendation_aware_stop_cum_eval_holder
+                )
+            if lcb_aligned_stop_cum_eval_holder is not None:
+                call_kw["lcb_aligned_stop_cum_eval_holder"] = (
+                    lcb_aligned_stop_cum_eval_holder
                 )
         out = step(obs, **call_kw)
         if out is None:
@@ -132,6 +141,15 @@ def simulate_simple_regret(
                 recommendation_aware_stop_cum_eval_holder[0]
             )
             recommendation_aware_stop_cum_original_cost = float(total_original_cost)
+        if (
+            lcb_aligned_stop_cum_eval is None
+            and lcb_aligned_stop_cum_eval_holder is not None
+            and len(lcb_aligned_stop_cum_eval_holder) == 1
+            and lcb_aligned_stop_cum_eval_holder[0] is not None
+            and int(lcb_aligned_stop_cum_eval_holder[0]) == int(evaluated)
+        ):
+            lcb_aligned_stop_cum_eval = int(lcb_aligned_stop_cum_eval_holder[0])
+            lcb_aligned_stop_cum_original_cost = float(total_original_cost)
 
         if recommend_fn is None:
             arm, mus = empirical_incumbent(obs)
@@ -158,6 +176,8 @@ def simulate_simple_regret(
         stop_cum_original_cost=stop_cum_original_cost,
         recommendation_aware_stop_cum_eval=recommendation_aware_stop_cum_eval,
         recommendation_aware_stop_cum_original_cost=recommendation_aware_stop_cum_original_cost,
+        lcb_aligned_stop_cum_eval=lcb_aligned_stop_cum_eval,
+        lcb_aligned_stop_cum_original_cost=lcb_aligned_stop_cum_original_cost,
     )
 
 
@@ -422,6 +442,7 @@ def main() -> int:
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
         stop_holder: list[int | None] = [None]
         recommendation_aware_stop_holder: list[int | None] = [None]
+        lcb_aligned_stop_holder: list[int | None] = [None]
         cached_scores = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         prev_arm: int | None = None
 
@@ -466,6 +487,7 @@ def main() -> int:
             batch_observation_model=True,
             natural_stop_cum_eval_holder=stop_holder,
             recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+            lcb_aligned_stop_cum_eval_holder=lcb_aligned_stop_holder,
             recommendation_std_penalty=float(args.recommendation_std_penalty),
         )
 
@@ -496,6 +518,7 @@ def main() -> int:
             pass_sim_cum_eval=False,
             natural_stop_cum_eval_holder=stop_holder,
             recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+            lcb_aligned_stop_cum_eval_holder=lcb_aligned_stop_holder,
             post_pull_fn=gittins_post_pull,
         )
         out.update(
@@ -523,6 +546,18 @@ def main() -> int:
                 else tr.recommendation_aware_stop_cum_original_cost,
                 dtype=np.float64,
             ),
+            gittins_lcb_aligned_stop_cum_eval=np.asarray(
+                -1
+                if tr.lcb_aligned_stop_cum_eval is None
+                else tr.lcb_aligned_stop_cum_eval,
+                dtype=np.int32,
+            ),
+            gittins_lcb_aligned_stop_cum_original_cost=np.asarray(
+                -1.0
+                if tr.lcb_aligned_stop_cum_original_cost is None
+                else tr.lcb_aligned_stop_cum_original_cost,
+                dtype=np.float64,
+            ),
         )
     else:
         out.update(
@@ -535,6 +570,8 @@ def main() -> int:
             gittins_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
             gittins_recommendation_aware_stop_cum_eval=np.asarray(-1, dtype=np.int32),
             gittins_recommendation_aware_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
+            gittins_lcb_aligned_stop_cum_eval=np.asarray(-1, dtype=np.int32),
+            gittins_lcb_aligned_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

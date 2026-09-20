@@ -48,9 +48,9 @@ For GSM8K with N=1,000 and tau_cell^2=0.25, a is 1.00625 under the general prior
 
 ## Stopping, recommendation, and metadata
 
-Natural stopping occurs when the largest index belongs to a completed arm. Both completed and unfinished indices now describe F. The recommendation-aware diagnostic compares the best unfinished finite-target index with the selected arm's unpenalized M. Fixed-budget runners record first crossings and continue to their evaluation budget.
+Natural stopping occurs when the largest index belongs to a completed arm. Both completed and unfinished indices now describe F. The LCB-aligned stopping rule instead compares the best unfinished finite-target index with the selected score `M - lambda*sqrt(V_F)`, so it can stop before any arm is complete. Fixed-budget runners record both first stopping times and continue to their evaluation budget. The older crossing against the selected arm's unpenalized M remains logged only for compatibility with existing results.
 
-The default recommendation maximizes M. `--recommendation-std-penalty 1` instead maximizes `M - sqrt(V_F)`. LCB affects recommendation and potentially its recommendation-aware stopping diagnostic; it does not enter acquisition or natural stopping. Correcting the target does not eliminate optimistic recommendations for unobserved arms: their M remains the prior mean.
+The default recommendation maximizes M. `--recommendation-std-penalty 1` instead maximizes `M - sqrt(V_F)`. The same coefficient is used by the LCB-aligned stopping threshold. LCB affects recommendation and the LCB-aligned stopping rule; it does not enter acquisition or natural stopping. Correcting the target does not eliminate optimistic recommendations for unobserved arms: their M remains the prior mean.
 
 The low-level latent posterior and transition helpers retain their latent meaning. `gittins_index_exploration` and `gittins_post_pull_update` return finite-target means; `posterior_mean_pulled` consequently records M. Precomputed roots supplied to the policy must use the finite-target transition schedule. `compute_finite_population_roots_lookup_table` provides this construction and shares a single lookup table when all arm costs are identical.
 
@@ -93,7 +93,20 @@ All eight curves have zero regret at the budget endpoint. The new data-specific 
 | General | 4,360 → 3,528 | 2,096 → 2,096 |
 | Data-specific | 2,984 → 2,984 | 576 → 576 |
 
-These are first post-pull diagnostic crossings, not actual truncations of the fixed-budget experiments. For this seed, mean and LCB give the same first recommendation-aware crossing within each acquisition/prior setting. That equality is an observed result, not a guarantee for other trajectories.
+These are first post-pull recorded crossings, not actual truncations of the fixed-budget experiments. For this seed, mean and LCB give the same first legacy recommendation-aware crossing within each acquisition/prior setting. That equality is an observed result, not a guarantee for other trajectories.
+
+### LCB-aligned stopping pilot
+
+On the current finite-target acquisition trajectories, replacing the selected raw mean in the stopping threshold with the selected finite-population LCB gives:
+
+| Prior | Natural stop | LCB-aligned stop | True simple regret at LCB stop |
+|---|---:|---:|---:|
+| General `N(0.5, 0.04)` | 3,528 | 2,608 | 0 |
+| Data-specific `N(0.2, 0.01)` | 2,984 | 2,064 | 0.024 |
+
+Thus the LCB-aligned rule stops 920 evaluations before natural stopping in both seed-0 trajectories, without requiring a completed arm. These are single-matrix, single-sampling-seed results; the rule does not certify zero realized regret, as the data-specific row shows. The condition uses a strict inequality and records its first post-pull crossing even if continued fixed-budget sampling would later reverse it.
+
+Simulation traces save this stopping time as `gittins_lcb_aligned_stop_cum_eval` and `gittins_lcb_aligned_stop_cum_original_cost`; W&B summaries and downloads use the same names. Existing natural-stop and legacy raw-mean fields retain their prior meanings.
 
 The unified target does not remove general-prior recommendation oscillation. With the new index, LCB reduces switches from 139 to 38 and budget-weighted regret from 0.04824163 to 0.02902692. Under the data-specific prior it reduces switches from 49 to 37, while slightly increasing budget-weighted regret from 0.03128168 to 0.03176888. The default remains mean-only, with LCB available explicitly. Existing results are not interchangeable with the unified acquisition: even without LCB, both priors produce different sampling trajectories in this check.
 
@@ -101,4 +114,4 @@ See [the old/new regret curves](../outputs/unified_finite_gittins_gsm8k_seed1_ru
 
 ## Validation
 
-Eight finite-acquisition regression tests cover the remaining-variance identity, partial batches, the fixed-cost affine identity, nonuniform costs, lookup/direct-DP agreement, batch-noise conversion, exact completed indices, early stopping, and independence from the LCB coefficient. The 18 recommendation/stopping, two budget-analysis, and eight metadata tests also pass. Integration checks run the actual simulator and W&B runner in disabled mode on a small matrix through completion, including a partial batch, and render both regret and rollout plots.
+Eight finite-acquisition regression tests cover the remaining-variance identity, partial batches, the fixed-cost affine identity, nonuniform costs, lookup/direct-DP agreement, batch-noise conversion, exact completed indices, early stopping, and independence from the LCB coefficient. The 19 recommendation/stopping, two budget-analysis, and eight metadata tests also pass. Integration checks run the actual simulator on a small matrix through completion and the paired GSM8K comparison verifies that the production LCB-aligned holder reproduces the offline first-crossing calculation.

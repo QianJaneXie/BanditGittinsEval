@@ -82,6 +82,7 @@ def main() -> int:
         *,
         color: str,
         label: str,
+        linestyle: str = "--",
     ) -> None:
         if eval_key not in z.files:
             return
@@ -97,7 +98,7 @@ def main() -> int:
         plt.axvline(
             stop_x,
             color=color,
-            linestyle="--",
+            linestyle=linestyle,
             alpha=0.85,
             linewidth=1.2,
             label=label,
@@ -108,7 +109,14 @@ def main() -> int:
         "gittins_stop_cum_eval",
         "gittins_stop_cum_original_cost",
         color=color_gittins,
-        label="Gittins index-induced stop",
+        label="Natural Gittins stop",
+    )
+    _gittins_stop_vline(
+        "gittins_lcb_aligned_stop_cum_eval",
+        "gittins_lcb_aligned_stop_cum_original_cost",
+        color=color_gittins,
+        label="Gittins LCB-aligned stop",
+        linestyle="-.",
     )
     plt.legend()
     plt.tight_layout()

@@ -27,6 +27,7 @@ if HAS_PANDAS:
 if HAS_WANDB:
     from download_wandb_simple_regret import (
         BASE_COLUMNS,
+        SUMMARY_COLUMNS,
         base_row,
         require_baseline_recommendations_for_recovery,
     )
@@ -124,6 +125,8 @@ class RecommendationDownloadTests(unittest.TestCase):
         self.assertEqual(row["recommendation_rule"], "finite_population_posterior_mean")
         self.assertEqual(row["recommendation_std_penalty"], 0.0)
         self.assertEqual(row["gittins_index_target"], "finite_population_mean")
+        self.assertIn("gittins_lcb_aligned_stop_cum_eval", SUMMARY_COLUMNS)
+        self.assertIn("gittins_lcb_aligned_stop_cum_original_cost", SUMMARY_COLUMNS)
 
     def test_legacy_recovery_rejects_new_index_independently_of_recommendation(self):
         with self.assertRaisesRegex(ValueError, "recommendation/index targets"):

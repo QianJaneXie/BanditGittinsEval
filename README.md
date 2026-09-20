@@ -43,6 +43,8 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 
 Both simulation and W&B runners use the full-test-set posterior mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. Completed arms have index equal to their exact empirical mean and zero posterior variance. The DP uses the full-test-set mean's transition variance, with the numerical evaluation cost unchanged. This can change sampling and stopping even with no LCB penalty. See [the unified index and seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
 
+Fixed-budget Gittins runs record both the natural stopping time, when a completed arm has the largest index, and the LCB-aligned stopping time against `mean - recommendation_std_penalty * std`; they continue the trajectory so the two rules can be compared. The LCB-aligned stopping rule can stop before any arm is complete and is saved as `gittins_lcb_aligned_stop_cum_eval` (plus its original-cost counterpart). The older raw-posterior-mean crossing remains available only for compatibility with existing results.
+
 For a standalone explanation of the two posterior means, see [Latent mean vs. full-test-set mean (中文)](docs/posterior_means/README.md), including a worked example, completed-arm behavior, LCB, and when experiments need to be rerun.
 
 ## Examples

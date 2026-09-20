@@ -202,6 +202,7 @@ def build_policy(
     n_cells: int,
     natural_stop_holder: list[int | None],
     recommendation_aware_stop_holder: list[int | None],
+    lcb_aligned_stop_holder: list[int | None],
 ) -> tuple[
     Callable[[torch.Tensor, int], Any],
     Callable[[torch.Tensor, Any], tuple[int, torch.Tensor]],
@@ -305,6 +306,7 @@ def build_policy(
         batch_observation_model=True,
         natural_stop_cum_eval_holder=natural_stop_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_holder,
+        lcb_aligned_stop_cum_eval_holder=lcb_aligned_stop_holder,
         recommendation_std_penalty=float(getattr(args, "recommendation_std_penalty", 0.0)),
     )
 
@@ -372,6 +374,7 @@ def run_simple_regret_experiment(
     n_cells = int(ground_truth.numel())
     natural_stop_holder: list[int | None] = [None]
     recommendation_aware_stop_holder: list[int | None] = [None]
+    lcb_aligned_stop_holder: list[int | None] = [None]
 
     step_fn, recommend_fn, post_pull_fn, lookup_table_s = build_policy(
         variant=variant,
@@ -384,6 +387,7 @@ def run_simple_regret_experiment(
         n_cells=n_cells,
         natural_stop_holder=natural_stop_holder,
         recommendation_aware_stop_holder=recommendation_aware_stop_holder,
+        lcb_aligned_stop_holder=lcb_aligned_stop_holder,
     )
 
     torch.manual_seed(int(args.run_seed))
@@ -403,6 +407,7 @@ def run_simple_regret_experiment(
     }
     natural_stop_cum_original_cost: float | None = None
     recommendation_aware_stop_cum_original_cost: float | None = None
+    lcb_aligned_stop_cum_original_cost: float | None = None
     evaluated = 0
     total_cost = 0.0
 
@@ -435,6 +440,8 @@ def run_simple_regret_experiment(
             natural_stop_cum_original_cost = float(total_cost)
         if recommendation_aware_stop_holder[0] == int(evaluated):
             recommendation_aware_stop_cum_original_cost = float(total_cost)
+        if lcb_aligned_stop_holder[0] == int(evaluated):
+            lcb_aligned_stop_cum_original_cost = float(total_cost)
 
         arm, mus = recommend_fn(obs, aux)
         simple_regret = mu_star - float(true_means[arm].item())
@@ -475,8 +482,10 @@ def run_simple_regret_experiment(
         "lookup_table_s": lookup_table_s,
         "natural_stop_cum_original_cost": natural_stop_cum_original_cost,
         "recommendation_aware_stop_cum_original_cost": recommendation_aware_stop_cum_original_cost,
+        "lcb_aligned_stop_cum_original_cost": lcb_aligned_stop_cum_original_cost,
         "natural_stop_cum_eval": natural_stop_holder[0],
         "recommendation_aware_stop_cum_eval": recommendation_aware_stop_holder[0],
+        "lcb_aligned_stop_cum_eval": lcb_aligned_stop_holder[0],
     }
 
 
@@ -700,6 +709,10 @@ def main() -> int:
                 "gittins_recommendation_aware_stop_cum_eval": result["recommendation_aware_stop_cum_eval"],
                 "gittins_recommendation_aware_stop_cum_original_cost": result[
                     "recommendation_aware_stop_cum_original_cost"
+                ],
+                "gittins_lcb_aligned_stop_cum_eval": result["lcb_aligned_stop_cum_eval"],
+                "gittins_lcb_aligned_stop_cum_original_cost": result[
+                    "lcb_aligned_stop_cum_original_cost"
                 ],
             }
         )

@@ -60,12 +60,13 @@ def worker(args):
         obs = torch.full_like(truth, float("nan"))
         cache = torch.full((n_arms,), float("inf"), dtype=torch.float32)
         counts = torch.zeros(n_arms, dtype=torch.int64)
-        natural, aware = [None], [[None], [None]]
+        natural, aware, lcb_aligned = [None], [[None], [None]], [[None], [None]]
         previous_arm, evaluated = None, 0
         history = {key: [] for key in (
             "evaluations", "pulled_arm", "pulled_columns", "regret", "recommendation",
             "recommended_mean", "recommended_std", "recommended_count", "acquisition_means",
-            "acquisition_scores", "natural_stop_condition", "recommendation_stop_margin")}
+            "acquisition_scores", "natural_stop_condition", "recommendation_stop_margin",
+            "lcb_aligned_stop_margin")}
         shared = dict(prior_mean=prior[0], prior_variance=prior[1],
                       obs_noise_variance=args.tau_sq_cell / args.batch_size,
                       batch_size=args.batch_size, batch_observation_model=True,
@@ -84,11 +85,16 @@ def worker(args):
             evaluated += len(row)
             counts[previous_arm] += len(row)
             for rule, penalty in enumerate((0., 1.)):
+                lcb_stop_kw = (
+                    {"lcb_aligned_stop_cum_eval_holder": lcb_aligned[rule]}
+                    if args.worker_target == "finite"
+                    else {}
+                )
                 acquisition_means, _ = policy.gittins_post_pull_update(
                     obs, **shared, recompute_arms=[previous_arm], sim_cum_eval=evaluated,
                     natural_stop_cum_eval_holder=natural,
                     recommendation_aware_stop_cum_eval_holder=aware[rule],
-                    recommendation_std_penalty=penalty)
+                    recommendation_std_penalty=penalty, **lcb_stop_kw)
                 if rule == 0:
                     mean_rule_scores = cache.clone()
                 elif not torch.equal(cache, mean_rule_scores):
@@ -98,7 +104,9 @@ def worker(args):
             recommendations = [recommend_from_posterior(means, variances, std_penalty=penalty)[0]
                                for penalty in (0., 1.)]
             incomplete = counts < n_examples
-            max_unfinished = float(cache[incomplete].max()) if bool(incomplete.any()) else float("-inf")
+            # Match the runtime behavior: recommendation-aware stopping is
+            # only defined while at least one arm remains unfinished.
+            max_unfinished = float(cache[incomplete].max()) if bool(incomplete.any()) else float("inf")
             history["evaluations"].append(evaluated)
             history["pulled_arm"].append(previous_arm)
             history["pulled_columns"].append(np.pad(col.numpy(), (0, args.batch_size - len(col)), constant_values=-1))
@@ -111,26 +119,44 @@ def worker(args):
             history["acquisition_scores"].append(cache.numpy().copy())
             history["natural_stop_condition"].append(bool(counts[int(torch.argmax(cache))] == n_examples))
             history["recommendation_stop_margin"].append([max_unfinished - float(means[arm]) for arm in recommendations])
+            history["lcb_aligned_stop_margin"].append([
+                max_unfinished - (
+                    float(means[arm]) - penalty * float(variances[arm].sqrt())
+                )
+                for arm, penalty in zip(recommendations, (0., 1.))
+            ])
         history = {key: np.asarray(value) for key, value in history.items()}
         history_path = args.out_dir / "raw" / f"{args.worker_target}_{prior_type}_seed{args.seed}.npz"
         index_target = "latent_mean" if args.worker_target == "latent" else "finite_population_mean"
         np.savez_compressed(history_path, **history, rules=np.asarray(RULES),
                             gittins_index_target=np.asarray(index_target))
-        # Cross-check native holders against the saved post-pull diagnostic conditions.
+        # Cross-check native holders against the saved post-pull stopping conditions.
         within = history["evaluations"] <= args.budget
         def first(condition):
             indices = np.flatnonzero(within & condition)
             return int(history["evaluations"][indices[0]]) if indices.size else None
         natural_first = first(history["natural_stop_condition"])
         aware_first = [first(history["recommendation_stop_margin"][:, i] < 0) for i in (0, 1)]
+        lcb_aligned_first = [
+            first(history["lcb_aligned_stop_margin"][:, i] < 0)
+            for i in (0, 1)
+        ]
         clip = lambda value: value if value is not None and value <= args.budget else None
         assert natural_first == clip(natural[0])
         assert aware_first == [clip(holder[0]) for holder in aware]
+        if args.worker_target == "finite":
+            assert lcb_aligned_first == [clip(holder[0]) for holder in lcb_aligned]
+        assert lcb_aligned_first[0] == aware_first[0]  # λ=0 makes the two rules identical.
+        if aware_first[1] is None:
+            assert lcb_aligned_first[1] is None
+        elif lcb_aligned_first[1] is not None:
+            assert lcb_aligned_first[1] >= aware_first[1]
         entry = dict(acquisition_target=args.worker_target, gittins_index_target=index_target, prior_type=prior_type,
                      prior_mean=prior[0], prior_variance=prior[1], seed=args.seed,
                      raw_batches=len(history["evaluations"]), raw_final_evaluations=evaluated,
                      natural_stop_evaluations=natural_first,
                      recommendation_aware_stop_evaluations=aware_first,
+                     lcb_aligned_stop_evaluations=lcb_aligned_first,
                      finite_scale=1 + args.tau_sq_cell / (n_examples * prior[1]),
                      roots_shape=list(roots.shape), history=str(history_path.relative_to(args.out_dir)))
         summaries.append(entry)
@@ -160,6 +186,9 @@ def summarize_and_plot(args, revision, source_hashes):
                              **per_seed_metrics(raw, rule, int(raw["evaluations"][0]), args.budget),
                              natural_stop_evaluations=setup["natural_stop_evaluations"],
                              recommendation_aware_stop_evaluations=setup["recommendation_aware_stop_evaluations"][rule],
+                             lcb_aligned_stop_evaluations=setup[
+                                 "lcb_aligned_stop_evaluations"
+                             ][rule],
                              unobserved_recommendation_count=int(np.sum((raw["recommended_count"][:, rule] == 0)
                                                                         & (raw["evaluations"] <= args.budget))))
                 metrics.append(entry)
@@ -250,7 +279,14 @@ def summarize_and_plot(args, revision, source_hashes):
                    comparison_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                    matrix_sha256=matrix_sha256,
                    cost_semantics="Both targets use the same numeric per-cell cost. Finite acquisition uses full-test-mean reward units; this is equivalent to latent acquisition at c/a followed by the common positive affine reward transform, with a=1+tau_cell^2/(N*v0). Costs are not multiplied by a.",
-                   stopping="First native post-pull natural/rec-aware condition within the budget; diagnostic recording does not truncate sampling. LCB changes recommendation and rec-aware stopping only; its raw mean is used for the stop comparison.",
+                   stopping=(
+                       "First post-pull condition within the budget; fixed-budget recording does not "
+                       "truncate sampling. Natural stopping uses the acquisition index. The original "
+                       "recommendation-aware rule compares the best unfinished index with the selected "
+                       "arm's raw posterior mean. The LCB-aligned rule compares it with the selected "
+                       "recommendation score, which is raw mean for the mean rule and mean minus one "
+                       "posterior standard deviation for the LCB rule."
+                   ),
                    trajectory_audits=trajectory_audits, setups=setup_rows, metrics=metrics)
     (args.out_dir / "summary.json").write_text(json.dumps(payload, indent=2) + "\n")
     print(json.dumps(dict(trajectory_audits=trajectory_audits, metrics=metrics), indent=2))

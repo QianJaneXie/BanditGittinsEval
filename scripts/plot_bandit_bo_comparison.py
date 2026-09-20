@@ -158,6 +158,7 @@ def main() -> int:
         bo_stop_key = "pbgi_stop_cum_eval"
         gittins_stop_key = "gittins_stop_cum_eval"
         gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_eval"
+        gittins_lcb_stop_key = "gittins_lcb_aligned_stop_cum_eval"
         xlabel = "Cumulative examples evaluated"
     else:
         ucb_x = "ucb_x_original_cost"
@@ -166,6 +167,7 @@ def main() -> int:
         bo_stop_key = "pbgi_stop_cum_original_cost"
         gittins_stop_key = "gittins_stop_cum_original_cost"
         gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_original_cost"
+        gittins_lcb_stop_key = "gittins_lcb_aligned_stop_cum_original_cost"
         xlabel = "Cumulative full-evaluation cost"
 
     plt.figure(figsize=(8, 5))
@@ -193,15 +195,21 @@ def main() -> int:
 
     _plot_stop(
         _scalar(bandit, gittins_stop_key),
-        label="bandit Gittins stop (index)",
+        label="bandit natural Gittins stop",
         color="C1",
         linestyle="--",
     )
     _plot_stop(
         _scalar(bandit, gittins_rec_stop_key),
-        label="bandit Gittins stop (recommendation)",
+        label="bandit Gittins raw-mean diagnostic",
         color="C1",
         linestyle="-.",
+    )
+    _plot_stop(
+        _scalar(bandit, gittins_lcb_stop_key),
+        label="bandit Gittins LCB-aligned stop",
+        color="C1",
+        linestyle=":",
     )
 
     plt.xlabel(xlabel)

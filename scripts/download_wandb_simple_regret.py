@@ -142,6 +142,8 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "gittins_stop_cum_original_cost",
     "gittins_recommendation_aware_stop_cum_eval",
     "gittins_recommendation_aware_stop_cum_original_cost",
+    "gittins_lcb_aligned_stop_cum_eval",
+    "gittins_lcb_aligned_stop_cum_original_cost",
     "lookup_table_s",
     "lookup_memory_rss_before_mb",
     "lookup_memory_rss_after_mb",

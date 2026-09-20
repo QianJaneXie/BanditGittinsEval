@@ -309,7 +309,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--plot-recommendation-stop",
         action="store_true",
-        help="Also plot Gittins recommendation-aware stopping lines.",
+        help="Also plot the legacy raw-mean crossing and LCB-aligned Gittins stopping rule.",
     )
     return p.parse_args()
 
@@ -366,13 +366,18 @@ def _stop_columns_for_xaxis(x_axis: str, plot_recommendation_stop: bool) -> list
             ("bo_stop_cum_original_cost", "bo_stop", "--"),
         ]
         if plot_recommendation_stop:
-            out.append(
+            out.extend([
                 (
                     "gittins_recommendation_aware_stop_cum_original_cost",
                     "gittins_recommendation_stop",
                     ":",
-                )
-            )
+                ),
+                (
+                    "gittins_lcb_aligned_stop_cum_original_cost",
+                    "gittins_lcb_aligned_stop",
+                    "-.",
+                ),
+            ])
         return out
     if x_axis == "cum_eval":
         out = [
@@ -380,13 +385,18 @@ def _stop_columns_for_xaxis(x_axis: str, plot_recommendation_stop: bool) -> list
             ("bo_stop_cum_eval", "bo_stop", "--"),
         ]
         if plot_recommendation_stop:
-            out.append(
+            out.extend([
                 (
                     "gittins_recommendation_aware_stop_cum_eval",
                     "gittins_recommendation_stop",
                     ":",
-                )
-            )
+                ),
+                (
+                    "gittins_lcb_aligned_stop_cum_eval",
+                    "gittins_lcb_aligned_stop",
+                    "-.",
+                ),
+            ])
         return out
     return []
 
@@ -429,7 +439,8 @@ def plot_stopping_overlays(
 
             suffix = {
                 "gittins_index_stop": "Gittins stop",
-                "gittins_recommendation_stop": "Gittins rec-stop",
+                "gittins_recommendation_stop": "Gittins raw-mean diagnostic",
+                "gittins_lcb_aligned_stop": "Gittins LCB-aligned stop",
                 "bo_stop": "BO stop",
             }.get(stop_type, "stop")
             label = f"{variant} {suffix}"

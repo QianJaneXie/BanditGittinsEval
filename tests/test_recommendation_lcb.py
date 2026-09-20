@@ -196,6 +196,26 @@ class PosteriorLCBRecommendationTests(unittest.TestCase):
 
 
 class RecommendationAwareStoppingTests(unittest.TestCase):
+    def test_lcb_aligned_stop_uses_strict_crossing_and_preserves_first_hit(self):
+        means = torch.tensor([1.0, 0.75])
+        variances = torch.tensor([0.25, 0.0625])
+        completely_sensed = torch.tensor([False, False])
+        stop = [None]
+        common = dict(
+            mus_posterior=means,
+            completely_sensed_mask=completely_sensed,
+            recommended_arm=1,
+            recommendation_variances=variances,
+            recommendation_std_penalty=1.0,
+            lcb_aligned_stop_cum_eval_holder=stop,
+        )
+        # Selected LCB is .75 - .25 = .50; equality is not a crossing.
+        evaluate_gittins_stopping_rules(torch.tensor([0.50, 0.4]), sim_cum_eval=10, **common)
+        self.assertEqual(stop, [None])
+        evaluate_gittins_stopping_rules(torch.tensor([0.49, 0.4]), sim_cum_eval=12, **common)
+        evaluate_gittins_stopping_rules(torch.tensor([0.30, 0.2]), sim_cum_eval=15, **common)
+        self.assertEqual(stop, [12])
+
     def test_stop_uses_selected_mean_and_preserves_first_crossing(self):
         means = torch.tensor([1.0, 0.75])
         incomplete = torch.tensor([False, False])
@@ -228,13 +248,15 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
         # Cell variance 1 gives full-row moments (1.175, .46875), (.9375, .078125).
         # LCB selects arm 1; forgetting batch-to-cell conversion selects arm 0.
         for batch_model, noise in ((True, 0.25), (False, 1.0)):
-            for penalty, maximum_score, expected_stop in (
-                (0.0, 1.1, 4),
-                (1.0, 1.1, None),
-                (1.0, 0.9, 4),  # .9 < selected raw mean .9375, but > its LCB .658.
+            for penalty, maximum_score, expected_raw_stop, expected_lcb_stop in (
+                (0.0, 1.1, 4, 4),
+                (1.0, 1.1, None, None),
+                (1.0, 0.9, 4, None),  # .9 < selected raw mean .9375, but > its LCB .658.
+                (1.0, 0.65, 4, 4),
             ):
                 with self.subTest(batch_model=batch_model, penalty=penalty, score=maximum_score):
-                    stop = [None]
+                    raw_stop = [None]
+                    lcb_stop = [None]
                     cached_scores = torch.tensor([maximum_score, 0.6])
                     means, scores = gittins_post_pull_update(
                         obs, cached_scores=cached_scores, recompute_arms=[],
@@ -242,12 +264,14 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
                         obs_noise_variance=noise, batch_size=4,
                         batch_observation_model=batch_model,
                         roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=4,
-                        recommendation_aware_stop_cum_eval_holder=stop,
+                        recommendation_aware_stop_cum_eval_holder=raw_stop,
+                        lcb_aligned_stop_cum_eval_holder=lcb_stop,
                         recommendation_std_penalty=penalty,
                     )
                     torch.testing.assert_close(means, torch.tensor([1.175, 0.9375]))
                     self.assertIs(scores, cached_scores)
-                    self.assertEqual(stop, [expected_stop])
+                    self.assertEqual(raw_stop, [expected_raw_stop])
+                    self.assertEqual(lcb_stop, [expected_lcb_stop])
 
     def test_finite_indices_and_stopping_share_the_completed_empirical_payoff(self):
         obs = torch.tensor([[1.0] * 4, [1.0, 1.0, 1.0, float("nan")]])
@@ -255,16 +279,19 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
             with self.subTest(unfinished_score=unfinished_score):
                 natural_stop = [None]
                 recommendation_stop = [None]
+                lcb_stop = [None]
                 means, scores = gittins_post_pull_update(
                     obs, cached_scores=torch.tensor([0.0, unfinished_score]), recompute_arms=[],
                     prior_mean=0.0, prior_variance=1.0, obs_noise_variance=1.0,
                     roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=7,
                     natural_stop_cum_eval_holder=natural_stop,
                     recommendation_aware_stop_cum_eval_holder=recommendation_stop,
+                    lcb_aligned_stop_cum_eval_holder=lcb_stop,
                 )
                 torch.testing.assert_close(means, torch.tensor([1.0, 0.9375]))
                 torch.testing.assert_close(scores, torch.tensor([1.0, unfinished_score]))
                 self.assertEqual(recommendation_stop, [expected_stop])
+                self.assertEqual(lcb_stop, [expected_stop])
                 self.assertEqual(natural_stop, [expected_stop])
 
 

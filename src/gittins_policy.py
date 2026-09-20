@@ -159,34 +159,60 @@ def evaluate_gittins_stopping_rules(
     sim_cum_eval: int,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    lcb_aligned_stop_cum_eval_holder: list[int | None] | None = None,
     recommended_arm: int | None = None,
     recommendation_means: torch.Tensor | None = None,
+    recommendation_variances: torch.Tensor | None = None,
+    recommendation_std_penalty: float = 0.0,
 ) -> None:
-    """Record natural and recommendation-aware post-pull stopping diagnostics.
+    """Record natural, legacy raw-mean, and LCB-aligned post-pull stopping times.
 
     All indices and means must describe the full fixed-row payoff. Natural
     stopping occurs when a completed arm has the largest index. The
-    recommendation-aware diagnostic compares unfinished indices with the
+    legacy recommendation-aware diagnostic compares unfinished indices with the
     selected arm's raw posterior mean, even when LCB selected that arm.
+    The LCB-aligned stopping rule instead compares them with the selected arm's
+    recommendation score ``mean - penalty * std``; it therefore does not
+    require a completed arm but remains conservative about an unfinished
+    recommendation.
     ``recommendation_means`` is an optional compatible mean tensor; without
     ``recommended_arm``, use the maximum supplied mean.
     """
-    if (
+    raw_stop_pending = (
         recommendation_aware_stop_cum_eval_holder is not None
         and len(recommendation_aware_stop_cum_eval_holder) == 1
         and recommendation_aware_stop_cum_eval_holder[0] is None
+    )
+    lcb_stop_pending = (
+        lcb_aligned_stop_cum_eval_holder is not None
+        and len(lcb_aligned_stop_cum_eval_holder) == 1
+        and lcb_aligned_stop_cum_eval_holder[0] is None
+    )
+    if (
+        raw_stop_pending or lcb_stop_pending
     ):
         incomplete = ~completely_sensed_mask
         if bool(incomplete.any()):
             max_gittins = float(scores[incomplete].max().item())
             means = mus_posterior if recommendation_means is None else recommendation_means
-            recommendation_value = float(
-                means.max().item()
-                if recommended_arm is None
-                else means[recommended_arm].item()
+            raw_recommendation_value = float(
+                means.max().item() if recommended_arm is None else means[recommended_arm].item()
             )
-            if max_gittins < recommendation_value:
+            if raw_stop_pending and max_gittins < raw_recommendation_value:
                 recommendation_aware_stop_cum_eval_holder[0] = int(sim_cum_eval)
+            if lcb_stop_pending:
+                if recommended_arm is None or recommendation_variances is None:
+                    raise ValueError(
+                        "LCB-aligned stopping requires recommended_arm and "
+                        "recommendation_variances"
+                    )
+                selected_std = float(recommendation_variances[recommended_arm].sqrt().item())
+                selected_lcb = (
+                    raw_recommendation_value
+                    - float(recommendation_std_penalty) * selected_std
+                )
+                if max_gittins < selected_lcb:
+                    lcb_aligned_stop_cum_eval_holder[0] = int(sim_cum_eval)
 
     best_method_index = int(torch.argmax(scores).item())
     if (
@@ -217,11 +243,12 @@ def gittins_post_pull_update(
     sim_cum_eval: int,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    lcb_aligned_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_std_penalty: float = 0.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Refresh finite-row means and indices, then evaluate both stopping diagnostics.
+    """Refresh finite-row means and indices, then evaluate the stopping rules.
 
-    LCB affects the selected recommendation and its stopping diagnostic only;
+    LCB affects the selected recommendation and LCB-aligned stopping rule;
     acquisition scores and natural stopping do not depend on the penalty.
     """
     observed_matrix = observed_matrix.detach()
@@ -288,7 +315,10 @@ def gittins_post_pull_update(
         sim_cum_eval=int(sim_cum_eval),
         natural_stop_cum_eval_holder=natural_stop_cum_eval_holder,
         recommendation_aware_stop_cum_eval_holder=recommendation_aware_stop_cum_eval_holder,
+        lcb_aligned_stop_cum_eval_holder=lcb_aligned_stop_cum_eval_holder,
         recommended_arm=recommended_arm,
+        recommendation_variances=recommendation_variances,
+        recommendation_std_penalty=recommendation_std_penalty,
     )
     return mus_posterior, scores
 
@@ -311,6 +341,7 @@ def gittins_index_exploration(
     sim_cum_eval: int | None = None,
     natural_stop_cum_eval_holder: list[int | None] | None = None,
     recommendation_aware_stop_cum_eval_holder: list[int | None] | None = None,
+    lcb_aligned_stop_cum_eval_holder: list[int | None] | None = None,
     roots_lookup_table: torch.Tensor | None = None,
     force_per_observation_dp: bool = False,
     batch_observation_model: bool = False,
@@ -383,6 +414,7 @@ def gittins_index_exploration(
             ``gittins_post_pull_update`` with post-pull ``sim_cum_eval`` for stop-time holders.
         natural_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
         recommendation_aware_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
+        lcb_aligned_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
         roots_lookup_table: Optional finite-row roots from
             ``compute_finite_population_roots_lookup_table``. Latent roots are incompatible.
             Ignored in forced per-observation or batch DP modes.
