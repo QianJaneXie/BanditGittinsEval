@@ -9,7 +9,11 @@ description = "Cost-aware noisy bandit Gittins for efficient LLM evaluation and 
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "Qian Xie and collaborators" }]
+authors = [
+    { name = "Qian Xie" },
+    { name = "Yueli He" },
+    { name = "Nairen Cao" },
+]
 dependencies = [
     "banditeval>=0.1.1",
     "botorch",

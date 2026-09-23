@@ -113,6 +113,120 @@ Cost-aware BayesOpt: use `--acquisition logeipc`.
 
 Combine bandit and BayesOpt traces with `plot_bandit_bo_comparison.py` (pass `--bandit-trace`, `--pbgi-trace`, `--log-bo-trace`, and `--x-axis evals` or `original_cost`).
 
+## PromptEval baseline
+
+The adapted best-arm identification (BAI) baseline uses successive halving and
+regularized logistic regression, with a 10% observation budget and at most five
+phases. All commands below run from this directory and use the bundled data;
+they do not require model API calls or W&B. See [the PromptEval guide](prompteval/README.md)
+for backend options, feature variants, and output formats.
+
+### Installation
+
+Install the project and the dependencies used by the supplied-data PromptEval baseline:
+
+```bash
+python -m pip install -e .
+python -m pip install scikit-learn tqdm pandas transformers joblib
+```
+
+The current runner expects an existing results directory and a trailing slash
+in `--results-path`; the commands below provide both.
+
+### MMLU
+
+The files `prompteval/data/Ys.pickle` and `Xs.pickle` contain the responses and
+precomputed covariates. By default, the 15 models and 100 prompts are stacked
+into 1,500 arms per subject. Start with one subject and one sampling seed:
+
+```bash
+mkdir -p outputs/prompteval_mmlu_quickstart
+python prompteval/bai_evaluation.py \
+  --bench MMLU --tasks abstract_algebra --seed 0 \
+  --results-path outputs/prompteval_mmlu_quickstart/
+
+python prompteval/plot_bai_regret.py \
+  --bench MMLU --tasks abstract_algebra \
+  --results-path outputs/prompteval_mmlu_quickstart/ \
+  --out outputs/prompteval_mmlu_quickstart/simple_regret.png
+```
+
+For all 57 subjects with 20 sampling seeds, run:
+
+```bash
+mkdir -p outputs/prompteval_mmlu_full
+python prompteval/bai_evaluation.py --bench MMLU --all-tasks \
+  --random-seeds 20 --results-path outputs/prompteval_mmlu_full/
+```
+
+This full run is substantially larger than the quickstart. Without `--tasks`
+or `--all-tasks`, MMLU defaults to `abstract_algebra` and `professional_law`.
+
+### GSM8K and PIQA
+
+The prepared pickles in `prompteval/banditeval_pickle/` can be regenerated from
+the binary, one-sample `various_models_seed1` through `seed5` matrices:
+
+```bash
+python prompteval/build_banditeval_pickle.py
+
+mkdir -p outputs/prompteval_gsm8k_quickstart
+python prompteval/bai_evaluation.py \
+  --bench GSM8K --tasks various_models_seed1 --seed 0 \
+  --results-path outputs/prompteval_gsm8k_quickstart/
+
+python prompteval/plot_bai_regret.py \
+  --bench GSM8K --tasks various_models_seed1 \
+  --results-path outputs/prompteval_gsm8k_quickstart/ \
+  --out outputs/prompteval_gsm8k_quickstart/simple_regret.png
+```
+
+Use `--bench PIQA` and a separate output directory for the corresponding PIQA run.
+For the full runs over all five matrix seeds and 20 sampling seeds:
+
+```bash
+mkdir -p outputs/prompteval_gsm8k_full
+python prompteval/bai_evaluation.py --bench GSM8K --random-seeds 20 \
+  --results-path outputs/prompteval_gsm8k_full/
+mkdir -p outputs/prompteval_piqa_full
+python prompteval/bai_evaluation.py --bench PIQA --random-seeds 20 \
+  --results-path outputs/prompteval_piqa_full/
+```
+
+For these benchmarks, rows are configurations and there are no supplied prompt
+covariates, so the baseline uses one-hot arm features. Matrix seeds identify
+different input matrices; `--seed`/`--random-seeds` control BAI sampling repeats.
+
+The pricing files are loaded automatically. One run writes both unit-cost and
+cost-weighted processed curves. Add `--cost-aware` to the **plotting** command
+to display the cost-weighted view. Costs are recorded but do not change
+PromptEval's sampling allocation. Raw runs are saved as `bai_results_*.npy` and
+processed curves as `bai_processed_results_*.npy`; MMLU writes separate files
+for each subject. Use a new output directory for each configuration.
+
+### AlpacaEval
+
+The commands below require the local AlpacaEval reproduction scripts. They are
+included in the supplementary package under `outputs/`, but that directory is
+Git-ignored in this repository and is not available in a fresh clone.
+
+AlpacaEval has a separate PE-OneHot reproduction script. The 152-arm variant
+excludes the `gpt4_1106_preview` reference arm from the supplied 153-row matrix.
+It fits binary scores (`score >= 0.5`) but evaluates regret against the original
+continuous row means, over sampling seeds 0–19:
+
+```bash
+python outputs/prompteval_alpaca_152arm_20seeds/run_alpaca_prompteval_bai_152arm.py
+python outputs/prompteval_alpaca_152arm_20seeds/plot_results.py
+```
+
+These two scripts regenerate files in their own directory, including
+`phase_results.csv`, `summary.json`, processed curves, and the PDF/PNG figure.
+The 153-arm reference-included variant is retained in
+`outputs/prompteval_alpaca_20seeds/`; use the variant that matches the experiment
+being reproduced. The upstream model-generation and API-evaluation scripts are
+not required to run any of the precomputed-data baselines above.
+
 ## Scripts
 
 | Script | Purpose |
