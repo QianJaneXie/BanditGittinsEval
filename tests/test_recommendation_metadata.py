@@ -34,6 +34,38 @@ if HAS_WANDB:
 
 @unittest.skipUnless(HAS_PANDAS, "W&B plotting requires optional pandas dependency")
 class RecommendationPlotGroupingTests(unittest.TestCase):
+    def test_batch_and_historical_per_cell_dp_are_separate_even_with_same_targets(self):
+        common = {
+            "policy_family": "gittins", "experiment_variant": "same-variant",
+            "method_label": "Gittins", "gittins_index_target": "finite_population_mean",
+            "recommendation_rule": "finite_population_posterior_mean_minus_std",
+            "recommendation_std_penalty": 1.0,
+        }
+        df = pd.DataFrame([
+            common,
+            {**common, "gittins_model_version": "per_cell_legacy", "gittins_dp_transitions": "per_cell"},
+            {**common, "gittins_model_version": "batch_level_paper_v1", "gittins_dp_transitions": "batch"},
+        ])
+        df["method_label"] = df.apply(derive_method_label_row, axis=1)
+        self.assertEqual(df["method_label"].nunique(), 2)
+        self.assertEqual(df["method_label"].iloc[0], df["method_label"].iloc[1])
+        self.assertIn("per-cell", df["method_label"].iloc[0])
+        self.assertIn("batch_level_paper_v1", df["method_label"].iloc[2])
+        first_labels = df["method_label"].tolist()
+        self.assertEqual(first_labels, df.apply(derive_method_label_row, axis=1).tolist())
+        validate_recommendation_groups(df, "method_label")
+        with self.assertRaisesRegex(ValueError, "DP models/transitions"):
+            validate_recommendation_groups(df, "experiment_variant")
+
+    def test_different_batch_model_versions_cannot_share_an_aggregation_group(self):
+        df = pd.DataFrame([
+            {"policy_family": "gittins", "experiment_variant": "same-variant",
+             "gittins_model_version": version, "gittins_dp_transitions": "batch"}
+            for version in ("batch_level_paper_v1", "unknown-batch-version")
+        ])
+        with self.assertRaisesRegex(ValueError, "DP models/transitions"):
+            validate_recommendation_groups(df, "experiment_variant")
+
     def test_finite_recommendations_with_different_index_targets_are_separated(self):
         df = pd.DataFrame([
             {
@@ -102,6 +134,7 @@ class RecommendationPlotGroupingTests(unittest.TestCase):
         ])
         df["method_label"] = df.apply(derive_method_label_row, axis=1)
         self.assertEqual(df["method_label"].nunique(), 1)
+        self.assertIn("unspecified (legacy_unversioned)", df["method_label"].iloc[0])
         validate_recommendation_groups(df, "method_label")
 
 
@@ -115,15 +148,55 @@ class RecommendationDownloadTests(unittest.TestCase):
                 "recommendation_rule": "finite_population_posterior_mean",
                 "recommendation_std_penalty": 0.0,
                 "gittins_index_target": "finite_population_mean",
+                "gittins_model_version": "batch_level_paper_v1",
+                "gittins_dp_transitions": "batch",
             },
             summary={},
         )
         row = base_row(run)
         self.assertIn("recommendation_rule", BASE_COLUMNS)
         self.assertIn("gittins_index_target", BASE_COLUMNS)
+        self.assertIn("gittins_model_version", BASE_COLUMNS)
+        self.assertIn("gittins_dp_transitions", BASE_COLUMNS)
         self.assertEqual(row["recommendation_rule"], "finite_population_posterior_mean")
         self.assertEqual(row["recommendation_std_penalty"], 0.0)
         self.assertEqual(row["gittins_index_target"], "finite_population_mean")
+        self.assertEqual(row["gittins_model_version"], "batch_level_paper_v1")
+        self.assertEqual(row["gittins_dp_transitions"], "batch")
+
+    def test_missing_historical_dp_metadata_downloads_as_per_cell(self):
+        run = SimpleNamespace(
+            id="old-test", name="old", state="finished", url="", summary={},
+            config={"policy_family": "gittins", "gittins_index_target": "finite_population_mean"},
+        )
+        row = base_row(run)
+        self.assertEqual(row["gittins_model_version"], "per_cell_legacy")
+        self.assertEqual(row["gittins_dp_transitions"], "per_cell")
+
+    def test_latent_history_with_unknown_dp_is_not_relabelled_per_cell(self):
+        for metadata in ({}, {"gittins_index_target": "latent_mean"}):
+            with self.subTest(metadata=metadata):
+                run = SimpleNamespace(
+                    id="latent-old-test", name="old", state="finished", url="", summary={},
+                    config={"policy_family": "gittins", **metadata},
+                )
+                row = base_row(run)
+                self.assertEqual(row["gittins_model_version"], "legacy_unversioned")
+                self.assertEqual(row["gittins_dp_transitions"], "unspecified")
+                require_baseline_recommendations_for_recovery(row)
+
+    def test_legacy_recovery_rejects_batch_dp_metadata_independently_of_targets(self):
+        for metadata in (
+            {"gittins_model_version": "batch_level_paper_v1"},
+            {"gittins_dp_transitions": "batch"},
+            {"experiment_variant": "gittins_unit_B8_scale0.0001_default_idxfinite_dpbatch_recfinite"},
+        ):
+            with self.subTest(metadata=metadata):
+                with self.assertRaisesRegex(ValueError, "batch DP versions"):
+                    require_baseline_recommendations_for_recovery(metadata)
+        require_baseline_recommendations_for_recovery({
+            "gittins_model_version": "per_cell_legacy", "gittins_dp_transitions": "per_cell",
+        })
 
     def test_legacy_recovery_rejects_new_index_independently_of_recommendation(self):
         with self.assertRaisesRegex(ValueError, "recommendation/index targets"):
@@ -157,12 +230,14 @@ class GittinsReplayMetadataTests(unittest.TestCase):
         from plot_arm_eval_rollouts import require_supported_gittins_replay
 
         for metadata in ({}, {"gittins_index_target": "latent_mean"},
-                         {"gittins_index_target": "unknown_target"}):
+                         {"gittins_index_target": "unknown_target"},
+                         {"gittins_index_target": "finite_population_mean"}):
             with self.subTest(metadata=metadata):
                 with self.assertRaisesRegex(ValueError, "Replay historical traces"):
                     require_supported_gittins_replay({"gittins_regret": [0.1], **metadata})
         require_supported_gittins_replay({
             "gittins_regret": [0.1], "gittins_index_target": "finite_population_mean",
+            "gittins_model_version": "batch_level_paper_v1", "gittins_dp_transitions": "batch",
         })
         require_supported_gittins_replay({"ucb_regret": [0.1]})
 

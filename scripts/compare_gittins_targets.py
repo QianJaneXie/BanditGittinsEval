@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Compare archived latent and current full-test-set Gittins at one sampling seed.
+"""Compare archived per-cell latent and current batch-level empirical Gittins.
 
 Each trajectory replays finite mean and finite mean-minus-std recommendations.
-The numerical evaluation cost is held fixed across acquisition targets. Native
-post-pull stop times are recorded without truncating the fixed-budget runs.
+The raw per-cell evaluation cost is held fixed. This comparison changes both
+the target and the DP batch schedule; it does not isolate the target alone.
+Native post-pull stop times are recorded without truncating fixed-budget runs.
 """
 
 from __future__ import annotations
@@ -50,11 +51,13 @@ def worker(args):
                 transition_stds=transitions, costs_per_arm=np.float32(args.cost_scaling_factor),
                 n_points=args.grid_points)
         else:
-            roots_array = posterior.compute_finite_population_roots_lookup_table(
+            roots_array = posterior.compute_finite_population_batch_roots_lookup_table(
                 prior_variance=prior[1], tau_sq_cell=args.tau_sq_cell, n_examples=n_examples,
-                costs_per_arm=np.float32(args.cost_scaling_factor), n_points=args.grid_points)
+                batch_size=args.batch_size, costs_per_arm=np.float32(1.0),
+                cost_scaling_factor=args.cost_scaling_factor, n_points=args.grid_points)
         roots = torch.tensor(np.asarray(roots_array), dtype=torch.float32)
-        if roots.shape != (1, n_examples + 1):
+        horizon = n_examples if args.worker_target == "latent" else (n_examples + args.batch_size - 1) // args.batch_size
+        if roots.shape != (1, horizon + 1):
             raise ValueError(f"Expected one shared unit-cost lookup row, found {tuple(roots.shape)}")
         torch.manual_seed(args.seed)
         obs = torch.full_like(truth, float("nan"))
@@ -115,7 +118,9 @@ def worker(args):
         history_path = args.out_dir / "raw" / f"{args.worker_target}_{prior_type}_seed{args.seed}.npz"
         index_target = "latent_mean" if args.worker_target == "latent" else "finite_population_mean"
         np.savez_compressed(history_path, **history, rules=np.asarray(RULES),
-                            gittins_index_target=np.asarray(index_target))
+                            gittins_index_target=np.asarray(index_target),
+                            gittins_dp_transitions=np.asarray("per_cell" if args.worker_target == "latent" else "batch"),
+                            gittins_dp_horizon=np.asarray(horizon))
         # Cross-check native holders against the saved post-pull diagnostic conditions.
         within = history["evaluations"] <= args.budget
         def first(condition):
@@ -126,7 +131,9 @@ def worker(args):
         clip = lambda value: value if value is not None and value <= args.budget else None
         assert natural_first == clip(natural[0])
         assert aware_first == [clip(holder[0]) for holder in aware]
-        entry = dict(acquisition_target=args.worker_target, gittins_index_target=index_target, prior_type=prior_type,
+        entry = dict(acquisition_target=args.worker_target, gittins_index_target=index_target,
+                     gittins_dp_transitions="per_cell" if args.worker_target == "latent" else "batch",
+                     gittins_dp_horizon=horizon, prior_type=prior_type,
                      prior_mean=prior[0], prior_variance=prior[1], seed=args.seed,
                      raw_batches=len(history["evaluations"]), raw_final_evaluations=evaluated,
                      natural_stop_evaluations=natural_first,
@@ -259,7 +266,7 @@ def summarize_and_plot(args, revision, source_hashes):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix", type=Path, default=ROOT / "data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy")
-    parser.add_argument("--out-dir", type=Path, default=ROOT / "outputs/unified_finite_gittins_gsm8k_seed1_run0")
+    parser.add_argument("--out-dir", type=Path, default=ROOT / "outputs/batch_vs_archived_latent_gittins_gsm8k_seed1_run0")
     parser.add_argument("--old-revision", default="f4833e4")
     parser.add_argument("--prior-types", nargs="+", choices=tuple(PRIORS), default=list(PRIORS))
     parser.add_argument("--seed", type=int, default=0)

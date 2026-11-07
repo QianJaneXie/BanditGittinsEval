@@ -13,11 +13,14 @@ the per-step batch size (``batch_size`` in ``gittins_index_exploration``): numbe
 on the chosen arm in one step.
 """
 
+import math
+
+import jax
 import jax.numpy as jnp
 from jaxtyping import Array, Float, Scalar, UInt
 
 from gittins_index_computation import compute_gittins_for_random_walk
-from gittins_lookup import compute_roots_lookup_table
+from gittins_lookup import _compute_roots_for_random_walk, compute_roots_lookup_table
 
 
 def transition_stds_batch_mean_sequence(
@@ -182,6 +185,85 @@ def compute_finite_population_roots_lookup_table(
         n_points=int(n_points),
     )
     return roots.at[:, -1].set(0.0)
+
+
+def compute_finite_population_batch_roots_lookup_table(
+    *,
+    prior_variance: float,
+    tau_sq_cell: float,
+    n_examples: int,
+    batch_size: int,
+    costs_per_arm: Float[Array, " n_arms"] | Float[Scalar, ""],
+    cost_scaling_factor: float = 1e-4,
+    n_points: int = 1025,
+) -> Float[Array, " n_roots_arms n_batches_plus_one"]:
+    """Precompute the paper's empirical-target roots at local batch boundaries.
+
+    ``costs_per_arm`` contains **raw per-cell prices**. A transition observes
+    the next ``b = min(batch_size, cells_remaining)`` cells and costs
+    ``cost_scaling_factor * b * raw_price``. In particular, a partial final
+    batch has both its own observation variance and its own cost.
+
+    Column ``n`` is the root after ``n`` local batches, not after ``n`` cells.
+    There are ``ceil(n_examples / batch_size) + 1`` columns; the completed
+    stage has root exactly zero. Subtract these roots from full-row posterior
+    means. Identical prices share one row; otherwise rows retain input order.
+    """
+    if not math.isfinite(float(prior_variance)) or prior_variance <= 0:
+        raise ValueError("prior_variance must be finite and positive")
+    if not math.isfinite(float(tau_sq_cell)) or tau_sq_cell <= 0:
+        raise ValueError("tau_sq_cell must be finite and positive")
+    if int(n_examples) != n_examples or n_examples <= 0:
+        raise ValueError("n_examples must be a positive integer")
+    if int(batch_size) != batch_size or batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    if not math.isfinite(float(cost_scaling_factor)) or cost_scaling_factor < 0:
+        raise ValueError("cost_scaling_factor must be finite and nonnegative")
+    if int(n_points) != n_points or n_points < 2:
+        raise ValueError("n_points must be an integer of at least two")
+
+    prices = jnp.asarray(costs_per_arm, dtype=jnp.float32).reshape(-1)
+    if prices.size == 0:
+        raise ValueError("costs_per_arm must contain at least one raw per-cell price")
+    if not bool(jnp.all(jnp.isfinite(prices) & (prices >= 0))):
+        raise ValueError("costs_per_arm must contain finite nonnegative raw prices")
+    if bool(jnp.all(prices == prices[0])):
+        prices = prices[:1]
+
+    n_examples, batch_size = int(n_examples), int(batch_size)
+    if batch_size == 1:
+        # Preserve the established float32 arithmetic when the two schedules
+        # coincide. Tiny expression-rounding changes can move a near-zero Q
+        # value across a grid boundary, despite identical mathematical models.
+        return compute_finite_population_roots_lookup_table(
+            prior_variance=prior_variance,
+            tau_sq_cell=tau_sq_cell,
+            n_examples=n_examples,
+            costs_per_arm=cost_scaling_factor * prices,
+            n_points=int(n_points),
+        )
+    n_batches = (n_examples + batch_size - 1) // batch_size
+    observed_cells = jnp.arange(n_batches, dtype=jnp.float32) * batch_size
+    batch_sizes = jnp.minimum(batch_size, n_examples - observed_cells)
+    variances = 1.0 / (1.0 / prior_variance + observed_cells / tau_sq_cell)
+    mean_scale = finite_population_mean_scale(prior_variance, tau_sq_cell, n_examples)
+    transition_stds = mean_scale * variances / jnp.sqrt(
+        variances + tau_sq_cell / batch_sizes
+    )
+
+    # Unlike the per-cell lookup helper, the DP must receive a vector of
+    # transition costs: the final batch can be shorter than the others.
+    roots_for_walk = jax.jit(_compute_roots_for_random_walk, static_argnames=("n_points",))
+
+    def roots_for_price(price: Float[Scalar, ""]) -> Float[Array, " n_batches+1"]:
+        _, roots = roots_for_walk(
+            transition_stds=transition_stds,
+            transition_costs=cost_scaling_factor * batch_sizes * price,
+            n_points=int(n_points),
+        )
+        return roots
+
+    return jax.vmap(roots_for_price)(prices).at[:, -1].set(0.0)
 
 
 def compute_gittins_shrinking_posterior_walk_per_observation(

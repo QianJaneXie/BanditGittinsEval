@@ -60,6 +60,19 @@ def infer_benchmark_key_row(row: pd.Series) -> str:
     return f"{ds}_seed{seed}"
 
 
+def _gittins_dp_signature(row: pd.Series) -> tuple[str, str]:
+    """Only our earlier finite-target version is known to plan per cell."""
+    version = row.get("gittins_model_version")
+    version = str(version).strip() if pd.notna(version) else ""
+    transitions = row.get("gittins_dp_transitions")
+    transitions = str(transitions).strip() if pd.notna(transitions) else ""
+    known_finite_legacy = str(row.get("gittins_index_target")) == "finite_population_mean"
+    return (
+        version or ("per_cell_legacy" if known_finite_legacy else "legacy_unversioned"),
+        transitions or ("per_cell" if known_finite_legacy else "unspecified"),
+    )
+
+
 def derive_method_label_row(row: pd.Series) -> str:
     existing_label = row.get("method_label")
     existing_label = str(existing_label).strip() if pd.notna(existing_label) else ""
@@ -78,6 +91,8 @@ def derive_method_label_row(row: pd.Series) -> str:
             else "latent index" if index_target in {"", "latent_mean"}
             else index_target
         )
+        version, transitions = _gittins_dp_signature(row)
+        dp_label = "per-cell" if transitions == "per_cell" else transitions
         rule = str(row.get("recommendation_rule") or "")
         target = "full test-set mean" if rule.startswith("finite_population_") else "latent mean"
         penalty = pd.to_numeric(row.get("recommendation_std_penalty"), errors="coerce")
@@ -86,7 +101,7 @@ def derive_method_label_row(row: pd.Series) -> str:
             if pd.notna(penalty) and np.isfinite(penalty) and penalty > 0.0
             else target
         )
-        return f"{label} [index: {index_label}; recommend: {score}]"
+        return f"{label} [index: {index_label}; DP: {dp_label} ({version}); recommend: {score}]"
     if family == "ts" or variant == "ts" or variant.startswith("ts_"):
         if existing_label:
             return existing_label
@@ -156,10 +171,11 @@ def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
             group.get("recommendation_std_penalty", pd.Series(index=group.index, dtype=float)),
             errors="coerce",
         ).fillna(0.0)
-        if len(set(zip(rules, penalties, index_targets))) > 1:
+        dp_models = [_gittins_dp_signature(row) for _, row in group.iterrows()]
+        if len(set(zip(rules, penalties, index_targets, dp_models))) > 1:
             raise ValueError(
-                f"Group {label!r} mixes Gittins recommendation rules, index targets, or std penalties; "
-                "use --group-by method_label or filter to one index/recommendation rule."
+                f"Group {label!r} mixes Gittins recommendation rules, index targets, DP models/transitions, or std penalties; "
+                "use --group-by method_label or filter to one DP/index/recommendation rule."
             )
     is_mfkg = (_str_series(df, "policy_family").str.lower() == "mfkg") | (
         _str_series(df, "experiment_variant").str.startswith("mfkg")

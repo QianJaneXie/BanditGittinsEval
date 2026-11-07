@@ -6,7 +6,7 @@ Policies:
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
 - Gaussian TS: sample the full fixed test-set posterior mean and recommend by
   its posterior expectation. Costs affect stopping, not the accuracy objective.
-- Gittins: arm selection by a Gittins index for the full fixed test-set average,
+- Gittins: arm selection by a batch-level Gittins index for the full fixed test-set average,
   recommendation by the posterior mean
   of the full fixed test-set average, with an optional posterior predictive std
   penalty for that same average.
@@ -33,7 +33,7 @@ if str(_repo_root / "src") not in sys.path:
     sys.path.insert(0, str(_repo_root / "src"))
 
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
-from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
@@ -420,19 +420,19 @@ def main() -> int:
             if args.gittins_obs_noise_variance is not None
             else 1.0 / (4.0 * float(B))
         )
-        # Batch observation model: user supplies τ² for the batch mean (default 1/(4B)).
-        # Convert to an equivalent per-cell variance τ²_cell = τ² * B so the per-cell DP/lookup
-        # matches the posterior updates in `gittins_index_exploration(batch_observation_model=True)`.
+        # The DP observes one batch mean per transition. The final short batch
+        # uses its actual size for both observation noise and transition cost.
         tau_sq_cell = float(tau_sq) * float(B)
-        dp_costs_per_arm = (
-            torch.tensor(per_arm_original_cost.numpy(), dtype=torch.float32)
-            * float(args.cost_scaling_factor)
+        batch_sizes = np.asarray(
+            [min(B, n_examples - start) for start in range(0, n_examples, B)], dtype=np.int32
         )
-        roots = compute_finite_population_roots_lookup_table(
+        roots = compute_finite_population_batch_roots_lookup_table(
             prior_variance=float(args.gittins_prior_variance),
             tau_sq_cell=tau_sq_cell,
             n_examples=int(n_examples),
-            costs_per_arm=np.asarray(dp_costs_per_arm.numpy(), dtype=np.float32),
+            batch_size=B,
+            costs_per_arm=np.asarray(per_arm_original_cost.numpy(), dtype=np.float64),
+            cost_scaling_factor=float(args.cost_scaling_factor),
             n_points=int(2**10 + 1),
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
@@ -522,6 +522,13 @@ def main() -> int:
             gittins_recommended_mean=np.asarray(tr.recommended_mean, dtype=np.float32),
             tau_sq_gittins=np.asarray(tau_sq, dtype=np.float32),
             gittins_batch_size=np.asarray(B, dtype=np.int32),
+            gittins_model_version="batch_level_paper_v1",
+            gittins_dp_transitions="batch",
+            gittins_dp_horizon=np.asarray(len(batch_sizes), dtype=np.int32),
+            gittins_batch_sizes=batch_sizes,
+            gittins_batch_noise_variances=tau_sq_cell / batch_sizes,
+            gittins_transition_cost="cost_scaling_factor * batch_size_at_stage * raw_per_cell_price",
+            gittins_root_stage_index="completed_local_batches",
             gittins_stop_cum_eval=np.asarray(-1 if tr.stop_cum_eval is None else tr.stop_cum_eval, dtype=np.int32),
             gittins_stop_cum_original_cost=np.asarray(
                 -1.0 if tr.stop_cum_original_cost is None else tr.stop_cum_original_cost,

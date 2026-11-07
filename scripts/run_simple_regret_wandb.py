@@ -3,8 +3,10 @@
 
 One W&B run = one concrete experiment configuration.
 Gittins acquisition, recommendations, and posterior_mean_pulled all target the
-full fixed test-set average. Historical runs without gittins_index_target used
-the latent arm mean for acquisition and posterior_mean_pulled.
+full fixed test-set average. Gittins DP transitions are complete observed
+batches, including the actual final short-batch size. Historical runs without
+gittins_index_target used the latent arm mean for acquisition and
+posterior_mean_pulled.
 """
 
 from __future__ import annotations
@@ -37,7 +39,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
-from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
@@ -312,16 +314,15 @@ def build_policy(
         decision_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
 
     t0 = time.perf_counter()
-    dp_costs_per_arm = (
-        decision_cost_per_arm.to(torch.float32).numpy() * float(variant.cost_scaling_factor)
-    ).astype(np.float32)
     roots_torch = torch.tensor(
         np.array(
-            compute_finite_population_roots_lookup_table(
+            compute_finite_population_batch_roots_lookup_table(
                 prior_variance=float(prior_variance),
                 tau_sq_cell=tau_sq_cell,
                 n_examples=int(ground_truth.shape[1]),
-                costs_per_arm=dp_costs_per_arm,
+                batch_size=B,
+                costs_per_arm=decision_cost_per_arm.numpy(),
+                cost_scaling_factor=float(variant.cost_scaling_factor),
                 n_points=int(args.gittins_grid_points),
             )
         ),
@@ -646,7 +647,7 @@ def main() -> int:
     recommendation_std_penalty = 0.0
     if variant.policy_family == "gittins":
         recommendation_std_penalty = float(args.recommendation_std_penalty)
-        recommendation_suffix = "_idxfinite_recfinite"
+        recommendation_suffix = "_idxfinite_dpbatch_recfinite"
         recommendation_rule = "finite_population_posterior_mean"
         if recommendation_std_penalty > 0.0:
             recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
@@ -661,6 +662,23 @@ def main() -> int:
         "recommendation_rule": recommendation_rule,
         "recommendation_std_penalty": recommendation_std_penalty,
     }
+    if variant.policy_family == "gittins":
+        batch_size = int(variant.gittins_batch_size)
+        batch_sizes = [min(batch_size, n_examples - start)
+                       for start in range(0, n_examples, batch_size)]
+        batch_noise = args.gittins_obs_noise_variance
+        if batch_noise is None:
+            batch_noise = 1.0 / (4.0 * batch_size)
+        tau_sq_cell = float(batch_noise) * batch_size
+        recommendation_config.update(
+            gittins_model_version="batch_level_paper_v1",
+            gittins_dp_transitions="batch",
+            gittins_dp_horizon=len(batch_sizes),
+            gittins_batch_sizes=batch_sizes,
+            gittins_batch_noise_variances=[tau_sq_cell / size for size in batch_sizes],
+            gittins_transition_cost="cost_scaling_factor * batch_size_at_stage * raw_per_cell_price",
+            gittins_root_stage_index="completed_local_batches",
+        )
     if variant.policy_family == "ts":
         ts_noise = args.ts_obs_noise_variance
         if ts_noise is None:

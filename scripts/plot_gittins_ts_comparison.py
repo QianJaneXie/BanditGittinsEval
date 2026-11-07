@@ -44,12 +44,17 @@ def paper_protocol() -> dict:
         "recommendation_std_penalty": 1.0,
         "per_cell_noise_variance": 0.25, "batch_mean_noise_variance": 0.03125,
         "gittins_cost_scaling_factor": 1e-4, "gittins_grid_points": 1025,
-        "gittins_allocation_implementation": "per_cell_DP_roots_with_B8_actual_pulls",
+        "gittins_model_version": "batch_level_paper_v1",
+        "gittins_allocation_implementation": "batch_level_empirical_target_DP",
+        "gittins_dp_horizon": 125,
+        "gittins_root_columns": 126,
+        "gittins_transition_cost": "lambda * actual_batch_size * raw_per_cell_arm_price",
         "allocation_discretization_note": (
-            "The current code computes per-cell DP roots and reveals B=8 items per pull. "
-            "The manuscript describes a batch-level root schedule. The present comparison "
-            "retains the existing allocation implementation and does not claim exact "
-            "batch-level optimality or alter its policy."
+            "Each transition observes one batch with noise tau_cell_squared / actual_batch_size "
+            "and pays lambda * actual_batch_size * raw_per_cell_arm_price. Roots are indexed "
+            "by completed local batches; completed arms have terminal root zero. Numerical "
+            "gridding, continuation past stopping, and LCB recommendation remain outside "
+            "the paper's exact batch-level optimality claim."
         ),
         "ts_cost_allocation": "cost_unaware_accuracy_posterior_draws",
         "cost_budget_for_both_methods": "actual_sum_of_new_items_times_arm_price",
@@ -125,9 +130,26 @@ def budget_average_regret(x: np.ndarray, y: np.ndarray, end: float, initial: flo
 def load_cases(directory: Path) -> list[dict]:
     manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
     for key, expected in (("batch_size", 8), ("recommendation_std_penalty", 1.0),
-                          ("per_cell_noise_variance", 0.25), ("cost_scaling_factor", 1e-4)):
+                          ("per_cell_noise_variance", 0.25), ("cost_scaling_factor", 1e-4),
+                          ("gittins_grid_points", 1025), ("budget_fraction", 0.1),
+                          ("n_models", 122), ("n_examples", 1000),
+                          ("gittins_model_version", "batch_level_paper_v1"),
+                          ("gittins_dp_transitions", "batch"), ("gittins_dp_horizon", 125)):
         if manifest.get(key) != expected:
             raise ValueError(f"Input manifest does not match the paper protocol: {key}")
+    if manifest.get("gittins_batch_sizes") != [8] * 125:
+        raise ValueError("Input manifest does not contain the paper's B=8 batch schedule")
+    if manifest.get("priors") != {name: list(values) for name, values in PRIORS.items()}:
+        raise ValueError("Input priors differ from the paper's fixed prior settings")
+    with np.load(directory / "roots.npz", allow_pickle=False) as roots:
+        if scalar(roots, "settings_hash") != manifest.get("settings_hash"):
+            raise ValueError("Root cache does not match the input manifest")
+        for prior in PRIORS:
+            for mode in MODES:
+                values = roots[f"{prior}_{mode}_roots"]
+                if values.shape != (122, 126) or not np.isfinite(values).all():
+                    raise ValueError("Expected batch-level roots with 126 stage columns")
+                np.testing.assert_array_equal(values[:, -1], 0.0)
     matrices = {
         seed: np.asarray(np.load(ROOT / "data/BanditEval_matrices" /
             f"gsm8k_1_samples_various_models_seed{seed}.npy", allow_pickle=False), dtype=np.float64)
@@ -324,7 +346,7 @@ def render(cases: list[dict], directory: Path, xmax: float, stem: str) -> None:
     fig.suptitle("GSM8K: empirical-target Gittins vs Gaussian TS", x=0.085, y=0.975,
                  ha="left", fontsize=17, fontweight="semibold")
     fig.text(0.085, 0.934,
-        "Both use LCB recommendation M - sqrt(V), B=8; five matrices x 20 paired trials",
+        "Batch-level Gittins; both use LCB M - sqrt(V), B=8; five matrices x 20 paired trials",
         color="#64748b", fontsize=10.8)
     fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.54, 0.905),
                ncol=2, frameon=False)
@@ -341,7 +363,7 @@ def render(cases: list[dict], directory: Path, xmax: float, stem: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", type=Path, default=ROOT / "outputs/gsm8k_gittins_ts_lcb100")
+    parser.add_argument("--results-dir", type=Path, default=ROOT / "outputs/gsm8k_gittins_ts_batch_lcb100")
     args = parser.parse_args()
     directory = args.results_dir.resolve()
     if not directory.is_dir():

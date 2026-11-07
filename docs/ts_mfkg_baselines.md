@@ -250,7 +250,7 @@ retain the new methods' metadata and support the aggregate plotting script.
 MF-KG warmup is retained even with `--bo-phase post_init`. Use a fresh download
 directory when upgrading an existing CSV schema.
 
-## GSM8K comparison with the paper's main parameters
+## GSM8K comparison with the paper's batch-level setup
 
 The dedicated Gittins/TS comparison explicitly uses the full-benchmark empirical
 target and the same `posterior mean - posterior std` recommendation for **both**
@@ -264,9 +264,12 @@ Each panel averages five matrix seeds and 20 sampling seeds per matrix,
 giving 100 paired trials. TS allocation remains cost-unaware; actual prices
 determine its stopping budget and the horizontal axis in the heterogeneous
 setting. Both policies continue to the budget, with stopping signals retained
-only as diagnostics. The numerical Gittins implementation retains the existing
-per-cell DP roots and B-item pulls; the manuscript's batch-level root schedule
-should be distinguished from this discretization.
+only as diagnostics. Gittins uses the manuscript's batch-level empirical-target
+DP: each transition observes one batch with noise variance `0.25 / b` and costs
+`1e-4 * b * raw_arm_price`, where `b` is the actual batch size. Roots are indexed
+by completed local batches, including the smaller final batch when needed.
+For GSM8K, the horizon is 125 batches and each root row has 126 entries,
+including the terminal zero. The 1025-point grid approximates the exact roots.
 
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_gittins_ts.py --prepare-only
@@ -274,14 +277,34 @@ KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_gittins_ts.p
 python3 scripts/plot_gittins_ts_comparison.py
 ```
 
-Outputs are saved under `outputs/gsm8k_gittins_ts_lcb100/`. Root tables are cached
-and completed cases resume automatically, with matrix/price hashes preventing
-reuse of mismatched results. The figure follows the paper's 350-point linear
+Outputs are saved under `outputs/gsm8k_gittins_ts_batch_lcb100/`. Root tables are cached
+and completed cases resume automatically, with the batch model version, schedule,
+and matrix/price hashes preventing reuse of mismatched results. The previous
+`outputs/gsm8k_gittins_ts_lcb100/` experiment used per-cell roots and is superseded;
+its figures and Gittins results do not follow the paper's batch-level setup.
+The figure follows the paper's 350-point linear
 interpolation and mean +/- one standard error. Numerical checkpoints and exact
 budget-average regret use the last completed observation at or before each
 budget, excluding over-budget feedback. Paired summaries include per-matrix
 differences and a two-way matrix/trial-seed bootstrap; 100 trajectories do not
 represent 100 independent datasets.
+
+The corrected 100-pair experiment gives the following budget-average simple
+regret over 0--10% (exact step-hold integral divided by 10%; lower is better):
+
+| Costs | Prior | Batch-level Gittins | Gaussian TS |
+|---|---|---:|---:|
+| Unit | General | 0.02237811 | 0.02034700 |
+| Unit | GSM8K | 0.01770500 | 0.01241134 |
+| Heterogeneous | General | 0.00890544 | 0.01900626 |
+| Heterogeneous | GSM8K | 0.00130103 | 0.01106157 |
+
+Both methods have zero regret at the 10% checkpoint in all 400 cases. These
+results do not establish uniform dominance: TS has lower average regret under
+unit costs, while Gittins has lower average regret under heterogeneous costs.
+The paired two-way bootstrap interval for the unit/general-prior difference
+includes zero. All 400 TS histories were checked against the superseded
+experiment and remain identical; Gittins histories were rerun with batch roots.
 
 ## Validation
 

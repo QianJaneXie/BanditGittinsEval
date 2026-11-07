@@ -2,9 +2,11 @@
 """Paper-parameter GSM8K comparison: empirical-target Gittins and Gaussian TS.
 
 Both methods recommend full-test-set posterior mean minus one posterior std.
-This runner keeps the existing per-cell Gittins DP, batch likelihood, fixed arm
-order, and batch-end stopping convention. Incremental sufficient statistics
-avoid rescanning the entire masked accuracy matrix after every observation.
+Gittins uses the paper's batch-level finite-population DP, with one transition
+per observed batch and the actual size of the final batch. Both policies keep
+the batch likelihood, fixed arm order, and batch-end stopping convention.
+Incremental sufficient statistics avoid rescanning the entire masked accuracy
+matrix after every observation.
 """
 from __future__ import annotations
 
@@ -24,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 PRIORS = {"G": (0.5, 0.04), "S": (0.2, 0.01)}
 METHODS = ("gittins", "ts")
+GITTINS_MODEL_VERSION = "batch_level_paper_v1"
 PRICE_PATH = ROOT / "data_analysis/pricing/gsm8k_various_models_configurations_price_ratio_1to2_rounded.json"
 
 
@@ -43,16 +46,20 @@ def load_paper_costs(path: Path = PRICE_PATH, n_arms: int = 122) -> np.ndarray:
 
 
 def build_roots_lookup(*, prior_variance: float, tau_sq_cell: float,
-                       n_examples: int, costs_per_arm: np.ndarray,
+                       n_examples: int, batch_size: int, costs_per_arm: np.ndarray,
                        cost_scaling_factor: float = 1e-4, n_points: int = 1025) -> np.ndarray:
-    """Use the existing finite-population DP once per distinct float32 price."""
-    from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table
-    scaled = np.asarray(costs_per_arm, dtype=np.float32) * float(cost_scaling_factor)
-    unique, inverse = np.unique(scaled.astype(np.float32), return_inverse=True)
-    roots = np.asarray(compute_finite_population_roots_lookup_table(
+    """Build batch-stage roots once per distinct raw per-cell price."""
+    from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table
+    prices = np.asarray(costs_per_arm, dtype=np.float64)
+    unique, inverse = np.unique(prices, return_inverse=True)
+    roots = np.asarray(compute_finite_population_batch_roots_lookup_table(
         prior_variance=prior_variance, tau_sq_cell=tau_sq_cell,
-        n_examples=n_examples, costs_per_arm=unique, n_points=n_points,
+        n_examples=n_examples, batch_size=batch_size, costs_per_arm=unique,
+        cost_scaling_factor=cost_scaling_factor, n_points=n_points,
     ), dtype=np.float32)
+    horizon = math.ceil(n_examples / batch_size)
+    if roots.shape != (len(unique), horizon + 1):
+        raise ValueError("Batch-level root helper returned an unexpected table shape")
     return roots[inverse]
 
 
@@ -88,6 +95,7 @@ def simulate_policy(
     if max_steps is not None and max_steps < 0:
         raise ValueError("max_steps must be nonnegative")
     n_arms, n_examples = raw.shape
+    batch_horizon = math.ceil(n_examples / batch_size)
     costs = np.asarray(per_arm_cost, dtype=np.float64)
     if costs.shape != (n_arms,) or not np.isfinite(costs).all() or (costs <= 0).any():
         raise ValueError("Invalid per_arm_cost")
@@ -102,11 +110,14 @@ def simulate_policy(
         roots = np.asarray(roots_lookup, dtype=np.float32)
         if roots.ndim == 1:
             roots = roots[None]
-        if roots.shape not in {(1, n_examples + 1), (n_arms, n_examples + 1)}:
-            raise ValueError("roots_lookup must have one or n_arms rows and N+1 columns")
+        if roots.shape not in {(1, batch_horizon + 1), (n_arms, batch_horizon + 1)}:
+            raise ValueError(
+                "Batch-level roots_lookup must have one or n_arms rows and "
+                "ceil(N / batch_size)+1 columns; per-cell root tables are incompatible"
+            )
         if not np.isfinite(roots).all():
             raise ValueError("roots_lookup must be finite")
-        roots = np.broadcast_to(roots, (n_arms, n_examples + 1))
+        roots = np.broadcast_to(roots, (n_arms, batch_horizon + 1))
 
     started = time.perf_counter()
     generator = torch.Generator(device="cpu").manual_seed(int(seed))
@@ -174,7 +185,8 @@ def simulate_policy(
         latent_mean = latent_var[n] * (prior_mean / prior_variance + sums[arm] / tau_sq_cell)
         means[arm] = np.float32((sums[arm] + r * latent_mean) / n_examples)
         if scores is not None:
-            scores[arm] = means[arm] if n == n_examples else np.float32(means[arm] - roots[arm, n])
+            batches_pulled = (n + batch_size - 1) // batch_size
+            scores[arm] = means[arm] if n == n_examples else np.float32(means[arm] - roots[arm, batches_pulled])
         rec = int((means.astype(np.float64) - std_penalty * stds[counts]).argmax())
         if scores is not None:
             complete = counts == n_examples
@@ -252,6 +264,8 @@ def prepare(out_dir: Path, *, batch_size: int = 8, budget_fraction: float = .1,
                 digest.update(block)
         matrix_hashes[str(seed)] = digest.hexdigest()
     costs = load_paper_costs(n_arms=n_arms)
+    batch_sizes = [min(batch_size, n_examples - start) for start in range(0, n_examples, batch_size)]
+    batch_horizon = len(batch_sizes)
     settings = dict(n_models=n_arms, n_examples=n_examples, full_evals=n_arms * n_examples,
                     full_original_cost=float(n_examples * costs.sum()), matrix_seeds=matrix_seeds,
                     run_seeds=run_seeds, priors={k: list(v) for k, v in PRIORS.items()}, batch_size=batch_size,
@@ -259,7 +273,13 @@ def prepare(out_dir: Path, *, batch_size: int = 8, budget_fraction: float = .1,
                     per_cell_noise_variance=.25, batch_noise_variance=.25 / batch_size,
                     cost_scaling_factor=cost_scaling_factor, gittins_grid_points=n_points,
                     gittins_target="finite_population_mean", ts_target="finite_population_mean",
-                    gittins_dp_transitions="per_cell", fixed_arm_order=True,
+                    gittins_model_version=GITTINS_MODEL_VERSION, gittins_dp_transitions="batch",
+                    gittins_dp_horizon=batch_horizon, gittins_batch_sizes=batch_sizes,
+                    gittins_observed_cells_by_stage=[min(stage * batch_size, n_examples)
+                                                    for stage in range(batch_horizon + 1)],
+                    gittins_batch_noise_variances=[.25 / size for size in batch_sizes],
+                    gittins_transition_cost="cost_scaling_factor * batch_size_at_stage * raw_per_cell_price",
+                    gittins_root_stage_index="completed_local_batches", fixed_arm_order=True,
                     budget_convention="post_batch_stop; checkpoints exclude over-budget feedback",
                     grid_points=1001, methods=list(METHODS), cost_modes=["unit", "cost"],
                     matrix_sha256=matrix_hashes,
@@ -277,8 +297,15 @@ def prepare(out_dir: Path, *, batch_size: int = 8, budget_fraction: float = .1,
         with np.load(cache, allow_pickle=False) as z:
             if str(z["settings_hash"].item()) != fingerprint:
                 raise ValueError("Root cache settings do not match this study")
+            if "gittins_model_version" not in z.files or str(z["gittins_model_version"].item()) != GITTINS_MODEL_VERSION:
+                raise ValueError("Root cache is not the batch-level paper model")
+            for name in PRIORS:
+                for mode in ("unit", "cost"):
+                    if z[f"{name}_{mode}_roots"].shape != (n_arms, batch_horizon + 1):
+                        raise ValueError("Root cache has incompatible batch-level dimensions")
     else:
-        values = {"settings_hash": fingerprint, "per_arm_cost": costs}
+        values = {"settings_hash": fingerprint, "per_arm_cost": costs,
+                  "gittins_model_version": GITTINS_MODEL_VERSION}
         started = time.perf_counter()
         for name, (_, variance) in PRIORS.items():
             for mode in ("unit", "cost"):
@@ -286,7 +313,8 @@ def prepare(out_dir: Path, *, batch_size: int = 8, budget_fraction: float = .1,
                 tick = time.perf_counter()
                 values[f"{name}_{mode}_roots"] = build_roots_lookup(
                     prior_variance=variance, tau_sq_cell=.25, n_examples=n_examples,
-                    costs_per_arm=prices, cost_scaling_factor=cost_scaling_factor, n_points=n_points)
+                    batch_size=batch_size, costs_per_arm=prices,
+                    cost_scaling_factor=cost_scaling_factor, n_points=n_points)
                 print(json.dumps({"prepare_prior": name, "mode": mode, "elapsed_s": time.perf_counter() - tick}), flush=True)
         values["precomputation_s"] = time.perf_counter() - started
         _atomic_npz(cache, **values)
@@ -362,7 +390,7 @@ def run_worker(args: argparse.Namespace, settings: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out-dir", type=Path, default=ROOT / "outputs/gsm8k_gittins_ts_lcb100")
+    parser.add_argument("--out-dir", type=Path, default=ROOT / "outputs/gsm8k_gittins_ts_batch_lcb100")
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--worker-index", type=int, default=0)
     parser.add_argument("--workers", type=int, default=1)

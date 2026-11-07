@@ -26,15 +26,21 @@ At completion, `M = S/N` and `V_F = 0`; there is no future observation or explor
 
 ## Cost and index
 
-The existing random-walk DP retains its form:
+The random-walk DP retains its form, with local stage t counting batches:
 
 \[
 Q_t(s)=E[\max\{Q_{t+1}(s+\sigma^F_t Z),0\}]-c_t,
-\qquad Q_N(s)=s,
+\qquad Q_H(s)=s,
 \qquad \Gamma^F_t=M_t-r_t,
 \]
 
-where `Q_t(r_t)=0` and `sigma_F = a*sigma_latent`. The implementation recomputes roots with these scaled transitions and the original numerical costs, across lookup, per-observation DP, and batch-mean DP paths. A cost is still charged per transition of the selected DP mode; this change does not redefine the batching or cost model.
+where `Q_t(r_t)=0`, `H=ceil(N/B)`, and `sigma_F = a*sigma_latent`.
+The default lookup follows the paper's batch schedule: `b_t=min(B,N-t*B)`,
+observation noise `tau_cell^2/b_t`, and cost
+`cost_scaling_factor * b_t * raw_per_cell_price`. A partial final batch uses
+its actual size for both noise and cost. Supplied per-cell root caches are
+incompatible when B exceeds one. The explicit per-observation DP option is
+retained for historical diagnostics.
 
 An equivalent identity for the exact DP is
 
@@ -52,11 +58,22 @@ Natural stopping occurs when the largest index belongs to a completed arm. Both 
 
 The default recommendation maximizes M. `--recommendation-std-penalty 1` instead maximizes `M - sqrt(V_F)`. LCB affects recommendation and potentially its recommendation-aware stopping diagnostic; it does not enter acquisition or natural stopping. Correcting the target does not eliminate optimistic recommendations for unobserved arms: their M remains the prior mean.
 
-The low-level latent posterior and transition helpers retain their latent meaning. `gittins_index_exploration` and `gittins_post_pull_update` return finite-target means; `posterior_mean_pulled` consequently records M. Precomputed roots supplied to the policy must use the finite-target transition schedule. `compute_finite_population_roots_lookup_table` provides this construction and shares a single lookup table when all arm costs are identical.
+The low-level latent posterior and transition helpers retain their latent meaning.
+`gittins_index_exploration` and `gittins_post_pull_update` return finite-target
+means; `posterior_mean_pulled` consequently records M. The default policy accepts
+finite-target batch roots from `compute_finite_population_batch_roots_lookup_table`,
+sharing a row when all arm costs are identical. The older
+`compute_finite_population_roots_lookup_table` helper retains its per-cell
+semantics for historical diagnostics.
 
 New runs record `gittins_index_target = finite_population_mean` in addition to the existing recommendation-target and penalty fields. Historical runs without this field are treated as `latent_mean`. Plotting and download metadata distinguish these cases. The rollout script rejects historical latent-target traces when asked to re-simulate Gittins with the current policy; their recorded histories remain historical data.
 
-## GSM8K verification
+## Historical per-cell GSM8K verification
+
+The following archived experiment predates the batch-level correction. Its
+per-cell acquisition roots are not the paper's current batch-level setup.
+For the corrected B=8, five-matrix, 100-trial Gittins/TS comparison, see
+[the baseline protocol](ts_mfkg_baselines.md#gsm8k-comparison-with-the-papers-batch-level-setup).
 
 The paired comparison uses only sampling seed 0, both the general `Normal(0.5, 0.04)` and data-specific `Normal(0.2, 0.01)` priors, matrix `gsm8k_1_samples_various_models_seed1.npy`, batch size 16, unit costs, cost scale `1e-4`, grid size 1,025, and a 12,200-cell budget. The historical acquisition implementation is read from commit `f4833e4`; the new implementation uses the finite target at the same numerical cost. Each acquisition trajectory is scored with finite mean and finite LCB recommendations on identical observed data.
 

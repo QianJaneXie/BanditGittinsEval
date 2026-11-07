@@ -10,6 +10,7 @@ import torch
 from gittins_lookup import compute_roots_lookup_table
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update
 from gittins_shrinking_posterior import (
+    compute_finite_population_batch_roots_lookup_table,
     compute_finite_population_roots_lookup_table,
     compute_gittins_shrinking_posterior_walk_batch_mean,
     finite_population_mean_scale,
@@ -87,7 +88,7 @@ class FinitePopulationGittinsTests(unittest.TestCase):
         self.assertEqual(shared.shape, (1, n_cells + 1))
         np.testing.assert_allclose(np.asarray(shared[0]), finite[0], atol=2e-6)
 
-    def test_lookup_and_forced_cell_dp_agree_with_nonuniform_costs(self):
+    def test_batch_lookup_and_direct_dp_agree_with_nonuniform_costs(self):
         obs = torch.tensor(
             [[float("nan")] * 5, [0.7, 0.2, float("nan"), float("nan"), float("nan")],
              [0.8, 0.6, 0.9, 0.4, float("nan")], [0.1, 0.2, 0.3, 0.4, 0.5]]
@@ -104,13 +105,13 @@ class FinitePopulationGittinsTests(unittest.TestCase):
         with patch("gittins_policy._finite_roots_for_policy", side_effect=AssertionError("unused roots")):
             direct_means, direct_scores = gittins_post_pull_update(
                 obs, cached_scores=torch.zeros(4), recompute_arms=range(4),
-                force_per_observation_dp=True, **options
+                use_batch_mean_gittins_dp=True, **options
             )
         torch.testing.assert_close(lookup_means, direct_means)
         torch.testing.assert_close(lookup_scores, direct_scores, rtol=2e-5, atol=2e-6)
         self.assertAlmostEqual(float(lookup_scores[-1]), float(obs[-1].mean()), places=6)
 
-    def test_batch_dp_uses_cell_noise_and_fixed_cost_with_partial_final_batch(self):
+    def test_batch_dp_uses_cell_noise_and_actual_cell_cost_with_partial_final_batch(self):
         obs = torch.tensor([[0.3, 0.9] + [float("nan")] * 5])
         model = dict(prior_mean=0.5, prior_variance=0.04, tau_sq_cell=0.25)
         latent_means, latent_variances = posterior_moments(obs, **model)
@@ -118,7 +119,7 @@ class FinitePopulationGittinsTests(unittest.TestCase):
         scale = finite_population_mean_scale(0.04, 0.25, 7)
         latent_index = compute_gittins_shrinking_posterior_walk_batch_mean(
             jnp.float32(float(latent_means[0])), jnp.float32(float(latent_variances[0])),
-            jnp.float32(0.25), 3, 5, jnp.full((2,), 0.01 / scale), jnp.uint32(513),
+            jnp.float32(0.25), 3, 5, jnp.array([0.03, 0.02]) / scale, jnp.uint32(513),
         )
         expected = scale * float(latent_index) + (1.0 - scale) * 0.5
         with patch("gittins_policy._finite_roots_for_policy", side_effect=AssertionError("unused roots")):
@@ -141,7 +142,7 @@ class FinitePopulationGittinsTests(unittest.TestCase):
                 cache = torch.tensor([0.0, 0.69])
                 batch, means = gittins_index_exploration(
                     obs, prior_mean=0.0, prior_variance=0.01, obs_noise_variance=1.0,
-                    cached_scores=cache, recompute_arms=[], roots_lookup_table=torch.zeros((1, 4)),
+                    cached_scores=cache, recompute_arms=[], roots_lookup_table=torch.zeros((1, 2)),
                     batch_size=4, allow_early_stop=early_stop, return_mus=True,
                 )
                 self.assertAlmostEqual(float(cache[0]), 0.7, places=6)
@@ -177,12 +178,57 @@ class FinitePopulationGittinsTests(unittest.TestCase):
             outputs.append(gittins_post_pull_update(
                 obs, cached_scores=torch.zeros(2), recompute_arms=range(2),
                 prior_mean=0.0, prior_variance=1.0, obs_noise_variance=1.0,
-                roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=4,
+                roots_lookup_table=torch.zeros((1, 2)), sim_cum_eval=4,
                 recommendation_std_penalty=penalty, natural_stop_cum_eval_holder=natural_stop,
             ))
             self.assertEqual(natural_stop, [None])
         torch.testing.assert_close(outputs[0][0], outputs[1][0])
         torch.testing.assert_close(outputs[0][1], outputs[1][1])
+
+    def test_native_batch_lookup_and_incremental_updates_use_local_stage_and_stop(self):
+        n_cells, batch_size = 7, 3
+        prices = torch.tensor([1.0, 2.0], dtype=torch.float64)
+        roots = torch.tensor(np.asarray(compute_finite_population_batch_roots_lookup_table(
+            prior_variance=0.01, tau_sq_cell=0.25, n_examples=n_cells,
+            batch_size=batch_size, costs_per_arm=prices.numpy(),
+            cost_scaling_factor=0.01, n_points=513,
+        )))
+        obs = torch.full((2, n_cells), float("nan"))
+        options = dict(
+            prior_mean=0.1, prior_variance=0.01, obs_noise_variance=0.25 / batch_size,
+            batch_observation_model=True, batch_size=batch_size,
+            cost_per_transition=prices, cost_scaling_factor=0.01,
+            n_gittins_grid_points=513,
+        )
+        cache = torch.zeros(2)
+        means, _ = gittins_post_pull_update(
+            obs, cached_scores=cache, recompute_arms=range(2), sim_cum_eval=0, **options,
+        )
+        torch.testing.assert_close(cache, means - roots[:, 0])
+        untouched = cache[1].clone()
+        stop = [None]
+        for count, stage in ((3, 1), (6, 2), (7, 3)):
+            obs[0, :count] = 0.9
+            means, returned_cache = gittins_post_pull_update(
+                obs, cached_scores=cache, recompute_arms=[0], roots_lookup_table=roots,
+                sim_cum_eval=count, natural_stop_cum_eval_holder=stop, **options,
+            )
+            self.assertIs(returned_cache, cache)
+            self.assertAlmostEqual(float(cache[0]), float(means[0] - roots[0, stage]), places=6)
+            self.assertEqual(float(cache[1]), float(untouched))
+            self.assertEqual(stop, [7 if count == 7 else None])
+        self.assertAlmostEqual(float(cache[0]), 0.9, places=6)
+        self.assertIsNone(gittins_index_exploration(
+            obs, cached_scores=cache, recompute_arms=[], roots_lookup_table=roots,
+            allow_early_stop=True, **options,
+        ))
+
+    def test_batch_policy_rejects_legacy_per_cell_lookup_tables(self):
+        with self.assertRaisesRegex(ValueError, "batch-level"):
+            gittins_index_exploration(
+                torch.full((2, 7), float("nan")), batch_size=3,
+                roots_lookup_table=torch.zeros((1, 8)),
+            )
 
 
 if __name__ == "__main__":
