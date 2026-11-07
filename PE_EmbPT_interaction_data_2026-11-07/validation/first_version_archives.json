@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "unseen_label_check": {
+    "subject": "college_chemistry",
+    "seed": 0,
+    "observations": 3000,
+    "variants": {
+      "rasch39_random": {
+        "native_first_phase_mask_exact": true,
+        "first_phase_matches_saved_checkpoint": true,
+        "unseen_outcomes_flipped": 147000,
+        "all_arm_scores_unchanged": true,
+        "chosen_arm_unchanged": 884,
+        "original_oracle_mean": 0.6,
+        "mutated_oracle_mean": 0.74
+      },
+      "rasch39_balanced": {
+        "native_first_phase_mask_exact": true,
+        "first_phase_matches_saved_checkpoint": true,
+        "unseen_outcomes_flipped": 147000,
+        "all_arm_scores_unchanged": true,
+        "chosen_arm_unchanged": 231,
+        "original_oracle_mean": 0.6,
+        "mutated_oracle_mean": 0.72
+      }
+    }
+  },
+  "archives": {
+    "subjects": 57,
+    "trajectories": 2280,
+    "phases": 11400,
+    "archive_set_sha256": "230a325f5653fbec15b98a97bbb74a73ff2c4b9feb3f4a08417c929c3646ebea",
+    "verified": [
+      "Source, input, matrix, reconstructed X39, checkpoint, and reference archive hashes",
+      "Complete seeds and variants, exact archive/checkpoint records and five budgets",
+      "Canonical chosen and oracle means, regrets, price bounds, and random first-phase spend"
+    ]
+  }
+}

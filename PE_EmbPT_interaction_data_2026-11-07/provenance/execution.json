@@ -1,0 +1,50 @@
+{
+  "branch": "implement-prompt-eval-pe-embpt",
+  "starting_commit": "8caf275278445565f6533dce0d6b6036f7ceed6b",
+  "scope": "57 MMLU subjects, 20 seeds, random and balanced questions, five phases; 2280 new trajectories",
+  "initial_command": "python experiments/mmlu_pe_embpt/run_interaction.py --all-subjects --workers 6 --seed-chunk-size 2 --out-dir outputs/mmlu_rasch389/results",
+  "resume_command": "python experiments/mmlu_pe_embpt/run_interaction.py --all-subjects --workers 12 --seed-chunk-size 2 --out-dir outputs/mmlu_rasch389/results",
+  "resume_note": "Twelve completed trajectories were reused after increasing worker count. Source and input fingerprints were unchanged.",
+  "started_utc": "2026-11-07T17:58:22.876495+00:00",
+  "resumed_at_utc": "2026-11-07T18:02:03.897050+00:00",
+  "completed_utc": "2026-11-07T18:39:28.641438+00:00",
+  "python_version": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "packages": {
+    "numpy": {
+      "version": "2.3.5",
+      "record_sha256": "3a59e53edca49acc390552cb0505716f223369ef611fba81f0aa4a24a365d5dc"
+    },
+    "scipy": {
+      "version": "1.16.3",
+      "record_sha256": "6a97b67c216437e77c4bc567fe3a471acc08afd031105e638c7bb1e7047feee9"
+    },
+    "scikit-learn": {
+      "version": "1.7.2",
+      "record_sha256": "6bf502644e48bb879b4bbd66b54f04a4902e8159a2c070dd8969275f8f28dffd"
+    },
+    "tqdm": {
+      "version": "4.67.1",
+      "record_sha256": "a6524aeead14b849c32897c8381f8a189e1ddeb5b196671b579ed6065c7c309c"
+    },
+    "threadpoolctl": {
+      "version": "3.8.0",
+      "record_sha256": "4dd07cef19c10e9acba62bbd7cd4252e787594e1fb80d5bb8c45b934affa33f3"
+    }
+  },
+  "source_sha256": {
+    "experiments/mmlu_pe_embpt/interaction.py": "69118e8e8366fa81b510e5caf7f0ae4d0204ca4e7576cfa6615e75051db88009",
+    "experiments/mmlu_pe_embpt/run_interaction.py": "73744b3691728e312903e154f58298db459c5a584e7c00caa08d1889c539da44",
+    "prompteval/bai_evaluation.py": "f8a97942d8d9f9fae04039cb4a42f7f39458510b96248940143aa7353aaea207",
+    "prompteval/methods.py": "585854d9dc58cee5af7dd1e18a6e3d31bc23cc9e955c09eeaf4fe6f2c42fd7fc",
+    "prompteval/methods_gpu.py": "a724afbcfa18524d53222207304fc13c8ccee166c32bfb29753c2d8e3a05ae55",
+    "prompteval/utils.py": "b40436c5fc149fabd3f8b4bc609b9eb8dd2e4f32805399429d0c6ecc0eaa29c3"
+  },
+  "input_sha256": {
+    "prompteval/data/Ys.pickle": "4300e539e82f9c9f3f3ba9b4ad024ec0335f1c7b8914a7a43554055e4506416a",
+    "prompteval/data/Xs.pickle": "2bd38d57a8c9a5de0e78ee803da795e9d7b7ac12657890fb398e798e954f6c2f",
+    "data_analysis/pricing/mmlu_prompt_eval_configurations_input_price.json": "5d3121dc7a5c21c084ed3479abe02097f0973f8068de1ea8a24e0c3e6ec7a2bb"
+  },
+  "source_snapshot_manifest": "code/source_snapshot_manifest.csv",
+  "runtime_diagnostics": "supplementary/runtime_diagnostics.csv",
+  "source_note": "Source snapshots preserve exact execution bytes, including platform line endings. Git may normalize line endings of native upstream files in a fresh clone; new run fingerprints describe those local bytes."
+}

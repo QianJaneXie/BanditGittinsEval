@@ -1,0 +1,28 @@
+{
+  "subject": "college_physics",
+  "group": "Hard-Small",
+  "mode": "unit",
+  "x_label": "cum_eval",
+  "y_label": "simple_regret",
+  "recommendation_rule": "lcb",
+  "batch_size": 2,
+  "cost_scaling_factor": 0.0001,
+  "paper_prior": {
+    "difficulty": "hard",
+    "bucket": "low",
+    "Gittins-S_mean": 0.4,
+    "Gittins-S_variance": 0.02,
+    "Gittins-G_mean": 0.5,
+    "Gittins-G_variance": 0.04
+  },
+  "band_style": {
+    "range": "stderr",
+    "se_mult": 1.0,
+    "curve_alpha": 0.15,
+    "stop_alpha": 0.12,
+    "stop_line_alpha": 0.72
+  },
+  "observed_natural_stop_lines": [],
+  "raw_budget_exhaustive_denominator": 153000.0,
+  "curves_note": "The CSV keeps all original Gittins rows, including partial seed coverage at the endpoint. Comparison uses n_runs = 20."
+}

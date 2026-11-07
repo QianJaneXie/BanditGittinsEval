@@ -1,0 +1,16 @@
+model_index,model_name,reference_model,first_arm_index,last_arm_index
+0,meta_llama_llama_3_8b,True,0,99
+1,meta_llama_llama_3_8b_instruct,False,100,199
+2,meta_llama_llama_3_70b_instruct,False,200,299
+3,codellama_codellama_34b_instruct,False,300,399
+4,google_flan_t5_xl,False,400,499
+5,google_flan_t5_xxl,False,500,599
+6,google_flan_ul2,False,600,699
+7,ibm_mistralai_merlinite_7b,False,700,799
+8,mistralai_mixtral_8x7b_instruct_v01,False,800,899
+9,mistralai_mistral_7b_instruct_v0_2,False,900,999
+10,google_gemma_7b,False,1000,1099
+11,google_gemma_7b_it,False,1100,1199
+12,tiiuae_falcon_40b,False,1200,1299
+13,mistralai_mistral_7b_v0_1,False,1300,1399
+14,tiiuae_falcon_180b,False,1400,1499

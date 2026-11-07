@@ -1,0 +1,72 @@
+{
+  "scope": "Read-only audit of cached upstream PromptEval sources, template files, saved feature values and experiment archive metadata.",
+  "upstream_checkout": "c238d6473f2e7f956418b87ccd200e3165f9eb62",
+  "feature_source": {
+    "experiment_path": "BanditGittinsEval/prompteval/data/Xs.pickle",
+    "cached_upstream_path": "prompteval/data/Xs.pickle",
+    "cached_upstream_git_blob": "da1f582e60a1b67507c8bc29d57b43fc005065e5",
+    "sha256_both_files": "2bd38d57a8c9a5de0e78ee803da795e9d7b7ac12657890fb398e798e954f6c2f",
+    "features_reencoded_for_experiment": false
+  },
+  "pretrained_embedding": {
+    "model_id_in_upstream_source": "sentence-transformers/facebook-dpr-question_encoder-multiset-base",
+    "model_revision_pinned_in_upstream_source": false,
+    "encoder_weight_snapshot_located_in_local_cache": false,
+    "declared_upstream_dependency_versions": {
+      "sentence-transformers": "3.0.0",
+      "transformers": "4.41.2"
+    },
+    "dependency_note": "These are the upstream checkout's declared requirements. The saved feature pickle contains no encoder revision or original feature-generation environment record. The replay uses the saved feature arrays directly.",
+    "construction": [
+      "For each subject, read the 100 strings in the prompt template column of its CSV and pass them unchanged to SentenceTransformer.encode.",
+      "Fit PCA with 25 components to the encoded strings for that subject.",
+      "Apply a second PCA and retain components with explained-variance ratio strictly greater than 1e-5. The saved arrays have 25 columns for every subject and model."
+    ],
+    "subject_count_verified": 57,
+    "models_per_subject_verified": 15,
+    "saved_pretrained_shape_per_subject_and_model": [100, 25],
+    "pretrained_arrays_identical_across_model_blocks_within_subject": true,
+    "pretrained_arrays_bit_identical_across_all_subjects": false,
+    "max_absolute_pretrained_coordinate_difference_from_abstract_algebra": 0.002638474,
+    "external_encoder_training_overlap": "The cached files do not establish the exact encoder training snapshot or whether any MMLU items appeared in external pretraining."
+  },
+  "template_content_audit": {
+    "csv_count": 57,
+    "rows_per_csv": 100,
+    "total_rows_examined": 5700,
+    "unique_template_strings_after_newline_normalization": 93,
+    "ordered_template_ids_per_csv": "0 through 99",
+    "normalized_template_strings_and_order_identical_across_subjects": true,
+    "rows_matching_selected_canonical_formats_in_order": 5700,
+    "format_fields_in_every_row": ["topic", "question", "choices"],
+    "single_shared_literal_skeleton": "The following are multiple choice questions (with answers) about {topic} {question} Answers: {choices} Answer:",
+    "literal_check": "Removing separators, punctuation, whitespace and capitalization leaves exactly the same literal words across all rows.",
+    "contains_filled_question_text": false,
+    "contains_filled_answer_choices": false,
+    "contains_answer_key_or_candidate_response": false,
+    "uses_observed_or_unobserved_response_labels_to_create_pretrained_features": false
+  },
+  "feature_order_and_alignment": {
+    "upstream_pickle_order_per_model": ["discrete", "pretrained_embedding", "fine_tuned_embedding"],
+    "runner_order": ["one_hot", "discrete", "pretrained_embedding", "fine_tuned_embedding"],
+    "pretrained_zero_based_upstream_index": 1,
+    "pretrained_zero_based_runner_index": 2,
+    "combined_row_index": "100 * model_index + template_index",
+    "all_stacked_upstream_Ys_exactly_match_replay_matrices": true,
+    "template_response_and_feature_subject_sets_identical": true,
+    "pretrained_dimensions_before_logistic_intercept": 39,
+    "pretrained_dimensions_breakdown": "25 shared prompt coordinates and 14 model dummy columns, with model 0 as reference.",
+    "discrete_dimensions_breakdown": "21 PCA-filtered coordinates from sep, space and op metadata, plus the same 14 model dummy columns.",
+    "one_hot_dimensions": 1500,
+    "comparison_note": "One-hot gives each joint model-prompt arm its own coefficient. The pretrained arm design pools information across models and prompts, so the one-hot comparison alone does not isolate the contribution of the encoder from model-level pooling."
+  },
+  "source_locations": {
+    "encoder_and_first_pca": "prompteval/prompteval/get_features.py:103-112",
+    "template_selection_and_second_pca_call": "prompteval/prompteval/create_data.py:127-172",
+    "upstream_feature_block_order": "prompteval/prompteval/create_data.py:201-207",
+    "second_pca_filter": "prompteval/prompteval/utils.py:30-42",
+    "upstream_dependency_pins": "prompteval/pyproject.toml:28,33",
+    "model_dummies": "BanditGittinsEval/prompteval/bai_evaluation.py:314-324",
+    "runner_feature_names_and_order": "BanditGittinsEval/outputs/mmlu_feature_comparison/run_experiment.py:29,121"
+  }
+}

@@ -2,7 +2,7 @@
 
 At 10% of MMLU evaluation cells, balanced-question PE-EmbPT reduced mean simple regret from **0.02171928 to 0.00905031** and improved on the 39-feature logistic baseline in all 57 subjects. In the separate 19-subject Figure 3 comparison, GittinsEval-S had lower cohort mean regret than both PE-EmbPT variants at all 36 comparable checkpoints.
 
-**Implemented version:** the completed PE-EmbPT runs use concatenation of prompt embeddings and model indicators, with prompt coefficients shared across LLMs and one fitted effect per question. All PE-EmbPT results below belong to this first version. The proposed version with model-specific prompt coefficients has not been run.
+**First-version report:** the PE-EmbPT runs below use concatenation of prompt embeddings and model indicators, with prompt coefficients shared across LLMs and one fitted effect per question. All PE-EmbPT results on this page belong to that version. The [interaction follow-up](mmlu_pe_embpt_interaction.md) compares it with model-specific prompt coefficients on the same 57 subjects.
 
 [Main figure (PNG)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT.png) · [Main figure (PDF)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT.pdf) · [Sampling comparison (PNG)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT_sampling.png) · [Sampling comparison (PDF)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT_sampling.pdf)
 
@@ -60,7 +60,7 @@ The replay uses five successive-halving phases with cumulative observation budge
 
 Both completed PE variants use this same concatenation design and estimator. `rasch39_random` samples an unanswered question uniformly for the chosen arm. `rasch39_balanced` samples among that arm's least-covered unanswered questions, using question counts across all arms, including eliminated arms. Arm and question ties are broken randomly by the seeded sampler. Thus balanced sampling operates inside the BAI elimination schedule.
 
-For a future interaction variant, the proposed arm features would instead be $[\operatorname{onehot}_{15}(m)\otimes e(p);d(m)]$. Each LLM would have its own block of 25 prompt coefficients, giving $15\times25+14=389$ arm coefficients and $389+N$ coefficients after adding question effects. The blocks belong to LLMs: all 100 prompts for one LLM use its same block with their respective embedding values. This version is not implemented in the reported runs, and no interaction results are included. We describe the completed method as **PE-EmbPT adapted to joint model-prompt selection with shared prompt coefficients and question effects**.
+The [interaction follow-up](mmlu_pe_embpt_interaction.md) uses arm features $[\operatorname{onehot}_{15}(m)\otimes e(p);d(m)]$. Each LLM has its own block of 25 prompt coefficients, giving $15\times25+14=389$ arm coefficients and $389+N$ coefficients after adding question effects. The blocks belong to LLMs: all 100 prompts for one LLM use its same block with their respective embedding values. That comparison is reported separately. The method on this page is **PE-EmbPT adapted to joint model-prompt selection with shared prompt coefficients and question effects**.
 
 ### Embedding provenance
 

@@ -1,0 +1,646 @@
+{
+  "comparison": "Joint MMLU prompt-model Rasch comparison between concatenated and interaction designs",
+  "cohorts": {
+    "Easy-Small": [
+      "computer_security",
+      "human_sexuality",
+      "international_law",
+      "jurisprudence",
+      "management",
+      "us_foreign_policy"
+    ],
+    "Easy-Large": [
+      "high_school_psychology",
+      "miscellaneous"
+    ],
+    "Hard-Small": [
+      "abstract_algebra",
+      "college_chemistry",
+      "college_computer_science",
+      "college_mathematics",
+      "college_physics",
+      "econometrics",
+      "formal_logic",
+      "global_facts",
+      "machine_learning"
+    ],
+    "Hard-Large": [
+      "moral_scenarios",
+      "professional_law"
+    ]
+  },
+  "seeds_per_subject_method": 20,
+  "bai_methods": [
+    "logistic_39",
+    "rasch39_random",
+    "rasch39_balanced",
+    "rasch389_random",
+    "rasch389_balanced"
+  ],
+  "interaction_phase_rows": 11400,
+  "unit_axis": "Actual observation count divided by exhaustive observation count",
+  "price_axis": "Actual price-weighted spend divided by exhaustive price-weighted spend",
+  "bai_aggregation": "Last observed phase at or before spend, 1e-9 percentage point tolerance, carry final recommendation forward",
+  "gittins_aggregation": "Interpolate per-subject means within full-20-run support only",
+  "uncertainty": "One standard error across equally weighted subject means; BAI contrasts pair seeds within each subject",
+  "coverage": "Aggregate rows require all 20 seeds in every subject; subject rows retain partial counts",
+  "reference_sha256": {
+    "supplementary/reference/gittins/per_task/aware_abstract_algebra_curves.csv": "e1a50ece7769b581f7e3c93083fafcba2ba092a172bdd04ecd45ae2bba855419",
+    "supplementary/reference/gittins/per_task/aware_abstract_algebra_meta.json": "25f28eb4455b5e5d3df32bc7ed098ef0b5b88655a4d670ec0ee78d0866437e83",
+    "supplementary/reference/gittins/per_task/aware_college_chemistry_curves.csv": "dd0bf1b032b55e56b67a5edf82c2d6a592a45337992da4f6229e31f437630719",
+    "supplementary/reference/gittins/per_task/aware_college_chemistry_meta.json": "0991ef0540efaf05a69b9dc33345153525b79208a18e91f40074337608f9bdaf",
+    "supplementary/reference/gittins/per_task/aware_college_computer_science_curves.csv": "c544af284c7e108a98cb9bc72f3fce3139684134bc389b271f08d9ee9311f69e",
+    "supplementary/reference/gittins/per_task/aware_college_computer_science_meta.json": "c60a426067fbdd80631b3b6a65edfde109c5b9f18e0161a5c038132e80a447ec",
+    "supplementary/reference/gittins/per_task/aware_college_mathematics_curves.csv": "e4c4f4c84ab41a3a0416117c2e6de5eef9805cf50e4a8fa58ac4f5b999a20b6c",
+    "supplementary/reference/gittins/per_task/aware_college_mathematics_meta.json": "a736b901ba47221d7b23f0214bd2c08ee7500542ff9fa2c0ca1f8be0668850f5",
+    "supplementary/reference/gittins/per_task/aware_college_physics_curves.csv": "d834970fe4ffd90ed2e654afa7116eb1270c2f3a584f578e88bcfb72fcc8e380",
+    "supplementary/reference/gittins/per_task/aware_college_physics_meta.json": "de3d98e3a304f6033c7e1389a328d5f56c74ccb4f8a0e226d9e80768737fd59e",
+    "supplementary/reference/gittins/per_task/aware_computer_security_curves.csv": "b111a52b938008d7eaf70985a21084f7c64d837c9f41415b35eed6a2c7214c74",
+    "supplementary/reference/gittins/per_task/aware_computer_security_meta.json": "cdda9ba2be232041dab794172fafe126dfeec9e27f6634189c1c1a5a72e37223",
+    "supplementary/reference/gittins/per_task/aware_econometrics_curves.csv": "93d0ca5ba183dbde5f4d8ea513c6aa9fa3253bcacad7207e02b87a295ae124e1",
+    "supplementary/reference/gittins/per_task/aware_econometrics_meta.json": "265f2d6804c9b4c685b35d2cfa6c960956f3cb6128bbb3a6fa621ac5b4772148",
+    "supplementary/reference/gittins/per_task/aware_formal_logic_curves.csv": "94e73ba7c1cfce0654d044046571bc3a55be69afed2d64d4c534d891814bd552",
+    "supplementary/reference/gittins/per_task/aware_formal_logic_meta.json": "21ec71ee1be112984367bd12fe73e8cf465038bef58a068335cf167e51431903",
+    "supplementary/reference/gittins/per_task/aware_global_facts_curves.csv": "4015fa9fcfcb90d9db5c77947569b1914c78a543b649ef41b898c3bc2d810b62",
+    "supplementary/reference/gittins/per_task/aware_global_facts_meta.json": "abaa800614f3e3ecd57cddefa608347902817f31caa41bdd292bc7fb6b45e7fc",
+    "supplementary/reference/gittins/per_task/aware_high_school_psychology_curves.csv": "514b74d5688c55a2785f171aaac7bb721bda9e187517b82965f275f52af2c9eb",
+    "supplementary/reference/gittins/per_task/aware_high_school_psychology_meta.json": "620d76fbf0dfe23d01a47e40076568df3154d80f5349e205233e955baf72de66",
+    "supplementary/reference/gittins/per_task/aware_human_sexuality_curves.csv": "5b7bfb4649616522875842cec1480c33b8fc42c2b9f0b76de00eda65a13f9106",
+    "supplementary/reference/gittins/per_task/aware_human_sexuality_meta.json": "3abd064b259b5af8394eb12e7b2a9ec2b2ef329579f6438f6873072862f414ec",
+    "supplementary/reference/gittins/per_task/aware_international_law_curves.csv": "4a6a3c76d16a1b777ac64ffa73f62295c5f450234ee9758ec3c688d156e83acb",
+    "supplementary/reference/gittins/per_task/aware_international_law_meta.json": "895110638c3a0f899e09248a9aa149ef5e7c1110e8bc365fd77aba74e630103e",
+    "supplementary/reference/gittins/per_task/aware_jurisprudence_curves.csv": "7c9224f2f0fc9556cbc0c19eed85b4c33d91284f37dc8c3f24383949ad9f59f9",
+    "supplementary/reference/gittins/per_task/aware_jurisprudence_meta.json": "82a861cd73f8f8d0d3efd90a756770966a422c0f5be2a24109bf34bed89c2703",
+    "supplementary/reference/gittins/per_task/aware_machine_learning_curves.csv": "f85c474167e94cdee84a45454464d43246b735b33bca0178878244a02c85e3c5",
+    "supplementary/reference/gittins/per_task/aware_machine_learning_meta.json": "a5e62cdb5ca3156ae91a8fbafb0b6639f9007b4243e2c4f8369d5c94ee456d78",
+    "supplementary/reference/gittins/per_task/aware_management_curves.csv": "e9a53e8446a1dfa812715e818667d9de8b4f9d0dd394605cae3316b44848e02e",
+    "supplementary/reference/gittins/per_task/aware_management_meta.json": "b67a56b20d842cc41bde93aa4cbadff1380164f5757fd768497cf398752ad084",
+    "supplementary/reference/gittins/per_task/aware_miscellaneous_curves.csv": "35783e6f07334f14dde4cf50db0a950ae616c0348e2dce9583979b9ca69a5df8",
+    "supplementary/reference/gittins/per_task/aware_miscellaneous_meta.json": "bd9573b9b8b3ae8c74a9f3f97b45b276b2b6bc8cbcf0ec69c06a5b2d3dd7a842",
+    "supplementary/reference/gittins/per_task/aware_moral_scenarios_curves.csv": "75ef0bd94432bb9c0d816e3a47fa107a9ecaa9482380a2e508dd8d96aedcf28e",
+    "supplementary/reference/gittins/per_task/aware_moral_scenarios_meta.json": "8e34240d3bd430552e52be1caa96cb2293e853e338ce5ca6e9c6bd1e8bb1dce1",
+    "supplementary/reference/gittins/per_task/aware_professional_law_curves.csv": "a9b2391d80f31fbbb90bc1963b9dfb275434c7b20712634c5c3fbd686b6d2f07",
+    "supplementary/reference/gittins/per_task/aware_professional_law_meta.json": "8026c9fc8e367168a8061ffcc63b9ad9b71e66c6e7b241038972872622fe7584",
+    "supplementary/reference/gittins/per_task/aware_us_foreign_policy_curves.csv": "4762457aea04126fda67990b4bf13e96503847156b58dc8a1f79af2cb07e43b2",
+    "supplementary/reference/gittins/per_task/aware_us_foreign_policy_meta.json": "92247a81c6487f5ba78728caef80efdf7f3dd5f31cce7703f0f5a8fd1777dc12",
+    "supplementary/reference/gittins/per_task/unit_abstract_algebra_curves.csv": "3affaedc65717db9e4982e1f3e3d006ba65ca51b0dd90c0ecea3cd90335aba52",
+    "supplementary/reference/gittins/per_task/unit_abstract_algebra_meta.json": "0790dbc2d1e570162345c94eadbb308e99a1bfbe8852a4f2bd7e75c201be0730",
+    "supplementary/reference/gittins/per_task/unit_college_chemistry_curves.csv": "0226e79bceefcd276bd97abdf4ce2bd0de12f30c8088e3f83da5e2d2b4f84d1a",
+    "supplementary/reference/gittins/per_task/unit_college_chemistry_meta.json": "a62aa3686305c9f37d3c0bd43e81e643b410c1d49c0d0379a6259783d726a053",
+    "supplementary/reference/gittins/per_task/unit_college_computer_science_curves.csv": "d35d1bf506c79cc1f719c7901372dbd363d13b3b8fdf8164b6c2191b4d9a8e4d",
+    "supplementary/reference/gittins/per_task/unit_college_computer_science_meta.json": "1d5ab11024794c88cffad401478412d4eb4ce8648b1cea88d87be3cefc8f0924",
+    "supplementary/reference/gittins/per_task/unit_college_mathematics_curves.csv": "03ec0a108d26999c0a5f306c2d603e2b983e526cb62f910bca3df8724e7fd60e",
+    "supplementary/reference/gittins/per_task/unit_college_mathematics_meta.json": "5d818b6854640968e0dad35bd736fea5a5763f22845df7e47562a82529f2b3bc",
+    "supplementary/reference/gittins/per_task/unit_college_physics_curves.csv": "0cc5f5cf78609c97df1c99afc526e2e2d95cf36223b6e0b49ab9b3f4550cab32",
+    "supplementary/reference/gittins/per_task/unit_college_physics_meta.json": "b6234b096cf2274317406724e5a471a98a549ba05ce6612f23a72ecf645c50c2",
+    "supplementary/reference/gittins/per_task/unit_computer_security_curves.csv": "b26b81fb98e4f7ee32876055e7ea87a3a6d737e3ef3ef19827c17343f2f4c26d",
+    "supplementary/reference/gittins/per_task/unit_computer_security_meta.json": "952ff94b097dfcff9c36c59b0a78534e6a17f33168f6192920f757dfb2a66f78",
+    "supplementary/reference/gittins/per_task/unit_econometrics_curves.csv": "33faa90c3a37169afa7fe0870f61c7cb24e2501b4bc0f5a04a610c3c45072108",
+    "supplementary/reference/gittins/per_task/unit_econometrics_meta.json": "2f19cd2928177c785938305d06440b3719fff519d5d1a27f6d5bc50d514ed95f",
+    "supplementary/reference/gittins/per_task/unit_formal_logic_curves.csv": "c9bd8f8653a52ad272f61d6f6f77af43d4ad6b4a8d944dde21afe7cb2d3c4de2",
+    "supplementary/reference/gittins/per_task/unit_formal_logic_meta.json": "e085a0a3cfa79d8cd5da30bcf854195cdbfbc772653687b0369132c77a8be85c",
+    "supplementary/reference/gittins/per_task/unit_global_facts_curves.csv": "9e90f09eaaafcba990eef7cebe65272a6b70568f5569bb0315dc969d0b2d7653",
+    "supplementary/reference/gittins/per_task/unit_global_facts_meta.json": "99028e4e41e640b03f1b38f9f76a1271b8490e95ea1a750dc1cf513126a81a77",
+    "supplementary/reference/gittins/per_task/unit_high_school_psychology_curves.csv": "365cd24c1e56367ac091882984cb948185177190f8d81cd6634f20704594185b",
+    "supplementary/reference/gittins/per_task/unit_high_school_psychology_meta.json": "858aa2a327ca95da825336f0694d0dbf480b18d89cc694b24b66fe507a37f61f",
+    "supplementary/reference/gittins/per_task/unit_human_sexuality_curves.csv": "b805f8604e5351790dc85ccddc95bf8da5d9a5a614c6486c157dfd587cfa8af5",
+    "supplementary/reference/gittins/per_task/unit_human_sexuality_meta.json": "33fa4a593bf3312cd24013f58b2f9e7e4ddc93456dfb67de54a0ea9a31a70ec6",
+    "supplementary/reference/gittins/per_task/unit_international_law_curves.csv": "a93d8bba2075822229d6eaa131c5e1285e6d4f4f8b927c04fd67eca44a54ef78",
+    "supplementary/reference/gittins/per_task/unit_international_law_meta.json": "7fc704ec046075b49751fc199e68fde53031a9ad42ac8b685091a47394f56817",
+    "supplementary/reference/gittins/per_task/unit_jurisprudence_curves.csv": "5e2b4a65495343e2b3b92e5600362d3d809436b3886d737f9797974b03c526b1",
+    "supplementary/reference/gittins/per_task/unit_jurisprudence_meta.json": "ba777fc08615e891a240c5b30aa970ea05d842f8a544c9bdada861517d60950b",
+    "supplementary/reference/gittins/per_task/unit_machine_learning_curves.csv": "78946e4139b718d51f0b38b82a0b6580c68cb6d4b270afec6c63fed69323696e",
+    "supplementary/reference/gittins/per_task/unit_machine_learning_meta.json": "798a4d6502aa8ec22aa6718b09d45015137ba497232033496b1fe2e6186042bc",
+    "supplementary/reference/gittins/per_task/unit_management_curves.csv": "1d2f93fce4162d3a97dbfa8b0a8e528f57bae037a766e3e06fb73d0fd4e161cc",
+    "supplementary/reference/gittins/per_task/unit_management_meta.json": "0b25aeabe4abdcf3fcc148df80476902a149fbbf470aa1df6306dd9544c401c4",
+    "supplementary/reference/gittins/per_task/unit_miscellaneous_curves.csv": "05923a0b9d760808bfa5c945603ac73d861090bfc19a31616f2cf2ed5eaca171",
+    "supplementary/reference/gittins/per_task/unit_miscellaneous_meta.json": "4135d65453dd08bf1cb1c595d5ebe5fe45dfd7a516a997ccbef18c89046d085d",
+    "supplementary/reference/gittins/per_task/unit_moral_scenarios_curves.csv": "cdf7ffe6f916bd60b5ceabf2cbdb2381813d16c5dbd43f32f0897b3263a020c6",
+    "supplementary/reference/gittins/per_task/unit_moral_scenarios_meta.json": "3a2b394f3d60a2e9d31f7c6e478d8525a47432761b7de6253331bd0ace93b8e0",
+    "supplementary/reference/gittins/per_task/unit_professional_law_curves.csv": "b96ca64617a54f9e1186643d9f906c4902c417646855ef8b5eef5da98a2b5e33",
+    "supplementary/reference/gittins/per_task/unit_professional_law_meta.json": "ba40cb07da56b8356fdacf54cb2b5348f5de4e583420bdc5180b6400750743ea",
+    "supplementary/reference/gittins/per_task/unit_us_foreign_policy_curves.csv": "c880b4c393f731e00eaf5a75b7846418a5c45f9eb3205834fedc673b844d1ef7",
+    "supplementary/reference/gittins/per_task/unit_us_foreign_policy_meta.json": "50826aa4b6eca85e31bfafce70c9de0a4f071b5ce5dea1cda61d9845f1312432",
+    "supplementary/reference/gittins/runs_stopping.csv": "996e3cb92f3b9a33450ffe5d61570375359dab0c28a13cf99c3f89067865a847",
+    "supplementary/reference/gittins/runs_summary.csv": "ab9eec77127b254d33ae06c8f0d89f9aa64b5ca794e0b87d71f90f6ee1138146",
+    "supplementary/reference/mmlu_input_price_weights.json": "5d3121dc7a5c21c084ed3479abe02097f0973f8068de1ea8a24e0c3e6ec7a2bb",
+    "supplementary/reference/model_index.csv": "7f3bdda286194a50ef27aa393f1ad64e3cce0c19ec0e543ba6cfbfc1691bc62c",
+    "supplementary/reference/pe_seed_traces.csv": "c3211c7423af3b98e896101ea6afc719b320eb1526654ea4cf2a0e88d87dc647",
+    "supplementary/reference/subject_metadata.csv": "02af8b98f1750f79b25e02bc237a7c4e6da747db524904eab9133741643466c8"
+  },
+  "interaction_archives": {
+    "abstract_algebra": {
+      "archive_sha256": "88012bb65aa1acc164f736059249e4c491e7aa9d16780c34a81a13a9fa4c51e2",
+      "fingerprint": "86ccdfc94d0d3b699070ba1cbdfe709439e97d7f09fa9cb42ba93db32293a805",
+      "matrix_sha256": "9ee7aac121c606be95b2cc91167607743551ea94092b508715815eb699e2ad98",
+      "X39_sha256": "abc213332a56ef56a91d383580e73c478544154a5a2b24ffe7a0f5191cc8982d",
+      "X389_sha256": "985b7cfe221d53ac3a0161a05ea343dff362b072398e685041473886773f5fbf",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "anatomy": {
+      "archive_sha256": "22d9b8294d965dd9e453ff64066f08d0de30290021675b2bd49ad3e839195b01",
+      "fingerprint": "334a71c6ba3acbf0d8cc6802187fae846120222108d5e5e487d37bc9705dad85",
+      "matrix_sha256": "d14813bc6e33e5564d9a9980260833af7a58eae5666787ea1b60292d1bc0a22a",
+      "X39_sha256": "f2d4d0b4d07e0551a3b078ba974fb9426231f3bc605239849d1475158eeb2ba4",
+      "X389_sha256": "15a91d9f002719f2eec6416d8a7be80b2c56660ec9c3800451923a9d7c10265f",
+      "question_effects": 135,
+      "fitted_coefficients": 524
+    },
+    "astronomy": {
+      "archive_sha256": "70b00fc72cb9cd768213454b7d966292f3feaeb20cdc39a5b1dacac77e2f19a8",
+      "fingerprint": "1ef5ab3faafe21ea7554a93e759637102c0739a0fcaca7314775482e7624a208",
+      "matrix_sha256": "65cc7b19fd6fe6d3ee237cd7592c4b022e80a6504f623cf2e83a830f89b827bf",
+      "X39_sha256": "726ee87d1fe5236b38444014746507d49e0cc131ff5941a02e282815f6b18d46",
+      "X389_sha256": "4e7c291d1d002827a02c3424fa6b157ed17586b2294324d1b573f2e4e3016cf3",
+      "question_effects": 152,
+      "fitted_coefficients": 541
+    },
+    "business_ethics": {
+      "archive_sha256": "16eb7787309c98c749b5700fadd8a458499f36a0f3c5747d18f9b1985c472f1d",
+      "fingerprint": "8165b7968cc819c88128b07828ae29627a68e7644847f461f66eef537658611b",
+      "matrix_sha256": "433c7fdbdb28398eb451bebf039502bac1ef949222f0b211efcfb726b92af743",
+      "X39_sha256": "e6cc8a8040efb7158ebaa0e5d4c4a2675d5b98377e0756f9b2408d4bbe048312",
+      "X389_sha256": "22e535c8d7e8c320c6c64ab36353fb5f5547fa3febdc55347196accf1d6ed8c6",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "clinical_knowledge": {
+      "archive_sha256": "1bb86bd34369a862a32b9bfa16e5aa0c5265111cb3389bba44d2112ac24d4b12",
+      "fingerprint": "02c79e0b915a6cf31c96077c43eb8d0afd54f9b3c32c62fc5a68cd89b7e7ac35",
+      "matrix_sha256": "a7232ed955b912977e2901990aceda694674dd73db063a5a79c4969638ac13be",
+      "X39_sha256": "78dbc616d34faf3334e2736c587507d045b0b36cd38bdb4fad8782e97f6ea1f2",
+      "X389_sha256": "3b001a28850a6305176c1a9489bed9b420e727fe3843c40fbb7dc5622aa3d02c",
+      "question_effects": 265,
+      "fitted_coefficients": 654
+    },
+    "college_biology": {
+      "archive_sha256": "3b5caa55d3503dbcf9c67d33bcea03e7bd3aec6f88db78f344feda467f33dd20",
+      "fingerprint": "ddcdbc29710dc5ed0542ab6997f6174526f7bf9666399e53154b3fd3e405e7fc",
+      "matrix_sha256": "7bf425835fcebee6f2036471103b9b34af71b31728aa6d6b0fe13d94945dccf1",
+      "X39_sha256": "5f3d11eba10de56736b8d2f7ceae61bbbc136377078cedd5fcc014618f9e01e0",
+      "X389_sha256": "471d2ef9a3e648403ed2a5e077fd0989515df5b1e10926a556dd08b56086d3e2",
+      "question_effects": 144,
+      "fitted_coefficients": 533
+    },
+    "college_chemistry": {
+      "archive_sha256": "56961ebea8b37424823264cc1d334a3c17c2b807524c152b72f10eea1733ff7c",
+      "fingerprint": "8c18590dac689ec83c9379ddbf2c2f97666ae65abd196353e84ead6de1fc573f",
+      "matrix_sha256": "bb042fbf8a17c5f78fb1e126b9e47c6f828738990c880a3fbb81f056d4f9c2a5",
+      "X39_sha256": "fcc4d0678a2cc8a7cd62172c9e667b35616b9b8c0618b90fe0dc8a2c02ce8137",
+      "X389_sha256": "98120df2b77178feee2bde7d8afbc1c09ce10c3ec9619d96df577cb1ff77fa6b",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "college_computer_science": {
+      "archive_sha256": "abb531ebea5aac8123bf747ea8cf97ea15a87b5a2d23cec9b81073b675686aad",
+      "fingerprint": "b91dd085362b3ac33fc9632a84c288b2df960f3c697e0a0ba16848a77fcdf129",
+      "matrix_sha256": "fee1ea05425b1cfe09b27cf69135e84ca2371c75aeede5410b4bead385bfd614",
+      "X39_sha256": "1279933b3c06243c671ca6601d5f5c78a85498565cd657cc3d64ae2cc3575a6d",
+      "X389_sha256": "dbed80f545ecb354d7229c5519dadd139c1f880c9d310f23ab4b416e49813ca2",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "college_mathematics": {
+      "archive_sha256": "6839b894b1e7603c14ebc8db54d9cfd6a9d3af18ca243c2eb6879b4dd8021ec5",
+      "fingerprint": "be8bf809c0b61514aead3929e76c6b436d47ba5458f793bf980de454da29e205",
+      "matrix_sha256": "bf68e4c46d8da7f0ac5b3616641d329c403429c3eeb00362d9ac4a9649f07c3c",
+      "X39_sha256": "3d9c7e7fcbc7f9f47ae205af083f0340ccea209b52235b4799d0e14cb4a76a27",
+      "X389_sha256": "c965278bd26b279fc11a0ffbafc1215d4ed396c44515dc6909bd0d45d4002e31",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "college_medicine": {
+      "archive_sha256": "6210c5c9a67897a8fce3f841ca5712ebc0e31de486f4d58a0d56723b598e8494",
+      "fingerprint": "abad6d998693af49b2c265a48d780b5808e58d2993c94498e95d74b7a287bd78",
+      "matrix_sha256": "6f0dbb25332167e0a6db4fd04a479b456915ccd417bb2eb874a3c4137fdb5f1a",
+      "X39_sha256": "0b15019f0f812c1f8fae756d67c21cd8cb4ff48e7d92e229373e5f9b1014fc2e",
+      "X389_sha256": "b4fdfb81c2adaa04435aed1f7f889a14cd5ab08a60620a41072b55a14955af24",
+      "question_effects": 173,
+      "fitted_coefficients": 562
+    },
+    "college_physics": {
+      "archive_sha256": "6cabe5cbd2b0e3a5d688bc224c16cb8010139d6ae203bfd7645b8213711a2aeb",
+      "fingerprint": "6a185536680f2c39b1f0be36c23865e00369a6f99353f34b9115e769426a9358",
+      "matrix_sha256": "036522eea74dd327f3a350fd2d4556b9b0573c48eb7c9c01133768339df61a0f",
+      "X39_sha256": "9f0751fe9fca29866c7d9a92dfa0496c829ad5a8e95dc1b0848f19fc300a44ce",
+      "X389_sha256": "bc31873dedc9c6d1c7502d64b98b67e7c8771182afbfcd2093803a25e9bc3733",
+      "question_effects": 102,
+      "fitted_coefficients": 491
+    },
+    "computer_security": {
+      "archive_sha256": "ed7cd10c96be8c2cf17e76d86a116e7811816fd4c90a29043c570bb5644d1207",
+      "fingerprint": "8d3e6787b0e834423287f6af28af3feb24e61ffffc30528b4a1e16d771efa6ed",
+      "matrix_sha256": "6cbec2dcba5b7cbd8fb7d1e75441c3474b7833e7eff586eca00852a5636861d9",
+      "X39_sha256": "7a16c90f2ed57917d69ee389f4002fd1776dbaefe1754fd9267d5f03d7d64b0c",
+      "X389_sha256": "ee1cfd8baadfe5716037c05ce55424ccd597682146591ac0829f7f1c74db3484",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "conceptual_physics": {
+      "archive_sha256": "cf072ab85e721af4cb777cd530d0b9e206d6697c2fe6a2fcf15ca942c7c2e8b2",
+      "fingerprint": "78a80758e7d48f1c390706068809a0ebfa1c2d3cd8d7de8270da1829f2ee39fd",
+      "matrix_sha256": "f98f10fd37982c17406181c7339d853aa8eac932d0ccf1e2ceb7ecea48ac4cf7",
+      "X39_sha256": "1ad6bbf1a55ed900cf8cac48d72753b36ba647f5f0439bb3b364f0ed06b97bae",
+      "X389_sha256": "1057755df4bf4f921880aa211b3d0ef66d0694eb4b38510336a74ad6a2a06b88",
+      "question_effects": 235,
+      "fitted_coefficients": 624
+    },
+    "econometrics": {
+      "archive_sha256": "95172eb2f170e1e7ede380dcc942bc47d40684df87de042d55123e3ca2e39862",
+      "fingerprint": "2c57fb4ce6bc289baa258b0822c2b0ccb5498da83bbf6756022ddace66c5bbd5",
+      "matrix_sha256": "86a2102f258ead8e7c00555202081c8e8e4ffe5a07d271f512e5cafb5c8a88d1",
+      "X39_sha256": "0a59ad9e328da4a8aa86d3c6adb4fc63ec44a75d0f2615f84be77d72bca1c025",
+      "X389_sha256": "c55f988723036b8d85554be23085f4ba7eae88b25c7a208b1b133a074eae5174",
+      "question_effects": 114,
+      "fitted_coefficients": 503
+    },
+    "electrical_engineering": {
+      "archive_sha256": "9d97466c16b6a49924e2a10624c03fd940cc75f689e2324c19c83bd22a58a771",
+      "fingerprint": "3c3a73e8d81596f99a5be14b32695a7f5dd3e4b2c96a080e240e53a38e037290",
+      "matrix_sha256": "02af622b0aaf778d799d16e20fab7ae6faba614c8c8444f344f2176284cbf90f",
+      "X39_sha256": "f6cefdb775e64e62146174bc2e6d65030ce44918f8e3572776cde1d47717292f",
+      "X389_sha256": "1effd4ab41f26dea3e06b8d9455a8af5bc5715ddeb5b816806223add049a62e9",
+      "question_effects": 145,
+      "fitted_coefficients": 534
+    },
+    "elementary_mathematics": {
+      "archive_sha256": "da9ea211e8a12f91d9e1952904b80a217f992a76e11acb8578d95f5ce281538d",
+      "fingerprint": "42e9c96401a01e949bbbc7fd933e3d1c4dff255440785eb17583bea0de0a6303",
+      "matrix_sha256": "bdf838ba3b25a90aa460689b302657512e65a7608bc1131c2577eeb258840f79",
+      "X39_sha256": "a1503953742ef7b40258119f10e1234b6acd5cb7c8c0f389421befda8260c83e",
+      "X389_sha256": "901b226d1b5ee503fc53207daabd783b7976e3679e20b2b48b0bc9649f515e31",
+      "question_effects": 378,
+      "fitted_coefficients": 767
+    },
+    "formal_logic": {
+      "archive_sha256": "c24186dc65b4d45a7a02418f5391261f15f57a66fec150c88076a129fc7b7d36",
+      "fingerprint": "20afed7ab553aeb5c34f27ef1e70ac34c2607137e1e0af743b218f06a3b41545",
+      "matrix_sha256": "70ba1e4e3b1580632dec514083cfe117f43af66550f5b209676f41b6061b73fd",
+      "X39_sha256": "d9686ed6dbea451b162cb7abfe98130e3dad8bd1941a9f19fc0ae805da6b0a9a",
+      "X389_sha256": "cf07072c14e22efdce80effa0704e97c64198ce78ee3890614aaf8f06ea62d34",
+      "question_effects": 126,
+      "fitted_coefficients": 515
+    },
+    "global_facts": {
+      "archive_sha256": "5c8599f25de0c7e53f431f456d340ffbe3c5a16027165ce23127e3af33da03ef",
+      "fingerprint": "9d41334516d22da2a44db0379dbedc954573d0648c4114b45ec9bc34d7318d1f",
+      "matrix_sha256": "159181ac352257c860a0e7e6699a99211c1aa9c9d7f1913077e38396cd1e66b8",
+      "X39_sha256": "8dd3051a9b4e835b897a96e7f24180e8fae26a91b9e3001dee65afa66588bb67",
+      "X389_sha256": "60761b73d06292791907abb7c108be4db74a0426ecdc266b3556491b3ea6bfe7",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "high_school_biology": {
+      "archive_sha256": "480695ec275424e8520f0d17c6554b03c9f98864051d9c72445bfa5287bc96d6",
+      "fingerprint": "7bb4a7a90e9db27394abd1bc185db7599b2a867fff48ee6a76a5772e9289d313",
+      "matrix_sha256": "9804e5a5162d239ae467944bb02702ba83fae7112411f04f8641c75babf927ef",
+      "X39_sha256": "7579650daebb05b08b4d0f1ac815cceea9072287afc938762446e04ad0ddcb67",
+      "X389_sha256": "ecd0f0e9182b8864895f2aa1a41462390c766371990f14a36479188c0efe8c28",
+      "question_effects": 310,
+      "fitted_coefficients": 699
+    },
+    "high_school_chemistry": {
+      "archive_sha256": "d4cc50bdfa8e7f6f3de620a3f6563b2bfd2bc80ee50aec93130b8f7079c52d7d",
+      "fingerprint": "39a5fed97010d0cf967059528f28cb9b7ca2b79a4e6dd24510e749549d2bab9a",
+      "matrix_sha256": "c75ad4e889000966fdb30526e16f394befe32af055e612c228e100c7bc732496",
+      "X39_sha256": "851a8991916f8a3ba7f60831eaa099f47986c331da658cf4e9bcbebe3be0672a",
+      "X389_sha256": "267b6d8fc294335bd3574c9910570c6b1c5ada4dcb9ea7d7a7a4ee70786d78fe",
+      "question_effects": 203,
+      "fitted_coefficients": 592
+    },
+    "high_school_computer_science": {
+      "archive_sha256": "a3f460a3f98d825f59728cde26db9af83292dde6b2edfdf4e9dd83a3200bd4ea",
+      "fingerprint": "1da36903406014287bdb783f87953084694871be85febd965972c18823cd69d0",
+      "matrix_sha256": "0913e073d423a55e7244386f6f2e65522ad3c3ddff5c9ebcb424d4c6ba887f67",
+      "X39_sha256": "4506ececbf193a0d41ec31fb48b79e303a94c8d52be9ee446a979c95e51c36a2",
+      "X389_sha256": "f272bd9ec35114c3ee6529d545b0ca9d25e2efb55daf5c276081e5c715f68f6c",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "high_school_european_history": {
+      "archive_sha256": "86d778302f2e7efed47d4889c3e737d63b0628fa4ff137345af15c7d4f6646ce",
+      "fingerprint": "17f0d137d010f377eff3b5c3cb3c86aa19477c9be33c401eacfd6c8d5425d7f7",
+      "matrix_sha256": "8813478c4f2be5d4040dfdaf9acd4e0c2d98ed55309a3d1dd66973f6a1b98710",
+      "X39_sha256": "a719574c39b37ee8ea4a403c52bbba368ff0ab8c1deb8e4a1d6a88a31185bb2b",
+      "X389_sha256": "6dcec0797b6f700cd456cf61ba8b0d6ab9e2a46f87f14d8075fb1c1686c25955",
+      "question_effects": 165,
+      "fitted_coefficients": 554
+    },
+    "high_school_geography": {
+      "archive_sha256": "5117b7e9ca0c24070749d91a240887cc7ea90d2d04aaa122953f0831179163ac",
+      "fingerprint": "8a312f578dd0ef81ffbc724b7141124aa84f2d93164a9643cb5fc45d0874708e",
+      "matrix_sha256": "4b4a8ce402a451bac7bf552a11c4add54c79f27926873acdca6165e3dfe428f7",
+      "X39_sha256": "57be28e517d164682751e3c024e5291573ece3a53c67c9b855021aa73a57a833",
+      "X389_sha256": "9a47d22766186f1e0c7ccbab8a5cac712c6c1ef7ef3746b1226d38ad5f0b0331",
+      "question_effects": 198,
+      "fitted_coefficients": 587
+    },
+    "high_school_government_and_politics": {
+      "archive_sha256": "b82f9a076c77b94ad096a013f5a5faee5fe805755283571e6b6279bdf099f3bf",
+      "fingerprint": "911ee70ce5051da4944beafcc4b8295e0f7210d7515bfe1a48d32026dd7ffbc0",
+      "matrix_sha256": "9bb6607795737b5d658344a9448b787c7be0610835c2b2e6340e65f75605b4ac",
+      "X39_sha256": "4af93de5f06666f008b91ca8fecbb7a8b36172387f994435c6dad5c84680fb42",
+      "X389_sha256": "933bc50c41201c2eb8f02c4d5959b21f71e9604f27897100d4da71b0b6e2ca4b",
+      "question_effects": 193,
+      "fitted_coefficients": 582
+    },
+    "high_school_macroeconomics": {
+      "archive_sha256": "9278e820f75b181128d5439723a629bcc81d8bc2249d50c7b0ee795739e08213",
+      "fingerprint": "d06f6773f34e1d78077b1dbbcdb8fd9a39ae7c69a64aa971887c002b23a860c5",
+      "matrix_sha256": "9514c1e1c51008156e36ce46dd8a373586a2ecbd0798c0fdcf36bc8bd65b9c81",
+      "X39_sha256": "27072b0e9a879c77da6d9769184b8c7002fe7e9c32b09868080a849701047629",
+      "X389_sha256": "c5afc286ae818e7e732b71acb181442ed34e70a2ab0bf9c79aba22b900ab748b",
+      "question_effects": 390,
+      "fitted_coefficients": 779
+    },
+    "high_school_mathematics": {
+      "archive_sha256": "67e1e019850733db27d37d711cd59e8d98a375ba9821d3eb261e54d51e12f1ce",
+      "fingerprint": "b8afbb9aa81dcd60fe55f582ec3b805486355e4461f8b3e1c80ffa306227e3c9",
+      "matrix_sha256": "01d428ca0d59e9ea828bba81ccef904fb798758ab527c11317a940fb2e32fd5e",
+      "X39_sha256": "ebd539ea8b11f58cf1f89934eff41359d8b2eb7382f86271d2e5ff6de2941daf",
+      "X389_sha256": "80f8ba01291d50f663ea02173c8be9502ac3a3e45be7eba00d206fe60b7687f9",
+      "question_effects": 270,
+      "fitted_coefficients": 659
+    },
+    "high_school_microeconomics": {
+      "archive_sha256": "dd2453c7781aba92d72d0d453b22bb67a1ccfa0e2d70a75cecac893031827f94",
+      "fingerprint": "a7ef5bdaba04be8b2aca6cb6fc076eae958144be0b1999156fccf6f84ee3dc7e",
+      "matrix_sha256": "a53d6d213711dca166d00ffc245654fda5e9c3e6e6b2bfdc292a29cfe137e451",
+      "X39_sha256": "b28ee05d5eb48304da9d9b44a3880b0595e80a7592e8bc7e7ac5ded7ae103da2",
+      "X389_sha256": "f9fecc784dd588953de570e7b898cb64a21f4260a156ef04293045d4d9c7f145",
+      "question_effects": 238,
+      "fitted_coefficients": 627
+    },
+    "high_school_physics": {
+      "archive_sha256": "6603978f27499f369b0137ccafaa9a648013bca31c045aa8f6a7c70a770e4945",
+      "fingerprint": "46ee306b45f94b24dd9612e9acdddc2081502b82295e7238a91bfa7c3e32f908",
+      "matrix_sha256": "373832d55f89aaeb7b19128b7c88d3550b62d62fd201479755f23ead590cc80d",
+      "X39_sha256": "448a39cc9ec55557fa6d45a1a050cc3aa7a663dc7b62211aeb4b6d48112e35cd",
+      "X389_sha256": "be4414f2deaf0eae8f8f8d5f034c3de9b1b1566cdb64b2e47a6a81373e158418",
+      "question_effects": 151,
+      "fitted_coefficients": 540
+    },
+    "high_school_psychology": {
+      "archive_sha256": "e66a43628ed4706be3417aa99936127b8073a97d268ecd492e92021e3c578494",
+      "fingerprint": "533824c762a9091fb978c6be001529477b09d1001884cf1a2f84186056e759ad",
+      "matrix_sha256": "5b316c61f76c97958b01f28f1228c9251634eb9afd30276c13e05e9776b6a46d",
+      "X39_sha256": "dca50210b8bc58d18e18a47e1b4fc12a1f406a158c899b1086f2ca46f4a9a7cf",
+      "X389_sha256": "ff13be32a8b00a64bf7f802259c805cf2785aa8cd253498216fb2af09fbb2719",
+      "question_effects": 545,
+      "fitted_coefficients": 934
+    },
+    "high_school_statistics": {
+      "archive_sha256": "d6d04d51c83f0ba8342b3d1c2d503b2e45e508b03825eb42021482f927d5d68f",
+      "fingerprint": "fd9eceb8e2ca0d746c62c3ecb3c6bb94e24198d97726b308f05ac9b95cce6e2b",
+      "matrix_sha256": "9abeb56e8236b3b5b7ff0e929491df1a44780d37ef86600a0cf8b7096fa1149a",
+      "X39_sha256": "10ca1d5e0ce2dfe8083e0426a8076f2ad21133cc05ac4053dfe69963feb4ff2c",
+      "X389_sha256": "ad86efa5f283a76622ef40e24b13547c2f27460b1c1d96b34f21ea640860e786",
+      "question_effects": 216,
+      "fitted_coefficients": 605
+    },
+    "high_school_us_history": {
+      "archive_sha256": "44ef65238ba56dc7c655b08774f2afe02120eb7a31713d396ed899b73a21f8f1",
+      "fingerprint": "179ce6a08fe6a0220057ff908bfc297d4bfecd98bfb6c528683e5f1b3cf3a451",
+      "matrix_sha256": "8346be372044635aba5ef4108b55bff728afbc2081eb08255f62fd326e48272e",
+      "X39_sha256": "9f1e70dbfed07362a3aea20962c1eaf5dd30146e56a7ec2282f27ce957591987",
+      "X389_sha256": "613e970a6e194fa7a5e335d47a7e70e969d5441f2304a8e19a6ab385515fce16",
+      "question_effects": 204,
+      "fitted_coefficients": 593
+    },
+    "high_school_world_history": {
+      "archive_sha256": "117ce969107830b3eb49a7d89c265d7a8310bffb8da54c4489804a64d99a9db2",
+      "fingerprint": "86fa1757f39f374e26a9a17ea68e85c4135f3bd47ef9b60bdb10a300730c36f3",
+      "matrix_sha256": "0638347657637c2f3404797a047160c50d00fb58a706bc5a92de4247988e5a2b",
+      "X39_sha256": "74b816663159acde11be84168b01e05fb8457ee852374000d23b79fffb734698",
+      "X389_sha256": "c239347298c987b67fabf1a4aebc3e2db7fd7eadd9be61128535c24c970c2af9",
+      "question_effects": 237,
+      "fitted_coefficients": 626
+    },
+    "human_aging": {
+      "archive_sha256": "d2ac90cab76bb4f6933207495966411eca620eb459c57c79cc17aafda48c5ae6",
+      "fingerprint": "20fb31b93dea0b23ee023b65c9b57db4cb9b6e74bf2f49755bfc40a8e3a585a9",
+      "matrix_sha256": "8dba3af194271f4dfc994b036b18e37632e81826a4de47e12f0a841602bc1322",
+      "X39_sha256": "d8694bf4050a37ad362e2e4d4e0ea0e350a5a8339c4fcd9a78ffc72c9fb438ca",
+      "X389_sha256": "c561ecec868ebc17adcdf9bbbf772b6ffbcb9761a5a389675c7c4ecdc9d92721",
+      "question_effects": 223,
+      "fitted_coefficients": 612
+    },
+    "human_sexuality": {
+      "archive_sha256": "197f2cc0b1d63f84a72c3134e893fc26a50005f1d762bbcb35a4777c44f1edc2",
+      "fingerprint": "942f7510fa9b9a5764c556c53ab0940601688332bd455bb0965f3ad9f7538137",
+      "matrix_sha256": "9cb5c50257b956314854468839f162007887a6c2bddab896935bfdf571b18bd1",
+      "X39_sha256": "bf185761e23d7f23a2b90a54093fe53e9c1693c2c6d812aeb78a71da1df5e503",
+      "X389_sha256": "f9639a4387975ee7c662b2d1a8af8e02d5fef6e085bc14f5be6a5597dd8cd9fa",
+      "question_effects": 131,
+      "fitted_coefficients": 520
+    },
+    "international_law": {
+      "archive_sha256": "f485437db06469b769ecbebc958c0a5f20930da2b52799747fcb39dada6a921f",
+      "fingerprint": "8b718933f31a36c9fa37f4238730b416cddec07fb964c1f2932a11115965a8f4",
+      "matrix_sha256": "88b84c5a6436a8afbf438e79ac768b992537cc3badbd35f824fc9d736d91a368",
+      "X39_sha256": "a93e5a8bcdab1e51bf22554ef875f221a6a8f2ec691646828ab6d83e2da1fc18",
+      "X389_sha256": "163b6b93d2ec1a0a4714a460feb00f42307365fdb61147b1572db474633a487d",
+      "question_effects": 121,
+      "fitted_coefficients": 510
+    },
+    "jurisprudence": {
+      "archive_sha256": "19ad193ceab028352cd526864f6b6491b4902b475732d29fd26e87ac9b777a0e",
+      "fingerprint": "7cf02a49d2ea75245da3453dd140f7607b06881d500ed9dbbd6e66374628f60f",
+      "matrix_sha256": "1314dd59e8e7e61e9ef58beb07b8c85cde2dd5396ef51f2aadfb415310373499",
+      "X39_sha256": "51744f4e27fecc9b1325119740040734cc815fa4e2e044ad3c99f354f7d2d73f",
+      "X389_sha256": "4d8c35a5847056d43bdc2ab2e7cd6ad3b68d9e37be265f813b45ee9e9a432193",
+      "question_effects": 108,
+      "fitted_coefficients": 497
+    },
+    "logical_fallacies": {
+      "archive_sha256": "a29fa493fcbe8e63d31b2e5c94be4a421a97c1dba9a8489e560d4efdc8cc551e",
+      "fingerprint": "42462d2eb48571697f84428e66ed53cc2963df19e86ae9c9b32a66b80c4ff5bd",
+      "matrix_sha256": "b1346d0b7b3410df86c5dd25622cac89a73046dfe4278341ff3d4a3f46c384e3",
+      "X39_sha256": "f3ced0582c0be313cefb4d16186fc74732d961321c64867661087b42d0ce2450",
+      "X389_sha256": "3d93b94cdee373abb51a6e36ec29c1cf169b275cdd9a3c50e30df7264c2b8184",
+      "question_effects": 163,
+      "fitted_coefficients": 552
+    },
+    "machine_learning": {
+      "archive_sha256": "3453b01e0e3b9b1def82949ba375b66f3b3afb5eb550ffe72ba7ce41710f2c9b",
+      "fingerprint": "c2e5931c76bb288f5e0959adfbd3822a20a5df6afbbfe354cbe0c3856fb601a7",
+      "matrix_sha256": "13d1e0aed8d08ce4cb34bc351ed24f9646224df278a45cd85362e61bad2f3304",
+      "X39_sha256": "d345961a3407aa4140e91c5fbf23ac12dfc890901eb292897e291d0ddaac54b1",
+      "X389_sha256": "82a101bbf922f2e4e36b437ae6be90e94396aa95261a4dbfb779f0f5673a9b8a",
+      "question_effects": 112,
+      "fitted_coefficients": 501
+    },
+    "management": {
+      "archive_sha256": "2071e40e70fa8b986dcdad6476c424875382d991f00875eed90ff76ec0cf4512",
+      "fingerprint": "997824d21d2093ae4109ad6471286de931fedf56691888aed043a642d6626155",
+      "matrix_sha256": "8a44221fc67e3c08e5ec3b822686fddd3ec0c71e3b8fddd29d7dd109fa4956b3",
+      "X39_sha256": "d71d55faa24e90e42de830020e8f2ee76a0b109d13a9540d9dad744e0bb61b0f",
+      "X389_sha256": "d9009dc963aa1365e2a8630915a412a0d2b18a709c1a490390cd7f72ae8f758d",
+      "question_effects": 103,
+      "fitted_coefficients": 492
+    },
+    "marketing": {
+      "archive_sha256": "d4f4a3ecbd0912e2fe9465a23285852c48705a560c2ffd2924351fbe219f1509",
+      "fingerprint": "5d6fa1c01dc9c4e308ee393f4db89c2fe0195ca1b1966e910566c9ba3f947a1d",
+      "matrix_sha256": "d4ce3e0d842b9b0e3c2e42d3d64cb34774ff8953017de6cc26e4ed1de7bd6549",
+      "X39_sha256": "dffabf75896ae8e2e3dcb91be4d3a2fa2ec1a2b4d2f41545aaf19db4d614f1af",
+      "X389_sha256": "a5bca0bcd804612c2905c08a847b3b5824c094f8f053c3e4299a90faf93ceaec",
+      "question_effects": 234,
+      "fitted_coefficients": 623
+    },
+    "medical_genetics": {
+      "archive_sha256": "6b2ac3fcea0d55781ba2f59b7cac359531f1a18baaee61932f0fd9066e7e48cf",
+      "fingerprint": "7381cae64a9e68ae17cb13bbf41877b550003edec00aa6b99ec7e1c83e31e71d",
+      "matrix_sha256": "0247d9734cd835eb4d5b22dd8abd44715e521ebd19a668c9a7162a09f17a53fa",
+      "X39_sha256": "43de65fb838040e5fe99048dc4cb3bbf4ff7d1bf3c86bd454be9b4158817cf11",
+      "X389_sha256": "c50ddd305460ef9aaa470530810d17fc3070476bdc3c0dcc40162002580c92b6",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "miscellaneous": {
+      "archive_sha256": "43ad69ad37ffd728a775fbcb871985a2c8ec5fbea58d5ea87b845155395f6082",
+      "fingerprint": "4defcbf08635801afe3f0dea4f3ce2073142de6959d18a70c97a0f003c029d43",
+      "matrix_sha256": "8231f5b42a6dbbe68778fd33f4276e943d0ab1441593e738d00804d993f1b433",
+      "X39_sha256": "6585e3ce44113695e99c42cde91225fff3b9401f8ae064893caf621c8706eeb9",
+      "X389_sha256": "e933b30806ceef33cd73ef606b0698485db98d5e0faa8b034f0a3f7b0a3af207",
+      "question_effects": 783,
+      "fitted_coefficients": 1172
+    },
+    "moral_disputes": {
+      "archive_sha256": "5f16a8d7d07139cfa35090b506d087e2983eecb6283f0092e1672b312fbe811d",
+      "fingerprint": "408715dc0299c49ea80567c386451db8138617b309dd2eedfa04463f488218b1",
+      "matrix_sha256": "d3b2de7b10cd884eac8b1c6bc9a5f611ce6bfabb989b29822243b594266c9ac0",
+      "X39_sha256": "1216e3e55791219c203cd272ae8cf6599c65367e332ae91ab14b0f658e5ea5f0",
+      "X389_sha256": "3037fde7451cba2f7574b99d257d7dc2bcf2d1808b6389decdedf4fd5a7afe1e",
+      "question_effects": 346,
+      "fitted_coefficients": 735
+    },
+    "moral_scenarios": {
+      "archive_sha256": "db8d4e42050332dec4a334782b53b38be001b202dea16652efa028a215983bdc",
+      "fingerprint": "a34a00157ce278054a443d7ba757f7a4aaf53407c7c4690cafdf16462eb6d3df",
+      "matrix_sha256": "6edf46ed04ca89c40ef8f8cf5d4117d478e4d20836905fa26c60e340a408bcee",
+      "X39_sha256": "a30ea3712989d748fe4f8e908618d7f1242913317f0dc238b4aa1e8bf666b48d",
+      "X389_sha256": "1f5c2a2d5bba29f643e55b25e548741aafa31e2b16d662595f09a93762e22ee7",
+      "question_effects": 895,
+      "fitted_coefficients": 1284
+    },
+    "nutrition": {
+      "archive_sha256": "4710bfb051c9b73cc17e9c36b541981d76d6c35743000e29e83092ee3f584706",
+      "fingerprint": "626edcf42825ac4766ba648c3524d3e7ea05129641ca5f65cf0e63b43f62d7d5",
+      "matrix_sha256": "a0b96e7a48c33c0ff222801ca05d5f72a077b7d363a0e5d94623827ec568a63c",
+      "X39_sha256": "6b50e3c77560372bc82fae3239a2fb3c712e36194363fc11158bf42a11ce3cea",
+      "X389_sha256": "99624aae3f541b7863a53354ff63fdcd452349202335b551229004877bac2f7f",
+      "question_effects": 306,
+      "fitted_coefficients": 695
+    },
+    "philosophy": {
+      "archive_sha256": "daff8faaeb63cf89ed7bdcdfd7f558ccd2c57f39f3cbca7ce5f1fc0adf0ca334",
+      "fingerprint": "d4a902fe74546ee2839f70830a6491976c7ae39551150ce47c64dd1931c37cb8",
+      "matrix_sha256": "7538201b8443e6b3fb24efbd1af1b1b73b125e6a6fee8d185102bcdf6dfe5e0a",
+      "X39_sha256": "f429057e7fac832042bcf7c5a3fcde1d9ed3354ba9e69d37b59f558447c9a2fb",
+      "X389_sha256": "6747c328120b5c93bdc29cedd5f1b6fd62a1b9a83bd8642ef0ad374703b0535d",
+      "question_effects": 311,
+      "fitted_coefficients": 700
+    },
+    "prehistory": {
+      "archive_sha256": "083223731a7bc5445e23a4161ffae3de7bc701dd5c31686be415a63d72ae1d9e",
+      "fingerprint": "a8e0dc5b455b7f13d7c4596bdcb66396f2c74d43dfb6a7502007ffb76bd4b847",
+      "matrix_sha256": "08b2bef44d51f8c44124578525a24e11e8dff5eeb7380313dbefb024302d4554",
+      "X39_sha256": "a9e63b50d85a907c3a3a449bc0d6b625b994488f40269217cc7b23530186d4b4",
+      "X389_sha256": "0857f73d917f6e43989a5de77d70405e93bce0b09c3a862099e47b62969ab077",
+      "question_effects": 324,
+      "fitted_coefficients": 713
+    },
+    "professional_accounting": {
+      "archive_sha256": "c1f4397a7ad3292309f6c73bf5b5f4242b14bb996e0f45982d2fa1ac1b421d1a",
+      "fingerprint": "0042480627bdc789ae85c33ac231a92c8fa5d77c36428fc407d209c210d14c79",
+      "matrix_sha256": "3813c317008e3a2bcf9371299f49928b88e7e8db4ecaf02025f71f729d634b7b",
+      "X39_sha256": "8b49b46af1c0860476569c2f19e72296efc449ca42520e40b82071cb4e0d6012",
+      "X389_sha256": "778f14a59abed473cb2ac3fc678a66bbda9a9a04014384c019ffa5a34f774dc1",
+      "question_effects": 282,
+      "fitted_coefficients": 671
+    },
+    "professional_law": {
+      "archive_sha256": "80b457e8ef61fffe9536e4985aae68043abe93a5ac2e7e51260f574c0e4f96d5",
+      "fingerprint": "f210f0218f0d3e99c4b67beae9222711fd18c102875a8d033935bc796b9f70d8",
+      "matrix_sha256": "8dfdb90933f148fa4e25ea8c0aada5de0be89994f12a86310c15d3993ee12f8e",
+      "X39_sha256": "eef8faae48a21063d9e79456fb3fecbeaac47892d6d162f40681463d286fc5d2",
+      "X389_sha256": "2e1c0b76c51ea7d171db6ce08e80dd4b5812eac252c3c991d4267e3e43e399c0",
+      "question_effects": 1534,
+      "fitted_coefficients": 1923
+    },
+    "professional_medicine": {
+      "archive_sha256": "f1b2100b96242fe755ccda3f3eb9e6832f631000fc58b604785753ca3f094574",
+      "fingerprint": "a4e3cdaf3aa5464534d3c850c415b79db177a981847a731eb41974d65cae3a07",
+      "matrix_sha256": "01740a6be79197ea11a0f01252907ae79520c19e96e8186e9f1fb5ec955dff52",
+      "X39_sha256": "944fa7a718665a0a5c36de5831d3dcd6d6f9a1386cbd80c28f45c60090a49774",
+      "X389_sha256": "5f2b907e7a57ef7238f642391da30757cf429ca3c4a12f4ece4ca50c776f6042",
+      "question_effects": 272,
+      "fitted_coefficients": 661
+    },
+    "professional_psychology": {
+      "archive_sha256": "aaba9f168ecec7066c0a428305ee4cf34396fcc58bab2e099c53174727f76d42",
+      "fingerprint": "5d74353d99032126b7043d7768255735961cb4093b4593a293f16d483aaaef55",
+      "matrix_sha256": "b243a7861d597f7c2163f001d812e862dc0a91082ec66d0aaabb16245fa5f2f2",
+      "X39_sha256": "b7570dd37afb74ee8f40c78d21f3ac971791a61ab11501bd0da91567a8c22c7b",
+      "X389_sha256": "7bd26162181397e1e548091f69739acd5f09ff31f609d0bea594281d7183d969",
+      "question_effects": 612,
+      "fitted_coefficients": 1001
+    },
+    "public_relations": {
+      "archive_sha256": "11d6c9b389f9a6feb1964b0f1123e944b89b7a665d02d5765fdd8550ad854bca",
+      "fingerprint": "c82505e2f45625849920c26cac20e4c91972aa532bdf0385d4e701aecde57c04",
+      "matrix_sha256": "147ce299c0041719954bf2896b6864e572055bd58ef34d3c8cefdf69cab85e52",
+      "X39_sha256": "27314e5efd59b136a2a018ef09c1def096d04ce0f81b22117a63dc70d98ea74f",
+      "X389_sha256": "8e9322510eb30efbc3b73b7548799c22aaded9d0c9bb8e3c900b2741d5004581",
+      "question_effects": 110,
+      "fitted_coefficients": 499
+    },
+    "security_studies": {
+      "archive_sha256": "802f55f53eaab60faf7262d6f82b7e886b90807d907b21f2677bbabbc668fa18",
+      "fingerprint": "6c63ca6eb6f7d54329ab41e3cf4303870b330881a01c9c6be37fa8cd72ae4d8d",
+      "matrix_sha256": "b18a5bc34245b3615ea5ce9b0b0ae93c2e9cf259eac193d2faf8a8be8450c813",
+      "X39_sha256": "e1f3965d878018be498f1537f1127d08945d96451418b42c5b0989115fff197e",
+      "X389_sha256": "7bab49875df8a7bcab11fc41db9eacbf40e3480b900dce5f6260c6624c539965",
+      "question_effects": 245,
+      "fitted_coefficients": 634
+    },
+    "sociology": {
+      "archive_sha256": "e13e43e1fcc2c276ee36f937036f67f14ee28288f50cd94ad758ec6c027b9452",
+      "fingerprint": "ffaea5e964c6984cf6b970616525eb097f597fe8b1c1de2904ec480fcd396e22",
+      "matrix_sha256": "1456aba3eba7f68595093ba670779f1b89575eacea523e7f450504eb04d387e1",
+      "X39_sha256": "8d81672180a89129d6a02ed4755d15df8d4315aeca3b461e23274761f5fe9ce4",
+      "X389_sha256": "8a024a27fef35cae120eb258bc09f17ba4fd632df5ea865dbae79743e062c338",
+      "question_effects": 201,
+      "fitted_coefficients": 590
+    },
+    "us_foreign_policy": {
+      "archive_sha256": "68d0c783a88e7c44ade5d28c726ec70da3cbafd70b26a603d32679905c289a70",
+      "fingerprint": "ef40927bfb6ba15032112f9e3e2f8371bf7a8e91e4a97611029c54919927dc8f",
+      "matrix_sha256": "88499e2cebdf9c68360a59e2f5086736b1a49df16b6fce84436d69274b7ae448",
+      "X39_sha256": "43912e9a35dbaa8ea938e136fd3597a13a4d7193cfe2c4aafd568c22155c57fb",
+      "X389_sha256": "9c870e6680f33aae574088884c3edf0c0b6b5012bb133d84d594a872e10cb832",
+      "question_effects": 100,
+      "fitted_coefficients": 489
+    },
+    "virology": {
+      "archive_sha256": "c4b583077f05c733fe0c48c9fcee9f9095f175b35c0c5785841296a49602df76",
+      "fingerprint": "270344a848dd299d52c262d3ff565d782e256721c99d08680ca96d7a32ada6bc",
+      "matrix_sha256": "0f0513ab89360666087df3fc40bda5927c087ae594fb2faf4a8adf0c65db83a2",
+      "X39_sha256": "84a68f6ec9ce0171e43cf410c583d1a921cb179914f974b12b6f5aeb365d1ba3",
+      "X389_sha256": "bad0b524ee7d52a5c922a5a77c848b0f37ad1a1cadbc63beafcf3900ddaf80ad",
+      "question_effects": 166,
+      "fitted_coefficients": 555
+    },
+    "world_religions": {
+      "archive_sha256": "1bc52eff282168d22779eb6c2cfa71dd25b87688ea9da3dbaafb211c32acb01f",
+      "fingerprint": "ee12f6a6b10c0882d43fb378e02964117dfbf68e8aa7be59bc78cee969ea8a6d",
+      "matrix_sha256": "607fc0121d913fcdefdeb22681ed038a0fa97ac8af2c94bd9be3fe13d417ad0c",
+      "X39_sha256": "7bb1d7d9a994de4a73c16b98fd83799d149d05d0749bf98be7b509379f72aef8",
+      "X389_sha256": "7220287649b61b8ccc23fddc3a50a6dbd14d5478a89edb0227c8aff8dced22de",
+      "question_effects": 171,
+      "fitted_coefficients": 560
+    }
+  }
+}

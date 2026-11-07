@@ -1,0 +1,65 @@
+{
+  "status": "passed",
+  "date": "2026-11-07",
+  "scope": "Completed full interaction replay, native-estimator parity, independent archive and portable table audits, and standalone figure reproduction.",
+  "full_experiment": {
+    "subjects": 57,
+    "trajectories": 2280,
+    "phase_records": 11400,
+    "first_phase_observation_and_price_matches_to_concat": 2280,
+    "convergence_warnings": 0,
+    "archive_set_sha256": "babd41943618a08bb608f4d9d784a087e6a44a1ec056e74720157110f7ff3093"
+  },
+  "portable_export": {
+    "status": "passed",
+    "bai_subjects": 57,
+    "reference_phase_records": 17100,
+    "interaction_phase_records": 11400,
+    "bai_trajectories": 5700,
+    "subject_checkpoint_rows_recomputed": 760,
+    "aggregate_checkpoint_rows_recomputed": 50,
+    "plotted_points_recomputed": 19212,
+    "gittins_task_curves_verified": 76,
+    "gittins_runs": 1520
+  },
+  "native_pilot": {
+    "subject": "college_chemistry",
+    "seed": 0,
+    "samplers": [
+      "random",
+      "balanced"
+    ],
+    "phases_per_sampler": 5,
+    "dense_sparse_coefficients_scores_masks_and_selection": "Bit-identical on both samplers across all five phases",
+    "unseen_label_inversion": "Changing only unseen labels did not change the fitted coefficients, predictions, or chosen arm for the checked observed mask",
+    "evidence": "validation/native_validation.json"
+  },
+  "standalone_replot": {
+    "status": "passed",
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "matplotlib": "3.10.7",
+    "backend": "Agg",
+    "png_byte_identical": true,
+    "png_sha256": {
+      "Figure3_PE_EmbPT_interaction.png": "b94802feaf8139964e1d3ea0a97266689bee957571e18feae0bb20165af44e9b",
+      "Figure3_PE_EmbPT_interaction_sampling.png": "925ef3442501f3d5eaf6ab748ccf364b1898498713a775909d7f50c8633bc3b0"
+    },
+    "pdf_validation": "Both figures have valid PDF headers and end markers. PDF bytes may differ with creation timestamps.",
+    "visual_inspection": "Both actual PNG figures inspected; labels, legends, panels and footnotes are readable."
+  },
+  "reference_integrity": {
+    "first_bundle": "PE_EmbPT_data_2026-11-07",
+    "manifest_entries_checked_unchanged": 123,
+    "manifest_file": "provenance/first_bundle_manifest.csv",
+    "report_archive_hashes_match_final_archives": 57
+  },
+  "detailed_audits": {
+    "full_archive_audit": "validation/archive_validation.json",
+    "native_parity": "validation/native_validation.json",
+    "original_rasch_archives": "validation/first_version_archives.json",
+    "original_report": "validation/first_version_report.json",
+    "portable_validator": "validate_bundle.py"
+  },
+  "integrity": "FILE_MANIFEST.csv lists every bundled file except itself, with SHA-256 and byte length. The portable validator verifies that manifest and independently recomputes all reported CSV estimates and plotted points."
+}

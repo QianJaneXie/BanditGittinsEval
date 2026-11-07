@@ -3,3 +3,7 @@
 
 # Preserve the published experiment bundle's byte-level checksums on every OS.
 PE_EmbPT_data_2026-11-07/** -text
+
+# Preserve interaction source and result hashes across checkouts.
+experiments/mmlu_pe_embpt/** -text
+PE_EmbPT_interaction_data_2026-11-07/** -text

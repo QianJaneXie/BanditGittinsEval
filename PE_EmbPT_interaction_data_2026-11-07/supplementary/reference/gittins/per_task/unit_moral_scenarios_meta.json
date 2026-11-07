@@ -1,0 +1,43 @@
+{
+  "subject": "moral_scenarios",
+  "group": "Hard-Large",
+  "mode": "unit",
+  "x_label": "cum_eval",
+  "y_label": "simple_regret",
+  "recommendation_rule": "lcb",
+  "batch_size": 8,
+  "cost_scaling_factor": 0.0001,
+  "paper_prior": {
+    "difficulty": "hard",
+    "bucket": "low",
+    "Gittins-S_mean": 0.4,
+    "Gittins-S_variance": 0.02,
+    "Gittins-G_mean": 0.5,
+    "Gittins-G_variance": 0.04
+  },
+  "band_style": {
+    "range": "stderr",
+    "se_mult": 1.0,
+    "curve_alpha": 0.15,
+    "stop_alpha": 0.12,
+    "stop_line_alpha": 0.72
+  },
+  "observed_natural_stop_lines": [
+    {
+      "method_kind": "gittins_s",
+      "x": 2696.2,
+      "label": "Gittins-S",
+      "lo": 2675.401012170376,
+      "hi": 2716.9989878296237
+    },
+    {
+      "method_kind": "gittins_g",
+      "x": 17887.0,
+      "label": "Gittins-G",
+      "lo": 17758.318917269742,
+      "hi": 18015.681082730258
+    }
+  ],
+  "raw_budget_exhaustive_denominator": 1342500.0,
+  "curves_note": "The CSV keeps all original Gittins rows, including partial seed coverage at the endpoint. Comparison uses n_runs = 20."
+}

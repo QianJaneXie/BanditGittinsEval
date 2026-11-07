@@ -1,0 +1,9 @@
+{
+  "bundle": "PE_EmbPT_data_2026-11-07",
+  "published_in_commit": "0aa7d47",
+  "first_bundle_manifest_sha256": "4aa95956a74d5531834b4ad67e0a79c745059174f1f8f448c733f6d62e5da97f",
+  "gittins_provenance": "provenance/gittins_source_original.json",
+  "gittins_path_note": "Paths inside the copied original provenance refer to the first bundle. Its supplementary/gittins files are copied unchanged here under supplementary/reference/gittins.",
+  "reference_copies": "supplementary/report_inputs.json records every copied reference file hash",
+  "scope": "The original frozen bundle remains unchanged. Gittins caches cover 19 Figure 3 subjects only."
+}

@@ -1,0 +1,491 @@
+{
+  "source_package": "Figure3_data_2026-11-07",
+  "source_revision": "b667d408fba0cbd79d9fea3a8e26d1becda315e3",
+  "result_version": "new",
+  "recommendation_rule": "lcb",
+  "recommendation_formula": "Posterior mean minus one posterior standard deviation.",
+  "gittins_index_target": "finite_population_mean",
+  "cost_scaling_factor": 0.0001,
+  "batch_sizes": {
+    "large": 8,
+    "medium": 4,
+    "small": 2
+  },
+  "selected_subjects": 19,
+  "selected_runs": 1520,
+  "per_task_curve_rows": 24320,
+  "cost_axes": "Raw cumulative observation count or cumulative input-price weight, divided by the subject's exhaustive denominator.",
+  "support": "Plotting uses only n_runs = 20 and interpolates subject means within support. Individual Gittins histories are unavailable in this bundle.",
+  "summary_filter": "Remove original raw file locations, hostnames and cluster job IDs for portability; no numerical field changed.",
+  "stops_note": "A -1 value denotes no stop observed within budget.",
+  "original_and_derived_files": [
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_computer_security_curves.csv",
+      "source_sha256": "7ed47394b4d55741cfe28ae3ffcacf96524518987f6790742642700b568cb1a3",
+      "bundle_path": "supplementary/gittins/per_task/unit_computer_security_curves.csv",
+      "bundle_sha256": "b26b81fb98e4f7ee32876055e7ea87a3a6d737e3ef3ef19827c17343f2f4c26d"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_computer_security_meta.json",
+      "source_sha256": "f3178e511afccc055cb098e8e65b2c5555adc9b1ab262d3663644722c5435dcd",
+      "bundle_path": "supplementary/gittins/per_task/unit_computer_security_meta.json",
+      "bundle_sha256": "952ff94b097dfcff9c36c59b0a78534e6a17f33168f6192920f757dfb2a66f78"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_human_sexuality_curves.csv",
+      "source_sha256": "2d1dd2ef73859a5bee2c0052878b32a93635d9b5b892d3b447730ab4caf08348",
+      "bundle_path": "supplementary/gittins/per_task/unit_human_sexuality_curves.csv",
+      "bundle_sha256": "b805f8604e5351790dc85ccddc95bf8da5d9a5a614c6486c157dfd587cfa8af5"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_human_sexuality_meta.json",
+      "source_sha256": "f0a118b4b34e7cf43d553c2e4f4dcc041c651ba9dc7fd05aa70ebaceed582b6c",
+      "bundle_path": "supplementary/gittins/per_task/unit_human_sexuality_meta.json",
+      "bundle_sha256": "33fa4a593bf3312cd24013f58b2f9e7e4ddc93456dfb67de54a0ea9a31a70ec6"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_international_law_curves.csv",
+      "source_sha256": "66fdce89e37c836c8d06596bdd7e4b71b238972d2e0af7482e54edcd1dd98b88",
+      "bundle_path": "supplementary/gittins/per_task/unit_international_law_curves.csv",
+      "bundle_sha256": "a93d8bba2075822229d6eaa131c5e1285e6d4f4f8b927c04fd67eca44a54ef78"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_international_law_meta.json",
+      "source_sha256": "b9b721df1259e040c25bbc92ebac090facbf9475af85e08a80981f0fa88aab82",
+      "bundle_path": "supplementary/gittins/per_task/unit_international_law_meta.json",
+      "bundle_sha256": "7fc704ec046075b49751fc199e68fde53031a9ad42ac8b685091a47394f56817"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_jurisprudence_curves.csv",
+      "source_sha256": "41e2834e7845e798567d3a5168a4d65d44d17d056e0fcb7bb122bb0c369ea264",
+      "bundle_path": "supplementary/gittins/per_task/unit_jurisprudence_curves.csv",
+      "bundle_sha256": "5e2b4a65495343e2b3b92e5600362d3d809436b3886d737f9797974b03c526b1"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_jurisprudence_meta.json",
+      "source_sha256": "6b7bf5d87b9c1b2163ff61d47eeda2561640cc5b4f1f079421d2e74bc4b8d481",
+      "bundle_path": "supplementary/gittins/per_task/unit_jurisprudence_meta.json",
+      "bundle_sha256": "ba777fc08615e891a240c5b30aa970ea05d842f8a544c9bdada861517d60950b"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_management_curves.csv",
+      "source_sha256": "c4690d142436d534612441ca0a81cedf72d64cc53ef8aac2ff1aec1a1a250257",
+      "bundle_path": "supplementary/gittins/per_task/unit_management_curves.csv",
+      "bundle_sha256": "1d2f93fce4162d3a97dbfa8b0a8e528f57bae037a766e3e06fb73d0fd4e161cc"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_management_meta.json",
+      "source_sha256": "d943eb7525178065067c796b27516618c84c6b975bb19116ac8a6cccb8516447",
+      "bundle_path": "supplementary/gittins/per_task/unit_management_meta.json",
+      "bundle_sha256": "0b25aeabe4abdcf3fcc148df80476902a149fbbf470aa1df6306dd9544c401c4"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_us_foreign_policy_curves.csv",
+      "source_sha256": "0e31503b65540b1007d285f74bd8c1928e801cd63606993baf6edb2b148a60bb",
+      "bundle_path": "supplementary/gittins/per_task/unit_us_foreign_policy_curves.csv",
+      "bundle_sha256": "c880b4c393f731e00eaf5a75b7846418a5c45f9eb3205834fedc673b844d1ef7"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_us_foreign_policy_meta.json",
+      "source_sha256": "6d211e76c70c3466e7e57c1e84a8a387105d547f5f0e61f3274e689f783dadae",
+      "bundle_path": "supplementary/gittins/per_task/unit_us_foreign_policy_meta.json",
+      "bundle_sha256": "50826aa4b6eca85e31bfafce70c9de0a4f071b5ce5dea1cda61d9845f1312432"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_high_school_psychology_curves.csv",
+      "source_sha256": "62606a0186ae51fc5858283f7d18844a35e0c4c24d8e149cb43b1d6049ddd27d",
+      "bundle_path": "supplementary/gittins/per_task/unit_high_school_psychology_curves.csv",
+      "bundle_sha256": "365cd24c1e56367ac091882984cb948185177190f8d81cd6634f20704594185b"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_high_school_psychology_meta.json",
+      "source_sha256": "7d9b39e2ccd0efacc5773529cd6ca0c1b0f37090b31c8bc4e093f7f3a783f3a6",
+      "bundle_path": "supplementary/gittins/per_task/unit_high_school_psychology_meta.json",
+      "bundle_sha256": "858aa2a327ca95da825336f0694d0dbf480b18d89cc694b24b66fe507a37f61f"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_miscellaneous_curves.csv",
+      "source_sha256": "79754d6db7110c015154a153b75986dcc8d1c0d5cb7ba17d8cab01631d3c1aa8",
+      "bundle_path": "supplementary/gittins/per_task/unit_miscellaneous_curves.csv",
+      "bundle_sha256": "05923a0b9d760808bfa5c945603ac73d861090bfc19a31616f2cf2ed5eaca171"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_miscellaneous_meta.json",
+      "source_sha256": "299c855f0ba44511f9dbaf055fd88e040cb5714d513a1e978e8fda96155ff65e",
+      "bundle_path": "supplementary/gittins/per_task/unit_miscellaneous_meta.json",
+      "bundle_sha256": "4135d65453dd08bf1cb1c595d5ebe5fe45dfd7a516a997ccbef18c89046d085d"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_abstract_algebra_curves.csv",
+      "source_sha256": "fc915ea48ef4227952c975dd8def33856af0392b721baf4b2c1eace359cdd3e7",
+      "bundle_path": "supplementary/gittins/per_task/unit_abstract_algebra_curves.csv",
+      "bundle_sha256": "3affaedc65717db9e4982e1f3e3d006ba65ca51b0dd90c0ecea3cd90335aba52"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_abstract_algebra_meta.json",
+      "source_sha256": "6413515bc76f80a2fcc5bb6e036e0800ad333e231d3f4cf2ba1afd45cab43c80",
+      "bundle_path": "supplementary/gittins/per_task/unit_abstract_algebra_meta.json",
+      "bundle_sha256": "0790dbc2d1e570162345c94eadbb308e99a1bfbe8852a4f2bd7e75c201be0730"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_chemistry_curves.csv",
+      "source_sha256": "6b8b8de98272131669dbff69c9d22bcc863e3187f6103ae22dfe2d666b3c041d",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_chemistry_curves.csv",
+      "bundle_sha256": "0226e79bceefcd276bd97abdf4ce2bd0de12f30c8088e3f83da5e2d2b4f84d1a"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_chemistry_meta.json",
+      "source_sha256": "df303d91c1b2678cd62421f55c9a529f58feb157e18541205aba376ba32b4a7e",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_chemistry_meta.json",
+      "bundle_sha256": "a62aa3686305c9f37d3c0bd43e81e643b410c1d49c0d0379a6259783d726a053"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_computer_science_curves.csv",
+      "source_sha256": "09fcd0a8c6594e28d7732a39904f7d0a76e9b691a564da8bbafdd7752b1ac3b8",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_computer_science_curves.csv",
+      "bundle_sha256": "d35d1bf506c79cc1f719c7901372dbd363d13b3b8fdf8164b6c2191b4d9a8e4d"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_computer_science_meta.json",
+      "source_sha256": "2b68f69d01030d40d01c7d2166abbefeb7c5da2d534f8f6321eaaca88802dab2",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_computer_science_meta.json",
+      "bundle_sha256": "1d5ab11024794c88cffad401478412d4eb4ce8648b1cea88d87be3cefc8f0924"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_mathematics_curves.csv",
+      "source_sha256": "4c37c51270fd6bac89f6d6b5b182c0f39a3a7192150234ac0c0dce276719171c",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_mathematics_curves.csv",
+      "bundle_sha256": "03ec0a108d26999c0a5f306c2d603e2b983e526cb62f910bca3df8724e7fd60e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_mathematics_meta.json",
+      "source_sha256": "bd70f2fb260ce356d7a09f44c172a5f53ddf69cd1ebee014dcdea1e792af9d89",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_mathematics_meta.json",
+      "bundle_sha256": "5d818b6854640968e0dad35bd736fea5a5763f22845df7e47562a82529f2b3bc"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_physics_curves.csv",
+      "source_sha256": "fed9e5efec9b813c9727fe80f10d7f1e76efe2b5ddacc68443b0bf969381da64",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_physics_curves.csv",
+      "bundle_sha256": "0cc5f5cf78609c97df1c99afc526e2e2d95cf36223b6e0b49ab9b3f4550cab32"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_college_physics_meta.json",
+      "source_sha256": "85396cfb51a11f1d7a737f3cf04315dd603bc15861644f0a2dbc4c48ef2c6cf4",
+      "bundle_path": "supplementary/gittins/per_task/unit_college_physics_meta.json",
+      "bundle_sha256": "b6234b096cf2274317406724e5a471a98a549ba05ce6612f23a72ecf645c50c2"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_econometrics_curves.csv",
+      "source_sha256": "13a3e24ebb58e0160728411687539745a671c349deb36245983c934fb1d3bae3",
+      "bundle_path": "supplementary/gittins/per_task/unit_econometrics_curves.csv",
+      "bundle_sha256": "33faa90c3a37169afa7fe0870f61c7cb24e2501b4bc0f5a04a610c3c45072108"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_econometrics_meta.json",
+      "source_sha256": "a30d0f4ed9a003adc1f557a27236532eba4f3197732045e8732bc7c62d214197",
+      "bundle_path": "supplementary/gittins/per_task/unit_econometrics_meta.json",
+      "bundle_sha256": "2f19cd2928177c785938305d06440b3719fff519d5d1a27f6d5bc50d514ed95f"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_formal_logic_curves.csv",
+      "source_sha256": "f125046009b520456d1fdfc255e83ae35552c0f23d01036569f68f68d2b1ab91",
+      "bundle_path": "supplementary/gittins/per_task/unit_formal_logic_curves.csv",
+      "bundle_sha256": "c9bd8f8653a52ad272f61d6f6f77af43d4ad6b4a8d944dde21afe7cb2d3c4de2"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_formal_logic_meta.json",
+      "source_sha256": "24813e8147f0831a8e4d618e2e5b70a2575cd10ce916b77cff0e21a103e22a1d",
+      "bundle_path": "supplementary/gittins/per_task/unit_formal_logic_meta.json",
+      "bundle_sha256": "e085a0a3cfa79d8cd5da30bcf854195cdbfbc772653687b0369132c77a8be85c"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_global_facts_curves.csv",
+      "source_sha256": "3e4708ff9c6ab258b201ea356a01714585d17f2ddba1a17809d4d9f0a61c4711",
+      "bundle_path": "supplementary/gittins/per_task/unit_global_facts_curves.csv",
+      "bundle_sha256": "9e90f09eaaafcba990eef7cebe65272a6b70568f5569bb0315dc969d0b2d7653"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_global_facts_meta.json",
+      "source_sha256": "65002702b86452f56846f3eb30424b0a543e58bdb22fe54861d30c494e96ee75",
+      "bundle_path": "supplementary/gittins/per_task/unit_global_facts_meta.json",
+      "bundle_sha256": "99028e4e41e640b03f1b38f9f76a1271b8490e95ea1a750dc1cf513126a81a77"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_machine_learning_curves.csv",
+      "source_sha256": "51ee87c6b73cae80bfc3bfff37c80afcb884e16238868362042fa9b9778e73de",
+      "bundle_path": "supplementary/gittins/per_task/unit_machine_learning_curves.csv",
+      "bundle_sha256": "78946e4139b718d51f0b38b82a0b6580c68cb6d4b270afec6c63fed69323696e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_machine_learning_meta.json",
+      "source_sha256": "f097a20ead6a69a510466b9a72e3deffc3ee5a9d4a23fa08f857904b89f7b7df",
+      "bundle_path": "supplementary/gittins/per_task/unit_machine_learning_meta.json",
+      "bundle_sha256": "798a4d6502aa8ec22aa6718b09d45015137ba497232033496b1fe2e6186042bc"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_moral_scenarios_curves.csv",
+      "source_sha256": "26ac53a0157dae6c9090a39cf88927061eaf536595df60fbeb782e7660346991",
+      "bundle_path": "supplementary/gittins/per_task/unit_moral_scenarios_curves.csv",
+      "bundle_sha256": "cdf7ffe6f916bd60b5ceabf2cbdb2381813d16c5dbd43f32f0897b3263a020c6"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_moral_scenarios_meta.json",
+      "source_sha256": "cce7a4e9bd3037cf02fc1dedcf26d7d52e7031e6c567ebbee5bf9dfb09df6f48",
+      "bundle_path": "supplementary/gittins/per_task/unit_moral_scenarios_meta.json",
+      "bundle_sha256": "3a2b394f3d60a2e9d31f7c6e478d8525a47432761b7de6253331bd0ace93b8e0"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_professional_law_curves.csv",
+      "source_sha256": "0d1d1d15957986142c905533003286733ac43fea527aac13d5aaf49ef99ccadf",
+      "bundle_path": "supplementary/gittins/per_task/unit_professional_law_curves.csv",
+      "bundle_sha256": "b96ca64617a54f9e1186643d9f906c4902c417646855ef8b5eef5da98a2b5e33"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/unit_professional_law_meta.json",
+      "source_sha256": "c52d8abead6506c2dab033bb041cbff59c3453a63576c516f6457f335f493902",
+      "bundle_path": "supplementary/gittins/per_task/unit_professional_law_meta.json",
+      "bundle_sha256": "ba40cb07da56b8356fdacf54cb2b5348f5de4e583420bdc5180b6400750743ea"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_computer_security_curves.csv",
+      "source_sha256": "bb2674a216034f66d46f246271c5e2a7f7bf2ee459643ba22fcc43dc4ffda6f8",
+      "bundle_path": "supplementary/gittins/per_task/aware_computer_security_curves.csv",
+      "bundle_sha256": "b111a52b938008d7eaf70985a21084f7c64d837c9f41415b35eed6a2c7214c74"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_computer_security_meta.json",
+      "source_sha256": "2f42bd2cace9b16baa52954de5af843951ad062130a6e9581ce89c5f8d2b959a",
+      "bundle_path": "supplementary/gittins/per_task/aware_computer_security_meta.json",
+      "bundle_sha256": "cdda9ba2be232041dab794172fafe126dfeec9e27f6634189c1c1a5a72e37223"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_human_sexuality_curves.csv",
+      "source_sha256": "4ab7d0e886afc4a724fceef614f628c1435e11cced508f305098a480ad16efa6",
+      "bundle_path": "supplementary/gittins/per_task/aware_human_sexuality_curves.csv",
+      "bundle_sha256": "5b7bfb4649616522875842cec1480c33b8fc42c2b9f0b76de00eda65a13f9106"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_human_sexuality_meta.json",
+      "source_sha256": "26ec23c1e426ed369a24a653e6e188d742d67b46441269fcf1c54556a526b249",
+      "bundle_path": "supplementary/gittins/per_task/aware_human_sexuality_meta.json",
+      "bundle_sha256": "3abd064b259b5af8394eb12e7b2a9ec2b2ef329579f6438f6873072862f414ec"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_international_law_curves.csv",
+      "source_sha256": "a8139cfbeab09d13fb493be554a3d18e305dfe0ceabd07b828c70047722836e5",
+      "bundle_path": "supplementary/gittins/per_task/aware_international_law_curves.csv",
+      "bundle_sha256": "4a6a3c76d16a1b777ac64ffa73f62295c5f450234ee9758ec3c688d156e83acb"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_international_law_meta.json",
+      "source_sha256": "87ac03016d7098d57b7b359b3c0be3659582f0da01fc0f9323ee4f7a6afc8ced",
+      "bundle_path": "supplementary/gittins/per_task/aware_international_law_meta.json",
+      "bundle_sha256": "895110638c3a0f899e09248a9aa149ef5e7c1110e8bc365fd77aba74e630103e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_jurisprudence_curves.csv",
+      "source_sha256": "1c939177d9d8a81c45ab7d04c5b3e961ca359b3da826e412f2ec9afa7804431c",
+      "bundle_path": "supplementary/gittins/per_task/aware_jurisprudence_curves.csv",
+      "bundle_sha256": "7c9224f2f0fc9556cbc0c19eed85b4c33d91284f37dc8c3f24383949ad9f59f9"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_jurisprudence_meta.json",
+      "source_sha256": "51a0627a30e719eb8c254934b9c10908e9788dd7319d914a4ff7aaf3f650621e",
+      "bundle_path": "supplementary/gittins/per_task/aware_jurisprudence_meta.json",
+      "bundle_sha256": "82a861cd73f8f8d0d3efd90a756770966a422c0f5be2a24109bf34bed89c2703"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_management_curves.csv",
+      "source_sha256": "f4dc76d4a8de9f8855a1ae807a9d03ca9932f050ef3ea84970b4d7f634216e10",
+      "bundle_path": "supplementary/gittins/per_task/aware_management_curves.csv",
+      "bundle_sha256": "e9a53e8446a1dfa812715e818667d9de8b4f9d0dd394605cae3316b44848e02e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_management_meta.json",
+      "source_sha256": "b2cb3a2d7f6bb380f5e245ec382ab2200fe64abaaeb58647e238bbf21ffc59d8",
+      "bundle_path": "supplementary/gittins/per_task/aware_management_meta.json",
+      "bundle_sha256": "b67a56b20d842cc41bde93aa4cbadff1380164f5757fd768497cf398752ad084"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_us_foreign_policy_curves.csv",
+      "source_sha256": "7c7b378e224ee45923f50d7bda602ef3428b5b0184a702fa0e9538ff16143b23",
+      "bundle_path": "supplementary/gittins/per_task/aware_us_foreign_policy_curves.csv",
+      "bundle_sha256": "4762457aea04126fda67990b4bf13e96503847156b58dc8a1f79af2cb07e43b2"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_us_foreign_policy_meta.json",
+      "source_sha256": "83241fd9f209a123c1b77ab3703cde132f462d541662bfdf99501e8b76eaf456",
+      "bundle_path": "supplementary/gittins/per_task/aware_us_foreign_policy_meta.json",
+      "bundle_sha256": "92247a81c6487f5ba78728caef80efdf7f3dd5f31cce7703f0f5a8fd1777dc12"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_high_school_psychology_curves.csv",
+      "source_sha256": "ac6e3d66ff4f3c60a7aebf4edbe83e27b900f08d850fff1d5a1643e5c4858a6c",
+      "bundle_path": "supplementary/gittins/per_task/aware_high_school_psychology_curves.csv",
+      "bundle_sha256": "514b74d5688c55a2785f171aaac7bb721bda9e187517b82965f275f52af2c9eb"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_high_school_psychology_meta.json",
+      "source_sha256": "af7ad497d080ff4857d04720b1886db81d506ad568e1d7fed593ff886fcd94f7",
+      "bundle_path": "supplementary/gittins/per_task/aware_high_school_psychology_meta.json",
+      "bundle_sha256": "620d76fbf0dfe23d01a47e40076568df3154d80f5349e205233e955baf72de66"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_miscellaneous_curves.csv",
+      "source_sha256": "47c682563faf0dcb38269072f3eaa8d8290893115c94fa84ab6e46976ebb2c3e",
+      "bundle_path": "supplementary/gittins/per_task/aware_miscellaneous_curves.csv",
+      "bundle_sha256": "35783e6f07334f14dde4cf50db0a950ae616c0348e2dce9583979b9ca69a5df8"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_miscellaneous_meta.json",
+      "source_sha256": "76035793c44321e0aec42a98749b2685d872f71615f204a126c7d39b40129845",
+      "bundle_path": "supplementary/gittins/per_task/aware_miscellaneous_meta.json",
+      "bundle_sha256": "bd9573b9b8b3ae8c74a9f3f97b45b276b2b6bc8cbcf0ec69c06a5b2d3dd7a842"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_abstract_algebra_curves.csv",
+      "source_sha256": "e93d850a04d3486e44b859bcd94a1a52a24808525d6c2f760a9b448086cdcd96",
+      "bundle_path": "supplementary/gittins/per_task/aware_abstract_algebra_curves.csv",
+      "bundle_sha256": "e1a50ece7769b581f7e3c93083fafcba2ba092a172bdd04ecd45ae2bba855419"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_abstract_algebra_meta.json",
+      "source_sha256": "27a28037c9d7d5e0eece00c60e77a5e81beb7bc1a30b705bc0946518851186bb",
+      "bundle_path": "supplementary/gittins/per_task/aware_abstract_algebra_meta.json",
+      "bundle_sha256": "25f28eb4455b5e5d3df32bc7ed098ef0b5b88655a4d670ec0ee78d0866437e83"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_chemistry_curves.csv",
+      "source_sha256": "8d15f4bcdff478b434432bbd812b2469b4d4307d094d547b17ee8c33c851c4b8",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_chemistry_curves.csv",
+      "bundle_sha256": "dd0bf1b032b55e56b67a5edf82c2d6a592a45337992da4f6229e31f437630719"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_chemistry_meta.json",
+      "source_sha256": "e6fdd4c5408d924eb2c47a6c38bb65519faaf02f0ccad82f1261707d66052202",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_chemistry_meta.json",
+      "bundle_sha256": "0991ef0540efaf05a69b9dc33345153525b79208a18e91f40074337608f9bdaf"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_computer_science_curves.csv",
+      "source_sha256": "3b7e2595bd22d5cb7508353d788445a01a9d00312d7e0a27cab340a4c6b1025d",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_computer_science_curves.csv",
+      "bundle_sha256": "c544af284c7e108a98cb9bc72f3fce3139684134bc389b271f08d9ee9311f69e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_computer_science_meta.json",
+      "source_sha256": "dc2d31791a1cc399addcdd5b27d6b725f7c58065f299afa621ca8534de85261b",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_computer_science_meta.json",
+      "bundle_sha256": "c60a426067fbdd80631b3b6a65edfde109c5b9f18e0161a5c038132e80a447ec"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_mathematics_curves.csv",
+      "source_sha256": "d9c01593cd3d43f741fc6dcb85a4f1397fa1ec05c62bf8bd196fc498de316191",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_mathematics_curves.csv",
+      "bundle_sha256": "e4c4f4c84ab41a3a0416117c2e6de5eef9805cf50e4a8fa58ac4f5b999a20b6c"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_mathematics_meta.json",
+      "source_sha256": "a157f24f170e4a10412c6c3a78a979e97f1f8485d8fd98987594814494e55d1c",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_mathematics_meta.json",
+      "bundle_sha256": "a736b901ba47221d7b23f0214bd2c08ee7500542ff9fa2c0ca1f8be0668850f5"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_physics_curves.csv",
+      "source_sha256": "fed143e62543907563104b11b90fc063f7ae1ec180683a883ead42af57a86556",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_physics_curves.csv",
+      "bundle_sha256": "d834970fe4ffd90ed2e654afa7116eb1270c2f3a584f578e88bcfb72fcc8e380"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_college_physics_meta.json",
+      "source_sha256": "5a440eec1229db7b99342ca843f0217f430612cedfe553e9891999d7e1028fa1",
+      "bundle_path": "supplementary/gittins/per_task/aware_college_physics_meta.json",
+      "bundle_sha256": "de3d98e3a304f6033c7e1389a328d5f56c74ccb4f8a0e226d9e80768737fd59e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_econometrics_curves.csv",
+      "source_sha256": "56fdab97308712c0f6344d3798dbada9323c8687f11235f502fa538a0b945c58",
+      "bundle_path": "supplementary/gittins/per_task/aware_econometrics_curves.csv",
+      "bundle_sha256": "93d0ca5ba183dbde5f4d8ea513c6aa9fa3253bcacad7207e02b87a295ae124e1"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_econometrics_meta.json",
+      "source_sha256": "29827cce859b958f94f2f54a7331c86c8ebc66da9ccf3ece4f6bfa9b1db1c7f3",
+      "bundle_path": "supplementary/gittins/per_task/aware_econometrics_meta.json",
+      "bundle_sha256": "265f2d6804c9b4c685b35d2cfa6c960956f3cb6128bbb3a6fa621ac5b4772148"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_formal_logic_curves.csv",
+      "source_sha256": "19ad95bc078ec1b560255f5feca1abbf090e88968e88a8b19f2b2b3d19ecfd80",
+      "bundle_path": "supplementary/gittins/per_task/aware_formal_logic_curves.csv",
+      "bundle_sha256": "94e73ba7c1cfce0654d044046571bc3a55be69afed2d64d4c534d891814bd552"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_formal_logic_meta.json",
+      "source_sha256": "d953acf0dd4661d0d8514b1fb6250159d36f57787d963886e7e03dcc4651922a",
+      "bundle_path": "supplementary/gittins/per_task/aware_formal_logic_meta.json",
+      "bundle_sha256": "21ec71ee1be112984367bd12fe73e8cf465038bef58a068335cf167e51431903"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_global_facts_curves.csv",
+      "source_sha256": "0a696d00c18c79dc2f2c5ed8e9bd4d468422a1c99017dd382930090514f88822",
+      "bundle_path": "supplementary/gittins/per_task/aware_global_facts_curves.csv",
+      "bundle_sha256": "4015fa9fcfcb90d9db5c77947569b1914c78a543b649ef41b898c3bc2d810b62"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_global_facts_meta.json",
+      "source_sha256": "50895887aeb4a1f146423d0b7a6155ec92c0a053542bad738b3b485b15dec456",
+      "bundle_path": "supplementary/gittins/per_task/aware_global_facts_meta.json",
+      "bundle_sha256": "abaa800614f3e3ecd57cddefa608347902817f31caa41bdd292bc7fb6b45e7fc"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_machine_learning_curves.csv",
+      "source_sha256": "ad11cacc7d0cedf74f8c2eeb070698af92b2d6e8d61509f116688b22f0ab2152",
+      "bundle_path": "supplementary/gittins/per_task/aware_machine_learning_curves.csv",
+      "bundle_sha256": "f85c474167e94cdee84a45454464d43246b735b33bca0178878244a02c85e3c5"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_machine_learning_meta.json",
+      "source_sha256": "230ff0368130845d7029bb4d0c25f1263673a6924dd47ebf36c568f80e4ad6d3",
+      "bundle_path": "supplementary/gittins/per_task/aware_machine_learning_meta.json",
+      "bundle_sha256": "a5e62cdb5ca3156ae91a8fbafb0b6639f9007b4243e2c4f8369d5c94ee456d78"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_moral_scenarios_curves.csv",
+      "source_sha256": "6efe9bc308d9470588398c24d5a2a5f64111c142cc446d512abd5bf6c1429ead",
+      "bundle_path": "supplementary/gittins/per_task/aware_moral_scenarios_curves.csv",
+      "bundle_sha256": "75ef0bd94432bb9c0d816e3a47fa107a9ecaa9482380a2e508dd8d96aedcf28e"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_moral_scenarios_meta.json",
+      "source_sha256": "51ff5969838ca9a261fa5c99ffea1c56af078e550eed0218ba2783a40282dbfb",
+      "bundle_path": "supplementary/gittins/per_task/aware_moral_scenarios_meta.json",
+      "bundle_sha256": "8e34240d3bd430552e52be1caa96cb2293e853e338ce5ca6e9c6bd1e8bb1dce1"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_professional_law_curves.csv",
+      "source_sha256": "a56fc0bbdb5f756431f7efab826ece1e639ae8c61e40ad70241d71d731284e4c",
+      "bundle_path": "supplementary/gittins/per_task/aware_professional_law_curves.csv",
+      "bundle_sha256": "a9b2391d80f31fbbb90bc1963b9dfb275434c7b20712634c5c3fbd686b6d2f07"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/per_task/aware_professional_law_meta.json",
+      "source_sha256": "71b709d8f8d9411023b9135f7ed6fa322cc1c842f56e88b02cf16f0b9f6f7f9f",
+      "bundle_path": "supplementary/gittins/per_task/aware_professional_law_meta.json",
+      "bundle_sha256": "8026c9fc8e367168a8061ffcc63b9ad9b71e66c6e7b241038972872622fe7584"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/gittins_runs_summary.csv",
+      "source_sha256": "a0cade249d573a0d40c668a9ecc13fe27fd1b6829ea7f9a0968bf55bf5811a0b",
+      "bundle_path": "supplementary/gittins/runs_summary.csv",
+      "bundle_sha256": "ab9eec77127b254d33ae06c8f0d89f9aa64b5ca794e0b87d71f90f6ee1138146"
+    },
+    {
+      "source_path": "Figure3_data_2026-11-07/supplementary/gittins_runs_stopping.csv",
+      "source_sha256": "2ccd3ff96b7b170832060d4a1c55de8e4a0d084da0fced2b20de15d75aae0ab5",
+      "bundle_path": "supplementary/gittins/runs_stopping.csv",
+      "bundle_sha256": "996e3cb92f3b9a33450ffe5d61570375359dab0c28a13cf99c3f89067865a847"
+    }
+  ]
+}

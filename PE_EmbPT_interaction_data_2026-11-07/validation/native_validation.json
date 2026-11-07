@@ -1,0 +1,117 @@
+{
+  "status": "passed",
+  "subject": "college_chemistry",
+  "seed": 0,
+  "matrix_shape": [
+    1500,
+    100
+  ],
+  "matrix_sha256": "bb042fbf8a17c5f78fb1e126b9e47c6f828738990c880a3fbb81f056d4f9c2a5",
+  "feature_shape": [
+    1500,
+    389
+  ],
+  "unscaled_kronecker_and_reference_indicators_exact": true,
+  "native_methods_path": "prompteval/methods.py",
+  "native_methods_sha256": "585854d9dc58cee5af7dd1e18a6e3d31bc23cc9e955c09eeaf4fe6f2c42fd7fc",
+  "validation_script_sha256": "26f773c8dfd2e01fbcbddff64c42ea59f99837f203619e4df9c2986825e1b7f6",
+  "runner_source_sha256": {
+    "experiments/mmlu_pe_embpt/interaction.py": "69118e8e8366fa81b510e5caf7f0ae4d0204ca4e7576cfa6615e75051db88009",
+    "experiments/mmlu_pe_embpt/run_interaction.py": "73744b3691728e312903e154f58298db459c5a584e7c00caa08d1889c539da44",
+    "prompteval/bai_evaluation.py": "f8a97942d8d9f9fae04039cb4a42f7f39458510b96248940143aa7353aaea207",
+    "prompteval/methods.py": "585854d9dc58cee5af7dd1e18a6e3d31bc23cc9e955c09eeaf4fe6f2c42fd7fc",
+    "prompteval/methods_gpu.py": "a724afbcfa18524d53222207304fc13c8ccee166c32bfb29753c2d8e3a05ae55",
+    "prompteval/utils.py": "b40436c5fc149fabd3f8b4bc609b9eb8dd2e4f32805399429d0c6ecc0eaa29c3"
+  },
+  "X39_sha256": "fcc4d0678a2cc8a7cd62172c9e667b35616b9b8c0618b90fe0dc8a2c02ce8137",
+  "X389_sha256": "98120df2b77178feee2bde7d8afbc1c09ce10c3ec9619d96df577cb1ff77fa6b",
+  "coefficient_and_score_absolute_tolerance": 1e-12,
+  "concat_anchor": {
+    "rasch39_random": {
+      "chosen_arm": 884,
+      "fitted_coefficients": 139,
+      "native_csr_max_absolute_coefficient_difference": 0.0,
+      "native_csr_max_absolute_score_difference": 0.0,
+      "archive_phase_one_match": true,
+      "first_phase_mask_sha256": "5d3c5b7952237d82d19f798e82746db1b44c49e29d00d2c680a84e1bc1b02116"
+    },
+    "rasch39_balanced": {
+      "chosen_arm": 231,
+      "fitted_coefficients": 139,
+      "native_csr_max_absolute_coefficient_difference": 0.0,
+      "native_csr_max_absolute_score_difference": 0.0,
+      "archive_phase_one_match": true,
+      "first_phase_mask_sha256": "eb30fca83ab2a2d4fda5fb556bfc622ad5e22362135d4bdb2e8b79a274eb5f5b"
+    }
+  },
+  "variants": [
+    {
+      "variant": "rasch389_random",
+      "native_masks_exact_at_all_five_phases": true,
+      "native_survivor_order_exact_at_all_five_phases": true,
+      "first_phase_dense_and_csr_design_and_labels_exact": true,
+      "first_phase_mask_sha256": "5d3c5b7952237d82d19f798e82746db1b44c49e29d00d2c680a84e1bc1b02116",
+      "fitted_coefficients": 489,
+      "max_absolute_coefficient_difference": 0.0,
+      "max_absolute_score_difference": 0.0,
+      "unseen_outcome_intervention": {
+        "unseen_labels_inverted": 147000,
+        "all_coefficients_and_scores_unchanged": true,
+        "chosen_arm_unchanged": 984,
+        "oracle_changed": true
+      },
+      "production_replay_exact": true,
+      "production_replay_max_absolute_numeric_difference": 0.0,
+      "chosen_arms": [
+        984,
+        1093,
+        270,
+        226,
+        248
+      ],
+      "simple_regrets": [
+        0.22999999999999998,
+        0.15999999999999998,
+        0.020000000000000018,
+        0.020000000000000018,
+        0.039999999999999925
+      ],
+      "dense_and_csr_comparison_seconds": 6.073689799988642,
+      "production_replay_seconds": 1.2380623000208288
+    },
+    {
+      "variant": "rasch389_balanced",
+      "native_masks_exact_at_all_five_phases": true,
+      "native_survivor_order_exact_at_all_five_phases": true,
+      "first_phase_dense_and_csr_design_and_labels_exact": true,
+      "first_phase_mask_sha256": "eb30fca83ab2a2d4fda5fb556bfc622ad5e22362135d4bdb2e8b79a274eb5f5b",
+      "fitted_coefficients": 489,
+      "max_absolute_coefficient_difference": 0.0,
+      "max_absolute_score_difference": 0.0,
+      "unseen_outcome_intervention": {
+        "unseen_labels_inverted": 147000,
+        "all_coefficients_and_scores_unchanged": true,
+        "chosen_arm_unchanged": 893,
+        "oracle_changed": true
+      },
+      "production_replay_exact": true,
+      "production_replay_max_absolute_numeric_difference": 0.0,
+      "chosen_arms": [
+        893,
+        893,
+        893,
+        1431,
+        274
+      ],
+      "simple_regrets": [
+        0.09999999999999998,
+        0.09999999999999998,
+        0.09999999999999998,
+        0.07999999999999996,
+        0.0
+      ],
+      "dense_and_csr_comparison_seconds": 5.9825071999803185,
+      "production_replay_seconds": 1.2621512000332586
+    }
+  ]
+}

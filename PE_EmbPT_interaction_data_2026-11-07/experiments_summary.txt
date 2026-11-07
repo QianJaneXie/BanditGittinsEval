@@ -1,0 +1,77 @@
+Experiment summary | MMLU PE-EmbPT interaction design
+====================================================
+
+The interaction design had higher mean regret at the 2% through 8% unit
+checkpoints under both samplers. At the 10% unit-cost endpoint, the
+random-question variants were close on average, while the balanced
+interaction variant had higher regret than balanced concatenation.
+Both interaction variants improved on the arm-only logistic baseline
+in all 57 subjects at that endpoint.
+
+Design
+------
+All 57 MMLU subjects were replayed with 20 seeds for each of two new
+variants, for 2,280 trajectories and 11,400 recorded phases. The comparison
+reuses the first version's two Rasch variants and its 39-feature logistic
+baseline. Both PE designs use the same saved pretrained prompt coordinates,
+14 model offsets, and N question effects. Concatenation shares 25 prompt
+coefficients across models. The interaction design assigns 25 coefficients
+to each of 15 models, giving 389 arm coefficients.
+
+Within each sampler, both designs use the same five-phase, 10%-of-cells
+protocol, observed-plus-imputed arm score, and L2 LIBLINEAR at C=100. The
+parameterizations give different penalties to equivalent prompt scores.
+The experiment compares the two fitted designs under their common
+coefficient penalty and original feature scales.
+
+All 57 subjects
+---------------
+Mean simple regret by unit-cost checkpoint, with equal subject weights.
+
+  Budget  Logistic 39  Concat random  Concat balanced  Int. random  Int. balanced
+      2%   0.02624004     0.02445305       0.02516509   0.08437546     0.08420448
+      4%   0.02458780     0.02290746       0.02289494   0.04499031     0.04623259
+      6%   0.02393083     0.02039984       0.02056374   0.02702898     0.02805705
+      8%   0.02322175     0.01586805       0.01649863   0.01795537     0.01837180
+     10%   0.02171928     0.00951678       0.00905031   0.00948385     0.01017414
+
+At 10% unit cost, the paired interaction-minus-concatenation difference
+was -0.00003293 with subject SE 0.00046207 for random questions and
++0.00112382 with subject SE 0.00040516 for balanced questions. Across
+subjects, the random interaction variant had lower, tied, and higher
+regret in 26, 2, and 29 subjects. The corresponding balanced counts were
+19, 1, and 37.
+
+At the 10% price-weighted checkpoint, concatenated and interaction means
+were 0.00978393 and 0.00990546 with random questions, and 0.00943791 and
+0.01044232 with balanced questions. The logistic mean was 0.02177324.
+The price-weighted view reprices the same observation-budgeted histories.
+
+Figure 3 comparison
+-------------------
+The 19 Figure 3 subjects form four cohorts. There are 36 comparable
+cohort checkpoints across the unit and price-weighted views. The four
+2% price-weighted cohort rows have incomplete PE coverage.
+
+  Method              Lower regret than Gittins-S   Lower regret than Gittins-G
+  Concat random                     0 of 36                       4 of 36
+  Concat balanced                   0 of 36                       4 of 36
+  Interaction random                0 of 36                       1 of 36
+  Interaction balanced              0 of 36                       0 of 36
+
+The interaction variant had lower mean regret than the matched
+concatenated variant at 9 of 36 random-question checkpoints and 8 of 36
+balanced-question checkpoints. The random interaction variant's single
+checkpoint below GittinsEval-G was Hard-Small at 8% price-weighted spend.
+These counts describe cohort means at the listed checkpoints. Per-seed
+Gittins tests and performance at intervening budgets are outside this
+comparison. The 9.9% unit-cost checkpoint precedes the final BAI phase
+at 10%, so use the all-subject table for the separate endpoint.
+
+Validation
+----------
+The new archives cover all 57 subjects, 2,280 runs, and 11,400 phases.
+There were zero recorded solver convergence warnings. The report provides
+19,212 plotted points and both aggregate and subject checkpoint tables.
+See validation.json for the independent archive, portable export, and
+figure reproduction checks.

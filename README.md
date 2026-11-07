@@ -6,19 +6,24 @@ Works with any `(n_models, n_examples)` accuracy matrix under `data/`. Full expe
 
 ## MMLU PE-EmbPT experiment
 
-The [experiment report](docs/mmlu_pe_embpt_experiments.md) documents the completed
-57-subject, 20-seed comparison of the 39-feature logistic baseline and a joint
-model–prompt PE-EmbPT adaptation with question effects. At a 10% observation
-budget, mean simple regret falls from 0.02171928 to 0.00905031. On the 19 Figure 3
-subjects, GittinsEval-S has lower cohort mean regret at all 36 fully supported
-comparison checkpoints.
+The [latest experiment report](docs/mmlu_pe_embpt_interaction.md) compares the
+39-feature concatenated PE-EmbPT adaptation with a 389-feature interaction
+version that gives each LLM its own prompt coefficients. Both add shared question
+effects and cover all 57 MMLU subjects, 20 seeds, and random and balanced sampling.
+The new version has higher mean regret at 2%–8% of evaluation cells. At 10%, the
+random-question means are almost equal, while balanced interaction has 12.4%
+higher mean regret than balanced concatenation (0.01017414 versus 0.00905031).
+GittinsEval-S has lower cohort mean regret than both interaction variants at all
+36 fully supported checkpoints on the 19 Figure 3 subjects.
 
-The [results bundle](PE_EmbPT_data_2026-11-07/) includes figures, phase-level
-results, protocol and provenance records, and standalone plotting and validation
-scripts. See the report for the sampling ablation, cost accounting, and differences
-from the original PromptEval protocol. The historical baseline instructions below
-describe the arm-only logistic implementation; the new question-effect experiment
-is documented separately in this report.
+The [new results bundle](PE_EmbPT_interaction_data_2026-11-07/) contains the
+figures, phase-level records, protocol, source provenance, and standalone plotting
+and validation scripts. [Run instructions](experiments/mmlu_pe_embpt/README.md)
+describe the local replay. The [first report](docs/mmlu_pe_embpt_experiments.md)
+and its [frozen bundle](PE_EmbPT_data_2026-11-07/) retain the preceding comparison
+with arm-only logistic BAI. See the reports for budget interpretation, the effect
+of regularization across designs, and adaptations from original PromptEval. The
+historical baseline instructions below describe the arm-only logistic runner.
 
 ## Setup
 

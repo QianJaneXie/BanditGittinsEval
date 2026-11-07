@@ -1,0 +1,43 @@
+{
+  "subject": "international_law",
+  "group": "Easy-Small",
+  "mode": "aware",
+  "x_label": "cum_original_cost",
+  "y_label": "simple_regret",
+  "recommendation_rule": "lcb",
+  "batch_size": 2,
+  "cost_scaling_factor": 0.0001,
+  "paper_prior": {
+    "difficulty": "easy",
+    "bucket": "high",
+    "Gittins-S_mean": 0.75,
+    "Gittins-S_variance": 0.01,
+    "Gittins-G_mean": 0.5,
+    "Gittins-G_variance": 0.04
+  },
+  "band_style": {
+    "range": "stderr",
+    "se_mult": 1.0,
+    "curve_alpha": 0.15,
+    "stop_alpha": 0.12,
+    "stop_line_alpha": 0.72
+  },
+  "observed_natural_stop_lines": [
+    {
+      "method_kind": "gittins_s",
+      "x": 12992.482800001202,
+      "label": "Gittins-S",
+      "lo": 12932.446321727532,
+      "hi": 13052.519278274873
+    },
+    {
+      "method_kind": "gittins_g",
+      "x": 14744.666727274405,
+      "label": "Gittins-G",
+      "lo": 14668.740497532704,
+      "hi": 14820.592957016106
+    }
+  ],
+  "raw_budget_exhaustive_denominator": 151443.6,
+  "curves_note": "The CSV keeps all original Gittins rows, including partial seed coverage at the endpoint. Comparison uses n_runs = 20."
+}

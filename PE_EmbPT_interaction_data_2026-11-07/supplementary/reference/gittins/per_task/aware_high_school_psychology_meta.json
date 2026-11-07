@@ -1,0 +1,43 @@
+{
+  "subject": "high_school_psychology",
+  "group": "Easy-Large",
+  "mode": "aware",
+  "x_label": "cum_original_cost",
+  "y_label": "simple_regret",
+  "recommendation_rule": "lcb",
+  "batch_size": 8,
+  "cost_scaling_factor": 0.0001,
+  "paper_prior": {
+    "difficulty": "easy",
+    "bucket": "high",
+    "Gittins-S_mean": 0.75,
+    "Gittins-S_variance": 0.01,
+    "Gittins-G_mean": 0.5,
+    "Gittins-G_variance": 0.04
+  },
+  "band_style": {
+    "range": "stderr",
+    "se_mult": 1.0,
+    "curve_alpha": 0.15,
+    "stop_alpha": 0.12,
+    "stop_line_alpha": 0.72
+  },
+  "observed_natural_stop_lines": [
+    {
+      "method_kind": "gittins_s",
+      "x": 3050.550500000002,
+      "label": "Gittins-S",
+      "lo": 2852.257171298261,
+      "hi": 3248.8438287017434
+    },
+    {
+      "method_kind": "gittins_g",
+      "x": 15143.688899999508,
+      "label": "Gittins-G",
+      "lo": 14966.700365872375,
+      "hi": 15320.677434126641
+    }
+  ],
+  "raw_budget_exhaustive_denominator": 682122.0000000001,
+  "curves_note": "The CSV keeps all original Gittins rows, including partial seed coverage at the endpoint. Comparison uses n_runs = 20."
+}
