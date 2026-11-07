@@ -41,6 +41,8 @@ py-modules = [
     "stable_pbgi",
     "gaussian_ts_policy",
     "correlated_ts_policy",
+    "correlated_gittins_policy",
+    "marginal_gittins_lookup",
     "mfkg_policy",
     "evaluation_costs",
 ]
