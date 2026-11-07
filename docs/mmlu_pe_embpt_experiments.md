@@ -2,6 +2,8 @@
 
 At 10% of MMLU evaluation cells, balanced-question PE-EmbPT reduced mean simple regret from **0.02171928 to 0.00905031** and improved on the 39-feature logistic baseline in all 57 subjects. In the separate 19-subject Figure 3 comparison, GittinsEval-S had lower cohort mean regret than both PE-EmbPT variants at all 36 comparable checkpoints.
 
+**Implemented version:** the completed PE-EmbPT runs use concatenation of prompt embeddings and model indicators, with prompt coefficients shared across LLMs and one fitted effect per question. All PE-EmbPT results below belong to this first version. The proposed version with model-specific prompt coefficients has not been run.
+
 [Main figure (PNG)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT.png) · [Main figure (PDF)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT.pdf) · [Sampling comparison (PNG)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT_sampling.png) · [Sampling comparison (PDF)](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT_sampling.pdf)
 
 ![GittinsEval and PE-EmbPT comparison across the four Figure 3 cohorts](../PE_EmbPT_data_2026-11-07/figure/Figure3_PE_EmbPT.png)
@@ -20,7 +22,45 @@ Each MMLU subject has 1,500 arms from crossing 15 LLMs with 100 prompt templates
 
 All fits use observed binary outcomes and native L2 LIBLINEAR logistic regression with $C=100$. The Rasch logit is the sum of the fitted arm score and the fitted question coefficient. The full-row estimate retains each observed answer and fills only unseen entries with fitted probabilities.
 
+### First version: concatenation with shared prompt coefficients
+
+We fit each MMLU subject independently. Let $m$ identify one of the 15 LLMs, $p$ one of its 100 prompt templates, and $q$ one of the subject's $N$ questions. The response matrix has 1,500 model-prompt rows and $N$ question columns. Each row receives the feature vector
+
+$$
+x_{m,p}=[e(p);d(m)]\in\mathbb{R}^{39},
+$$
+
+where $e(p)\in\mathbb{R}^{25}$ is the cached pretrained prompt embedding after PCA and $d(m)\in\mathbb{R}^{14}$ is the reference-coded model indicator. Model 0 (`meta_llama_llama_3_8b`) has an all-zero indicator; each other model activates its corresponding indicator. A given prompt has the same embedding across all 15 models within a subject. The implementation constructs these rows with `np.hstack([x, llm_oh])`. [Feature construction](../PE_EmbPT_data_2026-11-07/code/source_snapshot/prompteval/bai_evaluation.py#L269-L326)
+
+For an observed response, the fitted logit is
+
+$$
+\ell_{m,p,q}=\gamma^\top e(p)+\alpha_m+\eta_q,\qquad \alpha_0=0.
+$$
+
+The 25 coefficients in $\gamma$ are shared across models; the 14 free $\alpha_m$ coefficients provide model offsets. These are **39 learned arm coefficients in total per subject**, shared by its 1,500 rows. Question identity features add $N$ coefficients $\eta_q$, each shared across all model-prompt rows. Their positive sign represents question easiness; a difficulty parameter would have the opposite sign. There is no separate intercept, so the PE fit contains **$39+N$ coefficients**.
+
+The same prompt contrast $\gamma^\top(e(p_A)-e(p_B))$ therefore applies to every LLM on the fitted logit scale. This construction transfers evidence about prompt effects across models. It does not learn a model embedding or a model-similarity matrix.
+
+### Fitting and recommendation
+
+At each phase, we call `ExtendedRaschModel.fit(seen, Y, X39, Z=None)`. The native implementation makes `Z` the question identity matrix. We construct the observed-cell design as a sparse matrix containing the 39 arm features and the selected question indicator, then use the native L2 LIBLINEAR fit with $C=100$, `random_state=0`, and `fit_intercept=False`. All responses observed so far participate in fitting, including those from previously eliminated arms. The cached encoder features remain fixed; only the regression coefficients are learned. [Replay adapter and sparse design](../PE_EmbPT_data_2026-11-07/code/source_snapshot/outputs/mmlu_rasch39/run_experiment.py#L32-L105) · [Native estimator](../PE_EmbPT_data_2026-11-07/code/source_snapshot/prompteval/methods.py#L47-L144)
+
+For each arm, we retain actual observed outcomes and predict only unanswered cells. With $O_{m,p}$ denoting its observed questions, the score used for recommendation and elimination is
+
+$$
+\widehat S_{m,p}=\frac{1}{N}\left(\sum_{q\in O_{m,p}}Y_{m,p,q}+\sum_{q\notin O_{m,p}}\widehat p_{m,p,q}\right),
+$$
+
+where $\widehat p$ is the sigmoid of the fitted logit clipped to $[-30,30]$. This is implemented by `model.get_Y_hat().mean(axis=1)`. It differs from the historical logistic comparator, which ranks arms by their fitted arm logits. Because the PE score retains each arm's own observed outcomes, shared prompt coefficients do not force the final recommendations to have identical prompt rankings across LLMs.
+
+### Allocation and scope
+
 The replay uses five successive-halving phases with cumulative observation budgets of 2%, 4%, 6%, 8%, and 10% of the response matrix. Each evaluation chooses among the least-sampled active arms. The active set sizes before elimination are 1,500, 750, 375, 187, and 93. Each phase reports the highest-scoring active arm. The upstream phase formula would give 11 phases on a 1,500-arm pool. Original PromptEval ranked prompts separately within each model and used the observed empirical mean among surviving prompts for its final recommendation. The results here describe the joint model-prompt adaptation. [Full protocol](../PE_EmbPT_data_2026-11-07/protocol.json)
+
+Both completed PE variants use this same concatenation design and estimator. `rasch39_random` samples an unanswered question uniformly for the chosen arm. `rasch39_balanced` samples among that arm's least-covered unanswered questions, using question counts across all arms, including eliminated arms. Arm and question ties are broken randomly by the seeded sampler. Thus balanced sampling operates inside the BAI elimination schedule.
+
+For a future interaction variant, the proposed arm features would instead be $[\operatorname{onehot}_{15}(m)\otimes e(p);d(m)]$. Each LLM would have its own block of 25 prompt coefficients, giving $15\times25+14=389$ arm coefficients and $389+N$ coefficients after adding question effects. The blocks belong to LLMs: all 100 prompts for one LLM use its same block with their respective embedding values. This version is not implemented in the reported runs, and no interaction results are included. We describe the completed method as **PE-EmbPT adapted to joint model-prompt selection with shared prompt coefficients and question effects**.
 
 ### Embedding provenance
 
