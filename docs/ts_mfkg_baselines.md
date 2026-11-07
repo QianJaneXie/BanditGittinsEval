@@ -117,7 +117,8 @@ KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/run_correlated_ts_ba
   --batch-size 8 --prior-mean 0.2 --prior-variance 0.01 \
   --kernel-mode fit --out outputs/correlated_ts/gsm8k_seed1.npz
 
-KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_correlated_ts.py
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_correlated_ts.py \
+  --reference-results-dir outputs/gsm8k_gittins_ts_batch_lcb100
 python3 scripts/plot_correlated_ts_comparison.py
 ```
 
@@ -132,6 +133,12 @@ python3 scripts/plot_correlated_ts_comparison.py \
 The merger requires matching data, seeds, priors, budgets, batch sizes, noise
 and recommendation settings, and checks that the two experiments' independent
 TS histories agree before reusing the Gittins traces.
+The comparator reads existing TS and Gittins histories from the reference
+directory; it never runs those policies again. New case files store correlated
+TS trajectories and verified references to the baseline files, without copying
+baseline arrays. If correlated TS has already been computed in another output
+directory, `--reuse-correlated-from <directory>` imports matching trajectories
+and computes only missing correlated TS cases.
 
 The paired comparison retains the paper's five matrix seeds, 20 sampling seeds
 per matrix, both priors, both cost settings, B=8, cell-noise variance 0.25,
@@ -381,6 +388,6 @@ KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 -m pytest -q tests
 Tests cover hand-calculated TS posterior moments and sampling behavior, actual
 BoTorch KG scores against direct fantasy enumeration, cost-scale and chunk-size
 invariance, prefix reuse, strict MF-KG budget and warmup accounting, score
-leakage, row/cost alignment, fixed-batch item counts, and reproducibility. Real GSM8K local smoke traces
-are under `outputs/baseline_smoke/`; these are implementation checks, not
-evidence of relative benchmark performance.
+leakage, row/cost alignment, fixed-batch item counts, and reproducibility.
+Smoke tests validate implementation rather than relative benchmark performance;
+generated artifacts remain outside Git.

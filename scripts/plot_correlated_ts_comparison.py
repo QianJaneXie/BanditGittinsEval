@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from contextlib import contextmanager
 import hashlib
 import json
 import os
@@ -47,6 +48,27 @@ def _finite(value):
     return value
 
 
+@contextmanager
+def ts_trajectory_archive(archive):
+    """Read the original TS trajectory in place without copying it to results."""
+    if "ts_x" in archive:
+        yield archive
+        return
+    if "baseline_reference_case" not in archive:
+        raise ValueError("Missing original TS trajectory reference")
+    path = Path(str(_scalar(archive, "baseline_reference_case")))
+    expected = _scalar(archive, "baseline_reference_case_sha256")
+    if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+        raise ValueError(f"Original baseline reference is missing or changed: {path}")
+    with np.load(path, allow_pickle=False) as source:
+        if _scalar(source, "settings_hash") != _scalar(archive, "baseline_reference_settings_hash"):
+            raise ValueError("Original TS reference settings do not match saved provenance")
+        for field in ("matrix_seed", "run_seed", "prior_name", "cost_mode"):
+            if _scalar(source, field) != _scalar(archive, field):
+                raise ValueError(f"Original TS reference has a different case identity: {field}")
+        yield source
+
+
 def load_cases(directory: Path, *, allow_smoke: bool = False) -> tuple[dict, list[dict]]:
     manifest = json.loads((directory / "manifest.json").read_text())
     for key, expected in (("model_version", "categorical_empirical_correlated_ts_v1"),
@@ -75,7 +97,7 @@ def load_cases(directory: Path, *, allow_smoke: bool = False) -> tuple[dict, lis
         initial = float(truth.max() - truth[0])
         full_expected = float(manifest["unit_exhaustive_cost" if mode == "unit" else "heterogeneous_exhaustive_cost"])
         case = dict(matrix_seed=matrix_seed, run_seed=run_seed, prior=prior, mode=mode, methods={})
-        with np.load(path, allow_pickle=False) as z:
+        with np.load(path, allow_pickle=False) as z, ts_trajectory_archive(z) as ts_source:
             if _scalar(z, "settings_hash") != manifest["settings_hash"]:
                 raise ValueError(f"Case settings differ from manifest: {path}")
             for field, expected in (("matrix_seed", matrix_seed), ("run_seed", run_seed),
@@ -83,30 +105,31 @@ def load_cases(directory: Path, *, allow_smoke: bool = False) -> tuple[dict, lis
                 if _scalar(z, field) != expected:
                     raise ValueError(f"Case identity differs from filename: {path}: {field}")
             for method in METHODS:
-                full = float(_scalar(z, f"{method}_full_budget"))
+                raw = ts_source if method == "ts" else z
+                full = float(_scalar(raw, f"{method}_full_budget"))
                 np.testing.assert_allclose(full, full_expected, rtol=0, atol=1e-6)
                 axis_name = "x" if mode == "unit" else "x_original_cost"
-                x = np.asarray(z[f"{method}_{axis_name}"], dtype=np.float64) / full
-                arms = np.asarray(z[f"{method}_recommended_arm"], dtype=np.int64)
+                x = np.asarray(raw[f"{method}_{axis_name}"], dtype=np.float64) / full
+                arms = np.asarray(raw[f"{method}_recommended_arm"], dtype=np.int64)
                 if not x.size or x.ndim != 1 or arms.shape != x.shape or not np.isfinite(x).all() or (np.diff(x) <= 0).any():
                     raise ValueError(f"Invalid raw history: {path}: {method}")
                 if (arms < 0).any() or (arms >= len(truth)).any():
                     raise ValueError(f"Invalid recommendation: {path}: {method}")
                 y = truth.max() - truth[arms]
-                np.testing.assert_allclose(y, z[f"{method}_regret"], rtol=0, atol=1e-12)
+                np.testing.assert_allclose(y, raw[f"{method}_regret"], rtol=0, atol=1e-12)
                 metrics = {f"regret_at_{100*b:g}%": previous_regret(x, y, b, initial)
                            for b in CHECKPOINTS if b <= manifest["budget_fraction"]}
                 for end in (0.02, 0.10):
                     if end <= manifest["budget_fraction"]:
                         metrics[f"auc_0_{100*end:g}%"] = budget_average_regret(x, y, end, initial)
                 computed_auc = budget_average_regret(x, y, manifest["budget_fraction"], initial)
-                np.testing.assert_allclose(computed_auc, float(_scalar(z, f"{method}_auc_normalized")), rtol=0, atol=1e-12)
+                np.testing.assert_allclose(computed_auc, float(_scalar(raw, f"{method}_auc_normalized")), rtol=0, atol=1e-12)
                 case["methods"][method] = dict(
                     x=x, y=y, metrics=metrics,
                     final_budget_fraction=float(x[-1]), observation_rounds=len(x),
-                    elapsed_s=float(_scalar(z, f"{method}_elapsed_s")),
-                    fit_count=int(_scalar(z, f"{method}_fit_count", 0)),
-                    stop_reason=str(_scalar(z, f"{method}_stop_reason")),
+                    elapsed_s=float(_scalar(raw, f"{method}_elapsed_s")),
+                    fit_count=int(_scalar(raw, f"{method}_fit_count", 0)),
+                    stop_reason=str(_scalar(raw, f"{method}_stop_reason")),
                 )
         cases.append(case)
     identities = [(c["matrix_seed"], c["run_seed"], c["prior"], c["mode"]) for c in cases]
@@ -234,8 +257,8 @@ def join_three_way_case(
             raise ValueError(f"Three-way case identities differ: {field}")
     with np.load(current_path, allow_pickle=False) as current_raw, np.load(
         gittins_path, allow_pickle=False,
-    ) as old_raw:
-        checked = validate_shared_ts_trajectory(current_raw, old_raw, case_name=current_path.name)
+    ) as old_raw, ts_trajectory_archive(current_raw) as current_ts:
+        checked = validate_shared_ts_trajectory(current_ts, old_raw, case_name=current_path.name)
         trace = gittins_case["methods"]["gittins"]
         trace = {**trace, "final_budget_fraction": trace["actual_final_budget_fraction"],
                  "elapsed_s": float(_scalar(old_raw, "gittins_elapsed_s")), "fit_count": 0,
@@ -427,7 +450,7 @@ def render(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", type=Path, default=ROOT / "outputs/gsm8k_correlated_ts_lcb100")
+    parser.add_argument("--results-dir", type=Path, default=ROOT / "outputs/gsm8k_correlated_ts_reuse_lcb100")
     parser.add_argument("--allow-smoke", action="store_true")
     parser.add_argument("--gittins-results-dir", type=Path,
                         help="Also produce three-way figures using a validated paper batch-level Gittins experiment.")
