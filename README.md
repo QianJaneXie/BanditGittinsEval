@@ -45,6 +45,11 @@ MF-KG has its own matrix-level runner, `scripts/run_mfkg_baseline.py`; see the
 configs, and validation. Each MF-KG query chooses one configuration and a
 higher fidelity; its newly evaluated item count depends on that fidelity jump.
 
+For the paper's GSM8K parameters with **both Gittins and TS using LCB
+recommendation**, use `scripts/compare_gittins_ts.py` followed by
+`scripts/plot_gittins_ts_comparison.py`. This comparison uses B=8 and 100 paired
+trials per prior/cost condition; see the guide for the exact protocol.
+
 **Common flags** — run any script with `--help` for the full list:
 
 - `--eval-budget-fraction` — fraction of matrix cells (unit cost) or total full-evaluation cost (with `--cost-vector`).

@@ -250,6 +250,39 @@ retain the new methods' metadata and support the aggregate plotting script.
 MF-KG warmup is retained even with `--bo-phase post_init`. Use a fresh download
 directory when upgrading an existing CSV schema.
 
+## GSM8K comparison with the paper's main parameters
+
+The dedicated Gittins/TS comparison explicitly uses the full-benchmark empirical
+target and the same `posterior mean - posterior std` recommendation for **both**
+allocation policies. This differs from the standalone TS runner's default
+posterior-mean recommendation. It uses B=8, cell-noise variance 0.25, Gittins
+cost scale 1e-4, a 1025-point numerical grid, and a 10% exhaustive budget.
+The general prior N(0.5, 0.04) and GSM8K prior N(0.2, 0.01) are each shared by
+the two policies, under both unit and heterogeneous evaluation costs.
+
+Each panel averages five matrix seeds and 20 sampling seeds per matrix,
+giving 100 paired trials. TS allocation remains cost-unaware; actual prices
+determine its stopping budget and the horizontal axis in the heterogeneous
+setting. Both policies continue to the budget, with stopping signals retained
+only as diagnostics. The numerical Gittins implementation retains the existing
+per-cell DP roots and B-item pulls; the manuscript's batch-level root schedule
+should be distinguished from this discretization.
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_gittins_ts.py --prepare-only
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_gittins_ts.py
+python3 scripts/plot_gittins_ts_comparison.py
+```
+
+Outputs are saved under `outputs/gsm8k_gittins_ts_lcb100/`. Root tables are cached
+and completed cases resume automatically, with matrix/price hashes preventing
+reuse of mismatched results. The figure follows the paper's 350-point linear
+interpolation and mean +/- one standard error. Numerical checkpoints and exact
+budget-average regret use the last completed observation at or before each
+budget, excluding over-budget feedback. Paired summaries include per-matrix
+differences and a two-way matrix/trial-seed bootstrap; 100 trajectories do not
+represent 100 independent datasets.
+
 ## Validation
 
 ```bash
