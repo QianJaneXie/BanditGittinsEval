@@ -16,14 +16,18 @@ authors = [
 ]
 dependencies = [
     "banditeval>=0.1.1",
-    "botorch",
-    "gpytorch",
+    "botorch>=0.9.5",
+    "gpytorch>=1.11",
     "jax>=0.4.26",
     "jaxtyping>=0.2.28",
     "matplotlib>=3.8",
     "numpy>=1.24",
     "torch>=2.5.1",
 ]
+
+[project.optional-dependencies]
+experiments = ["wandb", "pandas", "PyYAML"]
+test = ["pytest>=8", "wandb", "pandas", "PyYAML"]
 
 # Editable install exposes modules under src/ (e.g. import q_estimation).
 [tool.setuptools]
@@ -35,4 +39,7 @@ py-modules = [
     "gittins_policy",
     "simple_regret_recommend",
     "stable_pbgi",
+    "gaussian_ts_policy",
+    "mfkg_policy",
+    "evaluation_costs",
 ]

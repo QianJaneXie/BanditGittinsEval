@@ -29,6 +29,8 @@ def gittins_recommendation_label(traces) -> str:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--traces", type=Path, required=True, help="Path to .npz from simulation.")
+    p.add_argument("--mfkg-trace", type=Path, default=None,
+                   help="Optional MF-KG .npz to overlay, including all warmup observations.")
     p.add_argument("--out", type=Path, required=True, help="Output figure path (e.g. .png).")
     p.add_argument("--title", type=str, default=None)
     p.add_argument(
@@ -40,13 +42,15 @@ def main() -> int:
     args = p.parse_args()
 
     z = np.load(args.traces)
+    mfkg = np.load(args.mfkg_trace) if args.mfkg_trace is not None else z
 
-    def _plot(x_key: str, y_key: str, label: str, *, color: str) -> None:
-        if x_key in z.files and y_key in z.files:
-            x = z[x_key]
-            y = z[y_key]
+    def _plot(x_key: str, y_key: str, label: str, *, color: str, source=z) -> None:
+        if x_key in source.files and y_key in source.files:
+            x = source[x_key]
+            y = source[y_key]
             if x.size and y.size:
-                plt.plot(x, y, label=label, color=color, linewidth=1.6)
+                plt.plot(x, y, label=label, color=color, linewidth=1.6,
+                         marker="o" if x.size == 1 else None)
 
     x_ucb = "ucb_x" if args.x_axis == "evals" else "ucb_x_original_cost"
     x_sysrs = "sysrs_x" if args.x_axis == "evals" else "sysrs_x_original_cost"
@@ -61,6 +65,9 @@ def main() -> int:
     _plot(x_ucb, "ucb_regret", "UCB-E (recommend: empirical mean)", color=color_ucb)
     _plot(x_sysrs, "sysrs_regret", "SySRs (recommend: active empirical mean)", color=color_sysrs)
     _plot(x_gittins, "gittins_regret", gittins_recommendation_label(z), color=color_gittins)
+    suffix = "x" if args.x_axis == "evals" else "x_original_cost"
+    _plot(f"ts_{suffix}", "ts_regret", "Gaussian TS (recommend: posterior full test-set mean)", color="C4")
+    _plot(f"mfkg_{suffix}", "mfkg_regret", "MF-KG (including warmup)", color="C5", source=mfkg)
     if args.x_axis == "original_cost":
         plt.xlabel("Cumulative cost (original units of cost vector)")
     else:

@@ -40,6 +40,8 @@ from gittins_policy import gittins_index_exploration, gittins_post_pull_update  
 from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
+from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
+from gaussian_ts_policy import gaussian_thompson_sampling  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
 DEFAULT_PRIOR_VARIANCE = 0.04
@@ -70,6 +72,19 @@ def safe_token(s: str) -> str:
 
 def parse_experiment_variant(raw: str) -> VariantConfig:
     v = raw.strip()
+
+    m = re.fullmatch(r"ts_(unit|cost|aware)_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        mode = "cost" if m.group(1) == "aware" else m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(v, f"ts_{mode}", "ts", mode, b, b, 1e-4, m.group(3) or "default")
+    m = re.fullmatch(r"ts_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        b = int(m.group(1))
+        return VariantConfig(v, "ts_unit", "ts", "unit", b, b, 1e-4, m.group(2) or "default")
+    if v in {"ts", "ts_unit", "ts_cost", "ts_aware"}:
+        mode = "cost" if v in {"ts_cost", "ts_aware"} else "unit"
+        return VariantConfig(v, f"ts_{mode}", "ts", mode, 20, 20, 1e-4, "default")
 
     m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
     if m:
@@ -121,7 +136,9 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
 def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
     if not path.is_file():
         raise FileNotFoundError(str(path))
-    if path.suffix.lower() == ".npy":
+    if path.suffix.lower() == ".npz":
+        arr = load_bo_per_cell_costs(path, n_arms)
+    elif path.suffix.lower() == ".npy":
         arr = np.squeeze(np.load(path)).astype(np.float64)
     elif path.suffix.lower() == ".json":
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -142,11 +159,11 @@ def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
         else:
             raise ValueError(f"unsupported JSON cost format: {path}")
     else:
-        raise ValueError(f"cost vector must be .npy or .json, got {path}")
+        raise ValueError(f"cost vector must be .npy, .json, or a BO .npz archive, got {path}")
     arr = np.asarray(arr, dtype=np.float64).reshape(-1)
     if arr.shape != (n_arms,):
         raise ValueError(f"cost vector shape must be ({n_arms},), got {arr.shape}")
-    return torch.tensor(arr, dtype=torch.float64)
+    return torch.tensor(validate_per_cell_costs(arr, n_arms), dtype=torch.float64)
 
 
 def resolve_prior(
@@ -254,6 +271,28 @@ def build_policy(
             )
 
         return step_fn, empirical_incumbent, None, lookup_table_s
+
+    if variant.policy_family == "ts":
+        B = int(variant.batch_size)
+        if B <= 0:
+            raise ValueError("TS batch size must be positive")
+        tau_sq_batch = getattr(args, "ts_obs_noise_variance", None)
+        if tau_sq_batch is None:
+            tau_sq_batch = args.gittins_obs_noise_variance
+        if tau_sq_batch is None:
+            tau_sq_batch = 1.0 / (4.0 * B)
+
+        def step_fn(obs: torch.Tensor, sim_cum_eval: int):
+            return gaussian_thompson_sampling(
+                obs, prior_mean=prior_mean, prior_variance=prior_variance,
+                obs_noise_variance=tau_sq_batch, batch_size=B,
+                max_batch_size=max_evaluations - sim_cum_eval,
+            )
+
+        return step_fn, partial(
+            posterior_incumbent, prior_mean=prior_mean, prior_variance=prior_variance,
+            tau_sq_cell=float(tau_sq_batch) * B,
+        ), None, lookup_table_s
 
     if variant.policy_family != "gittins":
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")
@@ -497,11 +536,18 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ucb-a", "--ucb_a", dest="ucb_a", type=float, default=1.0)
     p.add_argument("--warmup-percentage", "--warmup_percentage", type=float, default=0.05)
     p.add_argument("--lrf-device", "--lrf_device", default="cpu")
-    p.add_argument("--cost-vector", "--cost_vector", type=Path, default=None)
+    p.add_argument("--cost-vector", "--cost_vector", type=Path, default=None,
+        help="Per-cell prices (.json/.npy), or BO .npz full costs divided by metadata n_examples.")
     p.add_argument("--gittins-grid-points", "--gittins_grid_points", type=int, default=2**10 + 1)
     p.add_argument("--gittins-obs-noise-variance", "--gittins_obs_noise_variance", type=float, default=None)
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument("--ts-prior-mean", "--ts_prior_mean", type=float, default=None,
+                   help="Override the resolved Gaussian TS prior mean.")
+    p.add_argument("--ts-prior-variance", "--ts_prior_variance", type=float, default=None,
+                   help="Override the resolved Gaussian TS prior variance.")
+    p.add_argument("--ts-obs-noise-variance", "--ts_obs_noise_variance", type=float, default=None,
+                   help="TS batch-mean noise; defaults to Gittins override or 1/(4B).")
     p.add_argument(
         "--recommendation-std-penalty",
         "--recommendation_std_penalty",
@@ -579,6 +625,11 @@ def main() -> int:
         prior_mean = float(args.gittins_prior_mean)
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
+    if variant.policy_family == "ts":
+        if args.ts_prior_mean is not None:
+            prior_mean = float(args.ts_prior_mean)
+        if args.ts_prior_variance is not None:
+            prior_variance = float(args.ts_prior_variance)
 
     matrix_seed = re.search(r"seed(\d+)", args.matrix.stem)
     matrix_seed = matrix_seed.group(1) if matrix_seed else None
@@ -600,6 +651,9 @@ def main() -> int:
         if recommendation_std_penalty > 0.0:
             recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
             recommendation_rule = "finite_population_posterior_mean_minus_std"
+    elif variant.policy_family == "ts":
+        recommendation_suffix = "_targetfinite_recfinite"
+        recommendation_rule = "finite_population_posterior_mean"
     recommendation_config = {
         "gittins_index_target": (
             "finite_population_mean" if variant.policy_family == "gittins" else None
@@ -607,6 +661,18 @@ def main() -> int:
         "recommendation_rule": recommendation_rule,
         "recommendation_std_penalty": recommendation_std_penalty,
     }
+    if variant.policy_family == "ts":
+        ts_noise = args.ts_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = args.gittins_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = 1.0 / (4.0 * variant.batch_size)
+        recommendation_config.update(
+            ts_target="finite_population_mean",
+            ts_obs_noise_variance_resolved=float(ts_noise),
+            ts_tau_sq_cell=float(ts_noise) * variant.batch_size,
+            ts_cost_allocation="standard_ts_cost_budget_stopping",
+        )
     run_name = args.wandb_name or (
         f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
         f"{recommendation_suffix}"

@@ -87,6 +87,40 @@ def derive_method_label_row(row: pd.Series) -> str:
             else target
         )
         return f"{label} [index: {index_label}; recommend: {score}]"
+    if family == "ts" or variant == "ts" or variant.startswith("ts_"):
+        if existing_label:
+            return existing_label
+        cost_mode = str(row.get("cost_mode") or "").lower()
+        mode = "cost" if cost_mode in {"cost", "aware"} or re.search(r"_(cost|aware)(?:_|$)", variant) else "unit"
+        qualifiers = [mode]
+        batch = pd.to_numeric(row.get("batch_size"), errors="coerce")
+        batch_match = re.search(r"_B(\d+)", variant)
+        if pd.isna(batch) and batch_match:
+            batch = int(batch_match.group(1))
+        if pd.notna(batch):
+            qualifiers.append(f"B={float(batch):g}")
+        prior = row.get("prior_type")
+        prior_match = re.search(r"_(default|dataset)$", variant)
+        if pd.isna(prior) or not str(prior).strip():
+            prior = prior_match.group(1) if prior_match else None
+        if prior is not None:
+            qualifiers.append(f"prior={prior}")
+        return f"Gaussian TS ({'; '.join(qualifiers)})"
+    if family == "mfkg" or variant.startswith("mfkg") or str(row.get("acquisition") or "").lower() == "mfkg":
+        cost_mode = str(row.get("cost_mode") or "unit").lower()
+        label = existing_label or ("BO MF-KG (cost)" if cost_mode in {"cost", "aware"} or "cost" in variant else "BO MF-KG")
+        allocation_mode = row.get("allocation_mode")
+        mode = str(allocation_mode).strip() if pd.notna(allocation_mode) else ""
+        if not mode:
+            return label
+        label = re.sub(r" \[(?:fixed batch|adaptive fidelity|allocation=)[^\]]*\]$", "", label)
+        if mode == "fixed_batch":
+            batch = pd.to_numeric(row.get("batch_size"), errors="coerce")
+            batch_label = f"{float(batch):g}" if pd.notna(batch) and np.isfinite(batch) else "unknown"
+            return f"{label} [fixed batch B={batch_label}]"
+        if mode == "adaptive_fidelity":
+            return f"{label} [adaptive fidelity]"
+        return f"{label} [allocation={mode}]"
     if existing_label:
         return existing_label
     if family == "bo":
@@ -109,7 +143,7 @@ def derive_method_label_row(row: pd.Series) -> str:
 
 
 def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
-    """Prevent custom aggregation keys from pooling distinct Gittins rules."""
+    """Prevent custom aggregation keys from pooling different experiment rules."""
     is_gittins = (_str_series(df, "policy_family").str.lower() == "gittins") | (
         _str_series(df, "experiment_variant").str.startswith("gittins")
     )
@@ -127,6 +161,23 @@ def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
                 f"Group {label!r} mixes Gittins recommendation rules, index targets, or std penalties; "
                 "use --group-by method_label or filter to one index/recommendation rule."
             )
+    is_mfkg = (_str_series(df, "policy_family").str.lower() == "mfkg") | (
+        _str_series(df, "experiment_variant").str.startswith("mfkg")
+    ) | (_str_series(df, "acquisition").str.lower() == "mfkg")
+    for label, group in df.loc[is_mfkg].groupby(group_by):
+        modes = group.get("allocation_mode", pd.Series(index=group.index, dtype=str)).fillna("")
+        batches = pd.to_numeric(
+            group.get("batch_size", pd.Series(index=group.index, dtype=float)), errors="coerce"
+        )
+        protocols = {
+            (str(mode).strip(), str(batch) if str(mode).strip() == "fixed_batch" and pd.notna(batch) else "")
+            for mode, batch in zip(modes, batches)
+        }
+        if len(protocols) > 1:
+            raise ValueError(
+                f"Group {label!r} mixes MF-KG allocation modes or item batch sizes; "
+                "use --group-by method_label or filter to one allocation protocol."
+            )
 
 
 def load_history_csv(path: Path) -> pd.DataFrame:
@@ -138,12 +189,17 @@ def load_summary_csv(path: Path) -> pd.DataFrame:
 
 
 def apply_bo_phase_filter(df: pd.DataFrame, bo_phase: str) -> pd.DataFrame:
+    """Filter single-fidelity BO initialization; retain every MF-KG warmup row."""
     if bo_phase != "post_init":
         return df
     if "selection_phase" not in df.columns:
         return df
     phase = df["selection_phase"].astype(str)
-    is_bo = _str_series(df, "policy_family").str.lower() == "bo"
+    family = _str_series(df, "policy_family").str.lower()
+    is_mfkg = (family == "mfkg") | (_str_series(df, "acquisition").str.lower() == "mfkg") | (
+        _str_series(df, "experiment_variant").str.lower().str.startswith("mfkg")
+    )
+    is_bo = (family == "bo") & ~is_mfkg
     keep = (~is_bo) | (phase != "random_init")
     return df.loc[keep].copy()
 
@@ -265,7 +321,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--x-axis", choices=["cum_eval", "cum_original_cost", "step_idx"], default="cum_eval")
     p.add_argument("--y-axis", default="simple_regret")
     p.add_argument("--group-by", default="method_label", help="Column used for curve labels / aggregation groups")
-    p.add_argument("--bo-phase", choices=["full", "post_init"], default="full", help="For BO rows, post_init drops random-init steps")
+    p.add_argument("--bo-phase", choices=["full", "post_init"], default="full",
+                   help="For single-fidelity BO rows, post_init drops random-init steps; MF-KG warmup is retained")
     p.add_argument(
         "--lrf-phase",
         choices=["full", "post_warmup"],

@@ -88,6 +88,16 @@ RECOMMENDATION_COLUMNS = [
     "gittins_index_target",
 ]
 
+TS_COLUMNS = [
+    "ts_target",
+    "ts_prior_mean",
+    "ts_prior_variance",
+    "ts_obs_noise_variance",
+    "ts_obs_noise_variance_resolved",
+    "ts_tau_sq_cell",
+    "ts_cost_allocation",
+]
+
 BASE_COLUMNS = [
     "run_id",
     "run_name",
@@ -119,7 +129,7 @@ BASE_COLUMNS = [
     "budget_max_evals",
     "eval_budget_fraction",
     "warmup_percentage",
-] + RECOMMENDATION_COLUMNS
+] + RECOMMENDATION_COLUMNS + TS_COLUMNS
 
 SUMMARY_COLUMNS = BASE_COLUMNS + [
     "final_simple_regret",
@@ -186,7 +196,7 @@ FULL_CONFIG_DIAGNOSTIC_COLUMNS = [
     "prior_mean_resolved",
     "prior_variance_resolved",
     "eval_budget_fraction",
-] + RECOMMENDATION_COLUMNS
+] + RECOMMENDATION_COLUMNS + TS_COLUMNS
 
 
 def safe_token(s: str) -> str:
@@ -223,7 +233,26 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if not experiment_variant:
         return out
-    v = str(experiment_variant)
+    v = str(experiment_variant).strip()
+    m = re.fullmatch(r"ts_(unit|cost|aware)_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        cost_mode = "cost" if m.group(1) == "aware" else m.group(1)
+        b, prior_type = int(m.group(2)), m.group(3) or "default"
+    else:
+        m = re.fullmatch(r"ts_B(\d+)(?:_(default|dataset))?", v)
+        if m:
+            cost_mode, b, prior_type = "unit", int(m.group(1)), m.group(2) or "default"
+        elif v in {"ts", "ts_unit", "ts_cost", "ts_aware"}:
+            cost_mode = "cost" if v in {"ts_cost", "ts_aware"} else "unit"
+            b, prior_type = 20, "default"
+        else:
+            cost_mode = None
+    if cost_mode is not None:
+        return dict(
+            policy_variant=f"ts_{cost_mode}", policy_family="ts", cost_mode=cost_mode,
+            batch_size=b, gittins_batch_size=b, cost_scaling_factor=1e-4,
+            prior_type=prior_type, ts_target="finite_population_mean",
+        )
     m = re.fullmatch(r"(ucb|lrf)_B(\d+)", v)
     if m:
         policy = m.group(1)
@@ -361,6 +390,9 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "eval_budget_fraction": get_field(cfg, summary, "eval_budget_fraction"),
         "warmup_percentage": get_field(cfg, summary, "warmup_percentage"),
         **{key: get_field(cfg, summary, key) for key in RECOMMENDATION_COLUMNS},
+        **{key: get_field(cfg, summary, key)
+           if get_field(cfg, summary, key) is not None else fallback.get(key)
+           for key in TS_COLUMNS},
     }
 
 

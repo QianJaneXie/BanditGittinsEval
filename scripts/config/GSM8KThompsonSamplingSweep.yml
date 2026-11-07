@@ -1,0 +1,44 @@
+# BO archive prices and categorical arm ordering are identical across the five
+# bundled GSM8K matrix seeds; its full costs are converted to per-cell costs.
+program: scripts/run_simple_regret_wandb.py
+name: GSM8KThompsonSamplingSweep
+method: grid
+command:
+- ${env}
+- ${interpreter}
+- ${program}
+- --log-step-metrics
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  dataset_tag:
+    value: gsm8k
+  matrix:
+    values:
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed2.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed3.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed4.npy
+    - data/BanditEval_matrices/gsm8k_1_samples_various_models_seed5.npy
+  run_seed:
+    values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  experiment_variant:
+    values:
+    - ts_unit_B8_dataset
+    - ts_unit_B16_dataset
+    - ts_unit_B32_dataset
+    - ts_cost_B8_dataset
+    - ts_cost_B16_dataset
+    - ts_cost_B32_dataset
+  cost_vector:
+    value: data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz
+  eval_budget_fraction:
+    value: 0.1
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: gsm8k_thompson_sampling_sweep
+  wandb_mode:
+    value: online

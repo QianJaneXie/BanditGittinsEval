@@ -9,6 +9,9 @@ Works with any `(n_models, n_examples)` accuracy matrix under `data/`. Full expe
 ```bash
 pip install -e .
 # or: uv sync && uv run python ...
+
+# Optional W&B experiments and the test suite:
+pip install -e '.[experiments,test]'
 ```
 
 See `pyproject.toml` for dependencies (`banditeval`, `torch`, `matplotlib`, `jax`, …).
@@ -30,8 +33,17 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
 | Gittins | Gittins index for the full test-set mean | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
+| Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior mean |
+| MF-KG | BoTorch knowledge gradient per incremental item cost; jointly select one configuration and its next fidelity (`q=1`) | GP posterior mean at full fidelity |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
+
+Gaussian TS is enabled with `--algorithms ts` (or add `ts` to the existing list).
+MF-KG has its own matrix-level runner, `scripts/run_mfkg_baseline.py`; see the
+[TS and MF-KG guide](docs/ts_mfkg_baselines.md) for commands, the default
+`q=1 + adaptive_fidelity` setup, the 10% warmup cap, cost accounting, W&B
+configs, and validation. Each MF-KG query chooses one configuration and a
+higher fidelity; its newly evaluated item count depends on that fidelity jump.
 
 **Common flags** — run any script with `--help` for the full list:
 

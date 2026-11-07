@@ -4,6 +4,8 @@
 BayesOpt curves start at the end of random initialization (last init point plus
 all acquisition-driven evaluations). The x-axis remains cumulative evals or cost
 from the start of the run.
+MF-KG uses matrix-cell observations and is plotted from its first warmup
+observation, with every evaluated cell charged on the cumulative x-axis.
 """
 
 from __future__ import annotations
@@ -39,7 +41,8 @@ def _plot_curve(
     x = np.asarray(z[x_key])
     y = np.asarray(z[y_key])
     if x.size and y.size:
-        plt.plot(x, y, linewidth=linewidth, label=label, color=color)
+        plt.plot(x, y, linewidth=linewidth, label=label, color=color,
+                 marker="o" if x.size == 1 else None)
 
 
 def _plot_stop(
@@ -103,8 +106,12 @@ def main() -> int:
         "--pbgi-trace",
         "--pbgi_trace",
         type=Path,
-        required=True,
+        default=None,
         help="PBGI trace from scripts/run_bo_baseline.py.",
+    )
+    p.add_argument(
+        "--mfkg-trace", "--mfkg_trace", type=Path, default=None,
+        help="MF-KG trace from scripts/run_mfkg_baseline.py, including all warmup steps.",
     )
     p.add_argument(
         "--pbgi-label",
@@ -143,13 +150,14 @@ def main() -> int:
         "--x-axis",
         choices=["evals", "original_cost"],
         required=True,
-        help="Use cumulative examples/evaluations or cumulative full-evaluation cost.",
+        help="Use cumulative examples/evaluations or cumulative cost in original units.",
     )
     args = p.parse_args()
 
     bandit = np.load(args.bandit_trace)
-    pbgi = np.load(args.pbgi_trace)
+    pbgi = np.load(args.pbgi_trace) if args.pbgi_trace is not None else None
     log_bo = np.load(args.log_bo_trace) if args.log_bo_trace is not None else None
+    mfkg = np.load(args.mfkg_trace) if args.mfkg_trace is not None else bandit
 
     if args.x_axis == "evals":
         ucb_x = "ucb_x"
@@ -166,11 +174,15 @@ def main() -> int:
         bo_stop_key = "pbgi_stop_cum_original_cost"
         gittins_stop_key = "gittins_stop_cum_original_cost"
         gittins_rec_stop_key = "gittins_recommendation_aware_stop_cum_original_cost"
-        xlabel = "Cumulative full-evaluation cost"
+        xlabel = "Cumulative evaluation cost (original units)"
 
     plt.figure(figsize=(8, 5))
     _plot_curve(bandit, x_key=ucb_x, y_key="ucb_regret", label="bandit UCB-E")
     _plot_curve(bandit, x_key=gittins_x, y_key="gittins_regret", label="bandit Gittins")
+    suffix = "x" if args.x_axis == "evals" else "x_original_cost"
+    _plot_curve(bandit, x_key=f"sysrs_{suffix}", y_key="sysrs_regret", label="bandit SySRs", color="C2")
+    _plot_curve(bandit, x_key=f"ts_{suffix}", y_key="ts_regret", label="Gaussian TS", color="C4")
+    _plot_curve(mfkg, x_key=f"mfkg_{suffix}", y_key="mfkg_regret", label="MF-KG (including warmup)", color="C5")
     if log_bo is not None:
         _plot_bo_with_stop(
             log_bo,
@@ -181,15 +193,16 @@ def main() -> int:
             stop_label=f"{args.log_bo_label} stop",
             stop_color=str(args.log_bo_color),
         )
-    _plot_bo_with_stop(
-        pbgi,
-        x_key=bo_x,
-        stop_key=bo_stop_key,
-        label=str(args.pbgi_label),
-        curve_color=args.pbgi_color,
-        stop_label=f"{args.pbgi_label} stop",
-        stop_color=str(args.pbgi_color),
-    )
+    if pbgi is not None:
+        _plot_bo_with_stop(
+            pbgi,
+            x_key=bo_x,
+            stop_key=bo_stop_key,
+            label=str(args.pbgi_label),
+            curve_color=args.pbgi_color,
+            stop_label=f"{args.pbgi_label} stop",
+            stop_color=str(args.pbgi_color),
+        )
 
     _plot_stop(
         _scalar(bandit, gittins_stop_key),

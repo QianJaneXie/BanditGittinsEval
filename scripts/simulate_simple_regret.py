@@ -4,6 +4,8 @@
 Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
+- Gaussian TS: sample the full fixed test-set posterior mean and recommend by
+  its posterior expectation. Costs affect stopping, not the accuracy objective.
 - Gittins: arm selection by a Gittins index for the full fixed test-set average,
   recommendation by the posterior mean
   of the full fixed test-set average, with an optional posterior predictive std
@@ -34,6 +36,8 @@ from gittins_policy import gittins_index_exploration, gittins_post_pull_update  
 from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
+from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
+from gaussian_ts_policy import gaussian_thompson_sampling  # noqa: E402
 
 
 @dataclass(frozen=True)
@@ -179,11 +183,13 @@ def _json_configurations_to_1d(data: dict, n_arms: int) -> np.ndarray:
 
 
 def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
-    """Load per-arm costs (shape `(n_arms,)`) from `.npy` or `.json`."""
+    """Load per-cell prices; BO `.npz` full-evaluation costs are divided by N."""
     if not path.is_file():
         raise FileNotFoundError(str(path))
     suf = path.suffix.lower()
-    if suf == ".npy":
+    if suf == ".npz":
+        arr = load_bo_per_cell_costs(path, n_arms)
+    elif suf == ".npy":
         arr = np.squeeze(np.load(path))
     elif suf == ".json":
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -198,11 +204,11 @@ def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
         else:
             raise ValueError("unsupported JSON cost format")
     else:
-        raise ValueError("cost vector must be .npy or .json")
+        raise ValueError("cost vector must be .npy, .json, or a BO .npz archive")
     arr = np.asarray(arr, dtype=np.float64).reshape(-1)
     if arr.shape != (n_arms,):
         raise ValueError(f"cost vector must have shape (n_arms,) = ({n_arms},); got {arr.shape}")
-    return torch.tensor(arr, dtype=torch.float64)
+    return torch.tensor(validate_per_cell_costs(arr, n_arms), dtype=torch.float64)
 
 
 def main() -> int:
@@ -212,7 +218,7 @@ def main() -> int:
         "--out",
         type=Path,
         required=True,
-        help="Output .npz path (will store ucb_*, sysrs_*, and gittins_* arrays).",
+        help="Output .npz path (stores policy-prefixed trace arrays).",
     )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument(
@@ -252,7 +258,7 @@ def main() -> int:
         "--cost-vector",
         type=Path,
         default=None,
-        help="Optional per-arm costs (JSON or .npy). Homogeneous cost: use a vector of 1.0.",
+        help="Optional per-cell prices (.json/.npy), or a BO .npz archive whose full costs are divided by metadata n_examples.",
     )
     p.add_argument(
         "--cost-scaling-factor",
@@ -268,10 +274,20 @@ def main() -> int:
         "B=--gittins-batch-size.",
     )
     p.add_argument(
+        "--ts-batch-size", type=int, default=None,
+        help="Gaussian TS batch size; defaults to --gittins-batch-size.",
+    )
+    p.add_argument("--ts-prior-mean", type=float, default=None,
+                   help="Gaussian TS prior mean; defaults to --gittins-prior-mean.")
+    p.add_argument("--ts-prior-variance", type=float, default=None,
+                   help="Gaussian TS prior variance; defaults to --gittins-prior-variance.")
+    p.add_argument("--ts-obs-noise-variance", type=float, default=None,
+                   help="Gaussian TS batch-mean noise; defaults to Gittins override or 1/(4B).")
+    p.add_argument(
         "--algorithms",
         nargs="+",
         default=["ucb", "sysrs", "gittins"],
-        choices=["ucb", "sysrs", "gittins"],
+        choices=["ucb", "sysrs", "gittins", "ts"],
     )
     args = p.parse_args()
     if (
@@ -535,6 +551,53 @@ def main() -> int:
             gittins_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
             gittins_recommendation_aware_stop_cum_eval=np.asarray(-1, dtype=np.int32),
             gittins_recommendation_aware_stop_cum_original_cost=np.asarray(-1.0, dtype=np.float64),
+        )
+
+    if "ts" in args.algorithms:
+        ts_batch_size = args.gittins_batch_size if args.ts_batch_size is None else args.ts_batch_size
+        if ts_batch_size <= 0:
+            p.error("--ts-batch-size must be positive")
+        ts_prior_mean = args.gittins_prior_mean if args.ts_prior_mean is None else args.ts_prior_mean
+        ts_prior_variance = args.gittins_prior_variance if args.ts_prior_variance is None else args.ts_prior_variance
+        ts_noise = args.ts_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = args.gittins_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = 1.0 / (4.0 * ts_batch_size)
+
+        def ts_step(obs: torch.Tensor, *, sim_cum_eval: int):
+            return gaussian_thompson_sampling(
+                obs, prior_mean=ts_prior_mean, prior_variance=ts_prior_variance,
+                obs_noise_variance=ts_noise, batch_size=ts_batch_size,
+                max_batch_size=max_evaluations - sim_cum_eval,
+            )
+
+        tr = simulate_simple_regret(
+            ground_truth=ground_truth, step=ts_step, step_kwargs={}, seed=int(args.seed),
+            max_evaluations=max_evaluations, per_arm_original_cost=per_arm_original_cost,
+            max_original_cost=max_original_cost, pass_sim_cum_eval=True,
+            recommend_fn=partial(
+                posterior_incumbent, prior_mean=ts_prior_mean,
+                prior_variance=ts_prior_variance, tau_sq_cell=ts_noise * ts_batch_size,
+            ),
+        )
+        out.update(
+            ts_x=np.asarray(tr.x, dtype=np.int32),
+            ts_x_original_cost=np.asarray(tr.x_original_cost, dtype=np.float64),
+            ts_regret=np.asarray(tr.regret, dtype=np.float32),
+            ts_recommended_arm=np.asarray(tr.recommended_arm, dtype=np.int32),
+            ts_recommended_mean=np.asarray(tr.recommended_mean, dtype=np.float32),
+            ts_prior_mean=float(ts_prior_mean), ts_prior_variance=float(ts_prior_variance),
+            ts_obs_noise_variance=float(ts_noise), ts_batch_size=int(ts_batch_size),
+            ts_target="finite_population_mean",
+            ts_recommendation_rule="finite_population_posterior_mean",
+            ts_cost_allocation="standard_ts_cost_budget_stopping",
+        )
+    else:
+        out.update(
+            ts_x=np.asarray([], dtype=np.int32), ts_x_original_cost=np.asarray([], dtype=np.float64),
+            ts_regret=np.asarray([], dtype=np.float32), ts_recommended_arm=np.asarray([], dtype=np.int32),
+            ts_recommended_mean=np.asarray([], dtype=np.float32),
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
