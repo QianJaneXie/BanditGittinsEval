@@ -2,8 +2,8 @@
 
 These baselines address the human ICLR reviews: Mvv2 requests item-subsampling
 multi-fidelity BO, and dNrr requests Thompson sampling. They operate on the
-supplied accuracy matrices without LLM API calls. Full experimental sweeps have
-not been run as part of implementation.
+supplied accuracy matrices without LLM API calls. W&B sweeps and result uploads
+are separate from local implementation and comparison runs.
 
 ## Gaussian Thompson sampling
 
@@ -60,6 +60,86 @@ explicit `--ts-prior-mean`, `--ts-prior-variance`, and
 `scripts/config/GSM8KThompsonSamplingSweep.yml`. It contains unit and cost runs
 using prices from the supplied BO archive. Prices and arm ordering were checked
 to be identical across its five GSM8K matrix seeds.
+
+## Correlated Gaussian Thompson sampling
+
+The existing ordinary BO model is `MixedSingleTaskGP` with every configuration
+column categorical. Its covariance is `ScaleKernel(CategoricalKernel)`.
+MF-KG uses the same categorical kernel family for configuration and adds a
+continuous Matérn-5/2 fidelity kernel through sum and product terms. A
+configuration-only correlated TS model does not include that fidelity axis.
+For GSM8K, the four categorical columns are model, temperature, maximum
+response length, and prompt. Numerical category IDs are labels; their numeric
+distance has no meaning.
+
+Correlated TS constructs the all-categorical covariance using BoTorch itself,
+normalizes its diagonal, and multiplies it by the same latent prior variance
+`v0` as independent TS. Thus `theta ~ Normal(mu0 * 1, v0 * R)` differs in its
+cross-arm correlations. The same cell noise, batch size, marginal prior and
+empirical target are retained. It draws one joint target vector each round,
+then evaluates fresh items from the best unfinished arm. Prices affect the
+budget only; neither TS acquisition divides accuracy by cost. There is no
+additional warmup.
+
+If the latent posterior is `(m, C)`, observed counts are `n`, observed sums are
+`S`, and `r = N - n`, the full fixed-row target has
+
+```text
+M = (S + r * m) / N
+Cov(F) = diag(r/N) C diag(r/N) + diag(r * tau_cell^2 / N^2)
+```
+
+The second term accounts for unrevealed item noise. Completed arms have exact
+means and zero target covariance. Both the standalone correlated TS runner and
+the paired comparator recommend by `M - sqrt(diag(Cov(F)))` by default.
+
+`--kernel-mode fit` learns categorical ARD lengthscales from the current run's
+revealed scores every 32 batches (`--fit-every 32`), with an L-BFGS iteration
+cap of 25 (`--fit-maxiter 25`). It uses one sufficient-statistic sample mean
+per observed arm, with likelihood variance `tau_cell^2 / n`; overlapping
+cumulative means are never counted as independent observations. Prior mean
+and marginal variance remain fixed. These are plug-in empirical-Bayes kernel
+estimates, rather than integration over uncertain kernel parameters. Fit
+attempts and lengthscales are saved in the local trace.
+This periodic fitting schedule differs from MF-KG's refit at every query;
+`--fit-every 1` enables fitting after every batch for correlated TS.
+
+`--kernel-mode fixed` instead keeps BoTorch's default categorical lengthscales.
+This is a separate comparison that isolates correlation under a fixed kernel.
+Neither mode reads `Y` or `raw_scores_mean` from the BO archive; only categorical
+features, arm ordering and prices are loaded. Without `--bo-inputs`, the generic
+runner uses categorical arm IDs, which lose the actual configuration structure.
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/run_correlated_ts_baseline.py \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
+  --bo-inputs data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz \
+  --batch-size 8 --prior-mean 0.2 --prior-variance 0.01 \
+  --kernel-mode fit --out outputs/correlated_ts/gsm8k_seed1.npz
+
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python3 scripts/compare_correlated_ts.py
+python3 scripts/plot_correlated_ts_comparison.py
+```
+
+To include the paper's batch-level Gittins as a third curve, first generate its
+paired traces with `scripts/compare_gittins_ts.py`, then run:
+
+```bash
+python3 scripts/plot_correlated_ts_comparison.py \
+  --gittins-results-dir outputs/gsm8k_gittins_ts_batch_lcb100
+```
+
+The merger requires matching data, seeds, priors, budgets, batch sizes, noise
+and recommendation settings, and checks that the two experiments' independent
+TS histories agree before reusing the Gittins traces.
+
+The paired comparison retains the paper's five matrix seeds, 20 sampling seeds
+per matrix, both priors, both cost settings, B=8, cell-noise variance 0.25,
+LCB coefficient one, and a 10% exhaustive budget. Independent TS uses the
+previously validated implementation unchanged. Figures use 350-point linear
+interpolation and mean +/- one standard error; numerical metrics use completed
+observations only. Fixed and fitted kernel runs require separate output
+directories. All generated results remain local under the ignored `outputs/`.
 
 ## MF-KG objective and observations
 

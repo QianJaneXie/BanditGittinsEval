@@ -25,7 +25,7 @@ python scripts/simulate_simple_regret.py --matrix <matrix.npy> --out <traces.npz
 python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure.png> [--x-axis evals|original_cost]
 ```
 
-**Algorithms** compared in the W&B sweeps:
+**Available policies**:
 
 | Policy | Selection | Recommendation |
 |--------|-----------|----------------|
@@ -34,11 +34,16 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
 | Gittins | Gittins index for the full test-set mean | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
 | Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior mean |
+| Correlated Gaussian TS | Joint Thompson draw using a categorical configuration GP prior | Full-test-set posterior mean minus one posterior std in its dedicated runner |
 | MF-KG | BoTorch knowledge gradient per incremental item cost; jointly select one configuration and its next fidelity (`q=1`) | GP posterior mean at full fidelity |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
 
 Gaussian TS is enabled with `--algorithms ts` (or add `ts` to the existing list).
+Correlated Gaussian TS has a separate runner, `scripts/run_correlated_ts_baseline.py`.
+For the paired GSM8K comparison with independent TS, use
+`scripts/compare_correlated_ts.py` and `scripts/plot_correlated_ts_comparison.py`;
+see the [configuration kernel and comparison setup](docs/ts_mfkg_baselines.md#correlated-gaussian-thompson-sampling).
 MF-KG has its own matrix-level runner, `scripts/run_mfkg_baseline.py`; see the
 [TS and MF-KG guide](docs/ts_mfkg_baselines.md) for commands, the default
 `q=1 + adaptive_fidelity` setup, the 10% warmup cap, cost accounting, W&B

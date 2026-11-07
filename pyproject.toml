@@ -40,6 +40,7 @@ py-modules = [
     "simple_regret_recommend",
     "stable_pbgi",
     "gaussian_ts_policy",
+    "correlated_ts_policy",
     "mfkg_policy",
     "evaluation_costs",
 ]
