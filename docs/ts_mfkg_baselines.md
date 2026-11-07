@@ -289,22 +289,8 @@ budget, excluding over-budget feedback. Paired summaries include per-matrix
 differences and a two-way matrix/trial-seed bootstrap; 100 trajectories do not
 represent 100 independent datasets.
 
-The corrected 100-pair experiment gives the following budget-average simple
-regret over 0--10% (exact step-hold integral divided by 10%; lower is better):
-
-| Costs | Prior | Batch-level Gittins | Gaussian TS |
-|---|---|---:|---:|
-| Unit | General | 0.02237811 | 0.02034700 |
-| Unit | GSM8K | 0.01770500 | 0.01241134 |
-| Heterogeneous | General | 0.00890544 | 0.01900626 |
-| Heterogeneous | GSM8K | 0.00130103 | 0.01106157 |
-
-Both methods have zero regret at the 10% checkpoint in all 400 cases. These
-results do not establish uniform dominance: TS has lower average regret under
-unit costs, while Gittins has lower average regret under heterogeneous costs.
-The paired two-way bootstrap interval for the unit/general-prior difference
-includes zero. All 400 TS histories were checked against the superseded
-experiment and remain identical; Gittins histories were rerun with batch roots.
+Generated figures, raw trajectories, and numerical summaries remain local under
+the ignored `outputs/` directory and are not included in the baseline branch.
 
 ## Validation
 
