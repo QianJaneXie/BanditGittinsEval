@@ -13,7 +13,10 @@ from functools import partial
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
+from tempfile import NamedTemporaryFile
+import time
 from typing import Any
 
 import jax
@@ -298,13 +301,30 @@ class MarginalGittinsRootTable:
     def save(self, path: str | Path) -> None:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_name(path.name + ".tmp")
-        with temporary.open("wb") as stream:
-            np.savez_compressed(stream, metadata_json=json.dumps(self.metadata, sort_keys=True),
-                                settings_hash=self.settings_hash, payload_sha256=self._payload_hash(),
-                                effective_prior_variances=self.effective_prior_variances,
-                                costs_per_arm=self.costs_per_arm, roots=self.roots)
-        temporary.replace(path)
+        temporary = None
+        try:
+            # Each writer owns its temporary file. Keep it on the same filesystem
+            # for atomic replacement, and close it first for Windows compatibility.
+            with NamedTemporaryFile(mode="wb", dir=path.parent, prefix=f".{path.name}.",
+                                    suffix=".tmp", delete=False) as stream:
+                temporary = Path(stream.name)
+                np.savez_compressed(stream, metadata_json=json.dumps(self.metadata, sort_keys=True),
+                                    settings_hash=self.settings_hash, payload_sha256=self._payload_hash(),
+                                    effective_prior_variances=self.effective_prior_variances,
+                                    costs_per_arm=self.costs_per_arm, roots=self.roots)
+            for attempt in range(5):
+                try:
+                    temporary.replace(path)
+                    break
+                except PermissionError as error:
+                    # Windows can briefly deny a replace while another writer
+                    # replaces the same destination. Do not retry other errors.
+                    if os.name != "nt" or error.winerror not in (5, 32) or attempt == 4:
+                        raise
+                    time.sleep(.01 * 2**attempt)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     @classmethod
     def load(cls, path: str | Path, **expected_settings) -> "MarginalGittinsRootTable":

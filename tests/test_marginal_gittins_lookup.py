@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from pathlib import Path
 import sys
 
@@ -248,3 +250,43 @@ def test_saved_table_preserves_roots_and_rejects_incompatible_metadata(tmp_path)
     np.savez_compressed(path, **changed)
     with pytest.raises(ValueError):
         MarginalGittinsRootTable.load(path)
+
+
+def test_concurrent_cache_writers_use_independent_temporary_files(tmp_path, monkeypatch):
+    table = _table()
+    path = tmp_path / "roots.npz"
+    barrier = Barrier(2)
+    replace = Path.replace
+    synchronized = set()
+
+    def simultaneous_replace(source, target):
+        if Path(target) == path and source not in synchronized:
+            synchronized.add(source)
+            barrier.wait(timeout=15)
+        return replace(source, target)
+
+    monkeypatch.setattr(Path, "replace", simultaneous_replace)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(table.save, path) for _ in range(2)]
+        for future in futures:
+            future.result(timeout=30)
+    restored = MarginalGittinsRootTable.load(path)
+    np.testing.assert_array_equal(restored.roots, table.roots)
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_failed_cache_write_preserves_previous_cache_and_cleans_temp(tmp_path, monkeypatch):
+    table = _table()
+    path = tmp_path / "roots.npz"
+    table.save(path)
+    original = path.read_bytes()
+
+    def fail(stream, **kwargs):
+        stream.write(b"partial archive")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(lookup_module.np, "savez_compressed", fail)
+    with pytest.raises(OSError, match="disk full"):
+        table.save(path)
+    assert path.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [path]
