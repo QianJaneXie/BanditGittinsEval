@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve the published experiment bundle's byte-level checksums on every OS.
+PE_EmbPT_data_2026-11-07/** -text

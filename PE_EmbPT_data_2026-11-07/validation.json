@@ -1,0 +1,50 @@
+{
+  "status": "passed",
+  "date": "2026-11-07",
+  "scope": "Completed experiment audits, portable export checks, and standalone figure reproduction; this package does not rerun the experiments.",
+  "portable_export": {
+    "bai_subjects": 57,
+    "bai_variants": 3,
+    "seeds_per_subject_variant": 20,
+    "bai_trajectories": 3420,
+    "phase_records": 17100,
+    "subject_checkpoint_rows_independently_recomputed": 760,
+    "aggregate_checkpoint_rows_independently_recomputed": 50,
+    "checks": [
+      "Five complete phases per subject, variant, and seed",
+      "Raw and percentage budgets, active arm counts, model/prompt indexing, and regret identities",
+      "Subject-level means, standard errors, seed coverage, and paired differences from phase records",
+      "Equal-subject aggregate means and standard errors with full-coverage requirements",
+      "All five report CSVs copied unchanged from the independently audited report",
+      "Gittins filtered curve fields are unchanged from the supplied source rows"
+    ],
+    "gittins_subjects": 19,
+    "gittins_curve_files": 38,
+    "gittins_curve_rows": 24320,
+    "gittins_run_summary_rows": 1520,
+    "gittins_run_stopping_rows": 1520,
+    "validator": "validate_bundle.py"
+  },
+  "standalone_replot": {
+    "status": "passed",
+    "inputs": ["data/plotted_curves.csv", "data/selected_tasks.csv"],
+    "plotted_rows": 14088,
+    "curves": 40,
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "matplotlib": "3.10.7",
+    "backend": "Agg",
+    "png_byte_identical_to_verified_figures": true,
+    "png_sha256": {
+      "Figure3_PE_EmbPT.png": "22335f7fc2c2e8a84076051fa7604092faede3190372b2c5f51145c8e2163ed2",
+      "Figure3_PE_EmbPT_sampling.png": "56a0c6392af467b93f4bd24a86c3371a2c128c4d138514f527826699ddbecd85"
+    },
+    "pdf_validation": "Both generated PDF files have valid headers and end markers. PDF bytes can differ because creation timestamps change."
+  },
+  "detailed_experiment_audits": {
+    "native_parity_and_unseen_label_check": "validation/native_validation.json",
+    "completed_rasch_archive_audit": "validation/independent_checks.json",
+    "original_report_recomputation": "validation/report_csv_checks.json"
+  },
+  "integrity": "FILE_MANIFEST.csv lists SHA-256 and byte length for every bundled file except itself. validate_bundle.py verifies each listed file."
+}

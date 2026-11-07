@@ -1,0 +1,68 @@
+{
+  "status": "passed",
+  "figure_subjects": 19,
+  "figure_cohort_sizes": {
+    "Easy-Small": 6,
+    "Easy-Large": 2,
+    "Hard-Small": 9,
+    "Hard-Large": 2
+  },
+  "cohort_subject_checkpoint_rows": 190,
+  "cohort_aggregate_checkpoint_rows": 40,
+  "all57_subject_checkpoint_rows": 570,
+  "all57_aggregate_checkpoint_rows": 10,
+  "plotted_rows": 14088,
+  "plotted_curves": 40,
+  "validated": [
+    "Exhaustive denominators from canonical sizes and arm price weights",
+    "Gittins means interpolated only within per-subject full-20-run raw-budget support",
+    "Last observed BAI phase at the requested spend with exact seed coverage and paired BAI deltas",
+    "Equal subject means and sample standard errors, with incomplete aggregate cells blank"
+  ],
+  "figure_checkpoint_mean_regret_comparisons": {
+    "rasch39_random_vs_logistic_39": {
+      "lower": 35,
+      "higher": 1
+    },
+    "rasch39_random_vs_gittins_s": {
+      "higher": 36
+    },
+    "rasch39_random_vs_gittins_g": {
+      "higher": 32,
+      "lower": 4
+    },
+    "rasch39_balanced_vs_logistic_39": {
+      "lower": 33,
+      "higher": 3
+    },
+    "rasch39_balanced_vs_gittins_s": {
+      "higher": 36
+    },
+    "rasch39_balanced_vs_gittins_g": {
+      "higher": 32,
+      "lower": 4
+    }
+  },
+  "all57_at_10_percent": {
+    "unit": {
+      "logistic_39": 0.021719281329998872,
+      "rasch39_random": 0.009516780335605676,
+      "rasch39_balanced": 0.009050310626941017,
+      "rasch_balanced_minus_logistic_subject_se": 0.001000773422122413,
+      "rasch_balanced_lower_than_logistic_subjects": 57
+    },
+    "aware": {
+      "logistic_39": 0.02177324198922269,
+      "rasch39_random": 0.009783925471171864,
+      "rasch39_balanced": 0.009437911727367871,
+      "rasch_balanced_minus_logistic_subject_se": 0.001012444088257865
+    }
+  },
+  "report_csv_sha256": {
+    "checkpoints.csv": "e4ab4e30283a5631a6686e4dccccbc35d9529c413e167ff69fb0abe3d2610a57",
+    "subject_checkpoints.csv": "9488af17440cfd7fd4c0f01ee044cf8297e07130e975dcb588dc6cadb013888b",
+    "all57_bai_checkpoints.csv": "1aadae97d11a9357f5ce2caadacab8cfa02df2fd794d5d3c7e39cd7d25b40194",
+    "all57_bai_subject_checkpoints.csv": "673002f918ea122024c172c098d733adea9b31ea3f0d931c83bec2de8d94f385",
+    "plotted_curves.csv": "8351e4a264a98fe73fb5d6f121f5610134d11007b4714fab81e8265a986f19bf"
+  }
+}

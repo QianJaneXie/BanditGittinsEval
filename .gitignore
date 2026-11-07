@@ -193,3 +193,9 @@ wandb/
 .mplconfig/
 
 gittinsbandit_env/
+
+# Keep the frozen experiment source snapshots despite the outputs/ rule above.
+!PE_EmbPT_data_2026-11-07/code/source_snapshot/outputs/
+
+# Regenerated figures from the checked-in PE-EmbPT results bundle.
+PE_EmbPT_data_2026-11-07/reproduced/

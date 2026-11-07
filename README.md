@@ -4,6 +4,22 @@ Exploration policies on a fixed accuracy matrix (rows = models, columns = i.i.d.
 
 Works with any `(n_models, n_examples)` accuracy matrix under `data/`. Full experiment sweeps (many GSM8K/PIQA/MMLU matrices, seeds, and hyperparameters) are launched via `run_simple_regret_wandb.py` and YAML configs in `scripts/config/`.
 
+## MMLU PE-EmbPT experiment
+
+The [experiment report](docs/mmlu_pe_embpt_experiments.md) documents the completed
+57-subject, 20-seed comparison of the 39-feature logistic baseline and a joint
+model–prompt PE-EmbPT adaptation with question effects. At a 10% observation
+budget, mean simple regret falls from 0.02171928 to 0.00905031. On the 19 Figure 3
+subjects, GittinsEval-S has lower cohort mean regret at all 36 fully supported
+comparison checkpoints.
+
+The [results bundle](PE_EmbPT_data_2026-11-07/) includes figures, phase-level
+results, protocol and provenance records, and standalone plotting and validation
+scripts. See the report for the sampling ablation, cost accounting, and differences
+from the original PromptEval protocol. The historical baseline instructions below
+describe the arm-only logistic implementation; the new question-effect experiment
+is documented separately in this report.
+
 ## Setup
 
 ```bash

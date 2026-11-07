@@ -1,0 +1,70 @@
+Experiment summary | MMLU PE-EmbPT
+=================================
+
+Question
+--------
+How does the 39-feature arm-only logistic baseline change when it uses
+PromptEval-style question effects and full-row estimates? A second
+comparison holds that estimator fixed and changes question sampling.
+
+Methods
+-------
+Each subject has 1,500 candidates formed by crossing 15 LLMs with 100
+prompt templates. All three BAI variants use the same 39 arm covariates.
+These are 25 principal components of pretrained DPR prompt embeddings
+and 14 LLM indicators, with one LLM as the reference.
+
+  logistic_39       Arm-only L2 logistic regression. Rank by fitted
+                    arm score. Sample an unseen question uniformly.
+  rasch39_random    Add one shared identity coefficient per question.
+                    Score arms with observed responses and fitted
+                    probabilities for unseen responses. Use the
+                    same random-question sampling rule as logistic_39.
+  rasch39_balanced  Use the same Rasch estimator and recommendation.
+                    Sample among the arm's least-covered unseen
+                    questions using column counts over all arms.
+
+The Rasch fit uses observed binary outcomes, native L2 LIBLINEAR
+logistic regression with C=100, and no separate intercept. It fits 39+N
+coefficients for a subject with N questions. The Rasch-versus-logistic
+comparison changes both the fitted model and the scoring rule. The
+balanced-versus-random Rasch comparison holds both fixed.
+
+The joint replay uses five successive-halving phases at 2%, 4%, 6%,
+8%, and 10% of response cells. Active counts before elimination are
+1,500, 750, 375, 187, and 93. The upstream phase formula would give
+11 phases on a 1,500-arm pool. The original PromptEval experiment
+instead ranked prompts within each model and selected its final
+recommendation using the observed empirical mean among surviving arms.
+Here each phase reports the top-scoring active arm.
+
+Results
+-------
+The 10% unit-cost endpoint gives equal weight to all 57 MMLU subjects.
+
+  Method                 Mean simple regret
+  logistic_39                  0.02171928
+  rasch39_random               0.00951678
+  rasch39_balanced             0.00905031
+
+Balanced Rasch improved on logistic_39 in all 57 subjects at this
+endpoint. The mean paired difference was -0.01266897 with a subject
+standard error of 0.00100077. The 10% price-weighted checkpoint means
+were 0.02177324, 0.00978393, and 0.00943791 in the same order. That
+view reprices the same unit-budget BAI histories.
+
+On the 19 Figure 3 subjects, both Rasch variants had higher cohort
+mean regret than GittinsEval-S at all 36 comparable checkpoints.
+Each Rasch variant had lower mean regret than GittinsEval-G at four
+of those checkpoints and higher regret at 32. These counts describe
+the reported checkpoint means. Per-seed Gittins tests and claims about
+the intervening parts of the curves are outside the scope of the table.
+
+Validation
+----------
+The Rasch archive audit checked 57 subjects, 2,280 trajectories, and
+11,400 phase records. The report audit rebuilt 14,088 plotted points
+across 40 curves and all four checkpoint tables. On the college
+chemistry pilot, flipping the unseen responses changed the evaluation
+oracle while preserving every first-phase Rasch arm score and
+recommendation under both samplers.

@@ -1,0 +1,49 @@
+{
+  "subject": "college_chemistry",
+  "seed": 0,
+  "native_methods_source_sha256": "585854d9dc58cee5af7dd1e18a6e3d31bc23cc9e955c09eeaf4fe6f2c42fd7fc",
+  "prompt_feature_sha256": "fcc4d0678a2cc8a7cd62172c9e667b35616b9b8c0618b90fe0dc8a2c02ce8137",
+  "matrix_sha256": "bb042fbf8a17c5f78fb1e126b9e47c6f828738990c880a3fbb81f056d4f9c2a5",
+  "variants": [
+    {
+      "variant": "rasch39_random",
+      "first_and_second_masks_exact": true,
+      "first_phase_max_absolute_coefficient_difference": 0.0,
+      "first_phase_max_absolute_score_difference": 0.0,
+      "unseen_labels_inverted": 147000,
+      "chosen_arm_unchanged_after_inversion": 884,
+      "inversion_coefficients_and_scores_exact": true,
+      "native_optimized_complete_replay": {
+        "exact_match": true,
+        "within_tolerance": true,
+        "phase_counts": {
+          "historical": 5,
+          "rerun": 5
+        },
+        "differences": []
+      },
+      "native_seconds": 2.3219544000166934,
+      "optimized_seconds": 0.6513173999846913
+    },
+    {
+      "variant": "rasch39_balanced",
+      "first_and_second_masks_exact": true,
+      "first_phase_max_absolute_coefficient_difference": 0.0,
+      "first_phase_max_absolute_score_difference": 0.0,
+      "unseen_labels_inverted": 147000,
+      "chosen_arm_unchanged_after_inversion": 231,
+      "inversion_coefficients_and_scores_exact": true,
+      "native_optimized_complete_replay": {
+        "exact_match": true,
+        "within_tolerance": true,
+        "phase_counts": {
+          "historical": 5,
+          "rerun": 5
+        },
+        "differences": []
+      },
+      "native_seconds": 2.4737408999935724,
+      "optimized_seconds": 0.684924500004854
+    }
+  ]
+}

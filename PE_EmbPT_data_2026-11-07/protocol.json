@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "study": "Joint MMLU PE-EmbPT and GittinsEval comparison",
+  "task": {
+    "benchmark": "MMLU",
+    "responses": "Frozen binary model-prompt-by-question response matrices",
+    "bai_subject_count": 57,
+    "gittins_figure_subject_count": 19,
+    "models_per_subject": 15,
+    "prompt_templates_per_model": 100,
+    "arms_per_subject": 1500,
+    "questions_per_subject_range": [100, 1534],
+    "arm_order": "arm_index = 100 * model_index + prompt_index, with zero-based indices",
+    "run_seeds": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+    "figure_cohort_counts": {
+      "Easy-Small": 6,
+      "Easy-Large": 2,
+      "Hard-Small": 9,
+      "Hard-Large": 2
+    },
+    "figure_subject_file": "data/selected_tasks.csv",
+    "scope_note": "The replay ranks model-prompt pairs jointly. The original PromptEval experiment ranked prompts separately within each model."
+  },
+  "arm_features": {
+    "count": 39,
+    "prompt_component_count": 25,
+    "pretrained_encoder": "sentence-transformers/facebook-dpr-question_encoder-multiset-base",
+    "prompt_transformation": "Subject-level PCA features from the archived PromptEval covariates, shared across the 15 model rows for each template",
+    "model_indicator_count": 14,
+    "model_reference_index": 0,
+    "fine_tuned_embeddings_included": false
+  },
+  "bai": {
+    "phase_count": 5,
+    "phase_end_percent_of_exhaustive_cells": [2, 4, 6, 8, 10],
+    "active_arms_before_elimination": [1500, 750, 375, 187, 93],
+    "arm_sampling": "Choose uniformly among least-sampled active arms using the seeded stratified sampler",
+    "recommendation": "Choose the highest-scoring active arm at each phase, with NumPy argmax on the current active-arm order",
+    "elimination": "Remove ceil(active_arm_count / 2) arms by ascending score using the historical NumPy argsort",
+    "phase_scope_note": "The pooled replay caps the upstream ceil(log2(K)) rule at five phases. The uncapped formula would give 11 phases for K = 1500. Upstream uses the observed empirical mean among survivors for the final recommendation.",
+    "fitting": {
+      "data": "Only binary responses observed by the end of the phase, including responses collected from arms eliminated earlier",
+      "solver": "LIBLINEAR",
+      "penalty": "L2",
+      "C": 100,
+      "solver_random_state": 0,
+      "solver_fit_intercept": false
+    },
+    "variants": {
+      "logistic_39": {
+        "model": "Arm-only logistic BAI",
+        "separate_constant_column": true,
+        "score": "X39 arm score, excluding the common constant",
+        "question_sampling": "Uniform among unseen questions for the chosen arm"
+      },
+      "rasch39_random": {
+        "model": "Joint-task PE-EmbPT adaptation with question effects",
+        "separate_constant_column": false,
+        "question_features": "N identity columns for the N question IDs, shared across all 1,500 arms in the subject",
+        "fitted_coefficients": "39 + N",
+        "logit": "X39 arm score + question easiness coefficient",
+        "score": "Average across N questions, using observed outcomes for seen cells and fitted sigmoid probabilities for unseen cells",
+        "question_sampling": "Uniform among unseen questions for the chosen arm"
+      },
+      "rasch39_balanced": {
+        "model": "Same fit and score as rasch39_random",
+        "separate_constant_column": false,
+        "fitted_coefficients": "39 + N",
+        "question_sampling": "Uniform among the chosen arm's least-covered unseen questions, using question counts over all arms including eliminated arms"
+      }
+    }
+  },
+  "gittins": {
+    "variants": {
+      "gittins_s": "GittinsEval-S with dataset prior",
+      "gittins_g": "GittinsEval-G with general prior"
+    },
+    "source": "Supplied Figure 3 per-subject LCB caches for 19 subjects, 20 runs per subject, method, and cost mode",
+    "source_revision": "b667d408fba0cbd79d9fea3a8e26d1becda315e3",
+    "recommendation": "Posterior mean minus posterior standard deviation",
+    "batch_size_by_figure_size": {"Small": 2, "Large": 8},
+    "cost_scaling_factor": 0.0001,
+    "raw_cache_points_per_subject_method_mode": 320,
+    "full_per_seed_histories_included": false
+  },
+  "metric_and_budgets": {
+    "metric": "Raw simple regret = best full-matrix arm mean - recommended arm's full-matrix mean",
+    "exhaustive_unit_cost": "1,500 * N response cells",
+    "exhaustive_price_weighted_cost": "N * sum of per-arm quoted input-token price weights",
+    "x_percent_exhaustive": "100 * actual cumulative observations or price-weighted spend / matching subject denominator",
+    "bai_allocation_budget_fraction_of_cells": 0.1,
+    "bai_price_view": "Reprice the same unit-budget trajectories using per-model input-token quotes as relative weights",
+    "prior_figure_axis": "The original Figure 3 group cache mapped each Gittins run's first and last recorded spend to 0 and 1 before plotting it on a nominal 0%-10% scale"
+  },
+  "reporting": {
+    "gittins_interpolation": "Linear interpolation of each per-subject mean only inside its contiguous raw-budget interval with all 20 contributing runs",
+    "gittins_cohort_end": "Earliest subject full-coverage endpoint within each cohort and method, capped at 10%. Ends at about 9.97%-10%",
+    "bai_interpolation": "Use the latest completed phase at or before the requested budget. Carry final recommendations forward through 10%",
+    "aggregate_coverage": "Require 20 seeds for every cohort subject. Subject BAI tables separately retain available-case means and seed counts",
+    "aggregation": "Average seeds within subjects, then weight subjects equally",
+    "uncertainty": "Mean plus or minus one sample standard error across subject means",
+    "paired_bai_contrasts": "Pair available seeds within subject first, then average the per-subject mean differences equally",
+    "figure_checkpoints_percent": [2, 4, 6, 8, 9.9],
+    "all57_bai_checkpoints_percent": [2, 4, 6, 8, 10],
+    "checkpoint_note": "At unit cost, 9.9% uses the 8% BAI recommendation, and 10% includes the final phase",
+    "vertical_scale": "Piecewise linear display expands raw regret below 0.05 to 65% of the positive axis height",
+    "curve_statistics": "The CSVs retain raw regret. Checkpoint comparison counts are descriptive",
+    "replot_entrypoint": "replot.py",
+    "replot_default_output": "reproduced/",
+    "replot_tested_python": "3.12.14",
+    "replot_scope": "Regenerate the figures from bundled CSVs without running the experiments"
+  }
+}

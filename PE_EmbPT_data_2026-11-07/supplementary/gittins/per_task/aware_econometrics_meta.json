@@ -1,0 +1,43 @@
+{
+  "subject": "econometrics",
+  "group": "Hard-Small",
+  "mode": "aware",
+  "x_label": "cum_original_cost",
+  "y_label": "simple_regret",
+  "recommendation_rule": "lcb",
+  "batch_size": 2,
+  "cost_scaling_factor": 0.0001,
+  "paper_prior": {
+    "difficulty": "hard",
+    "bucket": "low",
+    "Gittins-S_mean": 0.4,
+    "Gittins-S_variance": 0.02,
+    "Gittins-G_mean": 0.5,
+    "Gittins-G_variance": 0.04
+  },
+  "band_style": {
+    "range": "stderr",
+    "se_mult": 1.0,
+    "curve_alpha": 0.15,
+    "stop_alpha": 0.12,
+    "stop_line_alpha": 0.72
+  },
+  "observed_natural_stop_lines": [
+    {
+      "method_kind": "gittins_s",
+      "x": 3105.885999999885,
+      "label": "Gittins-S",
+      "lo": 2987.542900731788,
+      "hi": 3224.229099267982
+    },
+    {
+      "method_kind": "gittins_g",
+      "x": 12225.05380000111,
+      "label": "Gittins-G",
+      "lo": 12174.7182262999,
+      "hi": 12275.389373702319
+    }
+  ],
+  "raw_budget_exhaustive_denominator": 142682.40000000002,
+  "curves_note": "The CSV keeps all original Gittins rows, including partial seed coverage at the endpoint. Comparison uses n_runs = 20."
+}
