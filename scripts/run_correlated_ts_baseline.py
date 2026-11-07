@@ -7,6 +7,7 @@ import argparse
 from contextlib import contextmanager
 import hashlib
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -19,7 +20,7 @@ from run_mfkg_baseline import load_data
 def _experiment_hash(metadata: dict) -> str:
     # Paths are provenance, not experiment settings. Hash the actual inputs.
     settings = {key: value for key, value in metadata.items()
-                if key not in ("matrix", "bo_inputs", "feature_source")}
+                if key not in ("matrix", "bo_inputs", "feature_source", "recommendation_rule")}
     return hashlib.sha256(json.dumps(settings, sort_keys=True).encode()).hexdigest()
 
 
@@ -52,7 +53,12 @@ def main() -> int:
     parser.add_argument("--prior-mean", type=float, default=0.5)
     parser.add_argument("--prior-variance", type=float, default=0.04)
     parser.add_argument("--tau-sq-cell", type=float, default=0.25)
-    parser.add_argument("--recommendation-std-penalty", type=float, default=1.0)
+    parser.add_argument(
+        "--recommendation-std-penalty", "--recommendation_std_penalty",
+        type=float, default=1.0,
+        help="Recommend M - beta*sqrt(V): 0 = posterior mean, 1 = LCB (default). "
+             "Only recommendation changes; TS allocation is unaffected.",
+    )
     parser.add_argument("--eval-budget-fraction", type=float, default=0.1)
     parser.add_argument("--kernel-mode", choices=("fixed", "fit"), default="fit")
     parser.add_argument("--fit-every", type=int, default=32)
@@ -61,6 +67,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.seed < 0:
         parser.error("seed must be nonnegative")
+    if not math.isfinite(args.recommendation_std_penalty) or args.recommendation_std_penalty < 0:
+        parser.error("--recommendation-std-penalty must be finite and nonnegative")
     data = load_data(args.matrix, args.bo_inputs, args.cost_vector)
     mode = "cost" if args.cost_aware or args.cost_vector is not None else "unit"
     if args.out is not None and args.out.suffix != ".npz":
@@ -80,6 +88,10 @@ def main() -> int:
         "tau_sq_cell": args.tau_sq_cell, "budget_fraction": args.eval_budget_fraction,
         "target": "complete_fixed_benchmark_empirical_mean",
         "recommendation_std_penalty": args.recommendation_std_penalty,
+        "recommendation_rule": (
+            "finite_population_posterior_mean_minus_std"
+            if args.recommendation_std_penalty > 0 else "finite_population_posterior_mean"
+        ),
         "cost_mode": mode, "allocation_uses_prices": False,
         "kernel_mode": args.kernel_mode, "fit_every": args.fit_every,
         "fit_maxiter": args.fit_maxiter, "max_steps": args.max_steps,

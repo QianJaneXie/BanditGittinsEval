@@ -5,7 +5,8 @@ Policies:
 - UCB-E: arm selection by UCB bound, recommendation by empirical mean.
 - SySRs: synchronized successive rejects (Smart-SR), recommend among active arms.
 - Gaussian TS: sample the full fixed test-set posterior mean and recommend by
-  its posterior expectation. Costs affect stopping, not the accuracy objective.
+  its posterior expectation with an optional posterior std penalty. Costs
+  affect stopping, not the accuracy objective.
 - Gittins: arm selection by a batch-level Gittins index for the full fixed test-set average,
   recommendation by the posterior mean
   of the full fixed test-set average, with an optional posterior predictive std
@@ -248,11 +249,12 @@ def main() -> int:
     p.add_argument("--gittins-prior-variance", type=float, default=0.04)
     p.add_argument(
         "--recommendation-std-penalty",
+        "--recommendation_std_penalty",
         type=float,
-        default=0.0,
-        help="Gittins recommendation: maximize the full fixed test-set average's "
+        default=1.0,
+        help="Gittins and TS recommendation: maximize the full fixed test-set average's "
         "posterior mean minus this nonnegative multiple of its posterior predictive "
-        "std. Use 0 for mean only (default), 1 for mean - std.",
+        "std. Use 1 for the paper's LCB rule (default), 0 for a mean-only ablation.",
     )
     p.add_argument(
         "--cost-vector",
@@ -586,6 +588,7 @@ def main() -> int:
             recommend_fn=partial(
                 posterior_incumbent, prior_mean=ts_prior_mean,
                 prior_variance=ts_prior_variance, tau_sq_cell=ts_noise * ts_batch_size,
+                std_penalty=float(args.recommendation_std_penalty),
             ),
         )
         out.update(
@@ -597,7 +600,12 @@ def main() -> int:
             ts_prior_mean=float(ts_prior_mean), ts_prior_variance=float(ts_prior_variance),
             ts_obs_noise_variance=float(ts_noise), ts_batch_size=int(ts_batch_size),
             ts_target="finite_population_mean",
-            ts_recommendation_rule="finite_population_posterior_mean",
+            ts_recommendation_rule=(
+                "finite_population_posterior_mean_minus_std"
+                if args.recommendation_std_penalty > 0.0
+                else "finite_population_posterior_mean"
+            ),
+            ts_recommendation_std_penalty=float(args.recommendation_std_penalty),
             ts_cost_allocation="standard_ts_cost_budget_stopping",
         )
     else:

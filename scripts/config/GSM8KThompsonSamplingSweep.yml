@@ -26,16 +26,17 @@ parameters:
     values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
   experiment_variant:
     values:
+    - ts_unit_B8_default
+    - ts_cost_B8_default
     - ts_unit_B8_dataset
-    - ts_unit_B16_dataset
-    - ts_unit_B32_dataset
     - ts_cost_B8_dataset
-    - ts_cost_B16_dataset
-    - ts_cost_B32_dataset
   cost_vector:
     value: data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz
   eval_budget_fraction:
     value: 0.1
+  # Paper setup: LCB (mean minus one posterior std); 0 is a mean-only ablation.
+  recommendation_std_penalty:
+    value: 1.0
   wandb_project:
     value: GittinsBanditEval
   wandb_group:

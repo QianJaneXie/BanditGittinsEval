@@ -32,9 +32,9 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | UCB-E | UCB bound | Empirical mean |
 | SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
-| Gittins | Gittins index for the full test-set mean | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
-| Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior mean |
-| Correlated Gaussian TS | Joint Thompson draw using a categorical configuration GP prior | Full-test-set posterior mean minus one posterior std in its dedicated runner |
+| Gittins | Gittins index for the full test-set mean | Full-test-set posterior LCB by default; optional mean-only |
+| Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior LCB by default; optional mean-only |
+| Correlated Gaussian TS | Joint Thompson draw using a categorical configuration GP prior | Full-test-set posterior LCB by default; optional mean-only |
 | MF-KG | BoTorch knowledge gradient per incremental item cost; jointly select one configuration and its next fidelity (`q=1`) | GP posterior mean at full fidelity |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
@@ -63,9 +63,9 @@ exact protocol. Corrected outputs are under `outputs/gsm8k_gittins_ts_batch_lcb1
 - `--cost-vector <.json/.npy>` — heterogeneous per-arm costs; omit for unit cost (1 per evaluation).
 - `--gittins-prior-mean` / `--gittins-prior-variance` — Gittins prior; MMLU bucket priors in [`docs/mmlu_prior_buckets.md`](docs/mmlu_prior_buckets.md).
 - `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
-- `--recommendation-std-penalty 1` — recommend the Gittins arm with the largest full-test-set posterior mean minus its posterior standard deviation; `0` (default) uses this mean alone.
+- `--recommendation-std-penalty 0` / `1` — choose full-test-set posterior mean / LCB recommendation for TS and Gittins. The common simulation, W&B and standalone correlated TS runners default to `1` for the paper setup. Use `0` for the mean-only ablation; allocation is unaffected.
 
-Both simulation and W&B runners use the full-test-set posterior mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. Completed arms have index equal to their exact empirical mean and zero posterior variance. The default DP advances once per batch, with noise `tau_cell^2 / b` and cost `lambda * b * raw_per_cell_price` for actual batch size `b`. This can change sampling and stopping even with no LCB penalty. See [the batch schedule and archived seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
+Both simulation and W&B runners use the posterior of the full-test-set mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. The default LCB recommendation subtracts one posterior standard deviation. Completed arms have index equal to their exact empirical mean and zero posterior variance. The default DP advances once per batch, with noise `tau_cell^2 / b` and cost `lambda * b * raw_per_cell_price` for actual batch size `b`. This can change sampling and stopping even with no LCB penalty. See [the batch schedule and archived seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
 
 For a standalone explanation of the two posterior means, see [Latent mean vs. full-test-set mean (中文)](docs/posterior_means/README.md), including a worked example, completed-arm behavior, LCB, and when experiments need to be rerun.
 

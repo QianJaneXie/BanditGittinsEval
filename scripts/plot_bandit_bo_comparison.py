@@ -13,12 +13,17 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import sys
 
 _repo_root = Path(__file__).resolve().parents[1]
 os.environ.setdefault("MPLCONFIGDIR", str(_repo_root / ".mplconfig"))
+if str(_repo_root / "scripts") not in sys.path:
+    sys.path.insert(0, str(_repo_root / "scripts"))
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from plot_simple_regret_results import ts_recommendation_label
 
 
 def _scalar(z: np.lib.npyio.NpzFile, key: str, default: float = -1.0) -> float:
@@ -181,7 +186,7 @@ def main() -> int:
     _plot_curve(bandit, x_key=gittins_x, y_key="gittins_regret", label="bandit Gittins")
     suffix = "x" if args.x_axis == "evals" else "x_original_cost"
     _plot_curve(bandit, x_key=f"sysrs_{suffix}", y_key="sysrs_regret", label="bandit SySRs", color="C2")
-    _plot_curve(bandit, x_key=f"ts_{suffix}", y_key="ts_regret", label="Gaussian TS", color="C4")
+    _plot_curve(bandit, x_key=f"ts_{suffix}", y_key="ts_regret", label=ts_recommendation_label(bandit), color="C4")
     _plot_curve(mfkg, x_key=f"mfkg_{suffix}", y_key="mfkg_regret", label="MF-KG (including warmup)", color="C5")
     if log_bo is not None:
         _plot_bo_with_stop(
