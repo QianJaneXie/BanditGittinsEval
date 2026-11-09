@@ -86,6 +86,18 @@ RECOMMENDATION_COLUMNS = [
     "recommendation_rule",
     "recommendation_std_penalty",
     "gittins_index_target",
+    "gittins_model_version",
+    "gittins_dp_transitions",
+]
+
+TS_COLUMNS = [
+    "ts_target",
+    "ts_prior_mean",
+    "ts_prior_variance",
+    "ts_obs_noise_variance",
+    "ts_obs_noise_variance_resolved",
+    "ts_tau_sq_cell",
+    "ts_cost_allocation",
 ]
 
 BASE_COLUMNS = [
@@ -119,7 +131,7 @@ BASE_COLUMNS = [
     "budget_max_evals",
     "eval_budget_fraction",
     "warmup_percentage",
-] + RECOMMENDATION_COLUMNS
+] + RECOMMENDATION_COLUMNS + TS_COLUMNS
 
 SUMMARY_COLUMNS = BASE_COLUMNS + [
     "final_simple_regret",
@@ -186,7 +198,7 @@ FULL_CONFIG_DIAGNOSTIC_COLUMNS = [
     "prior_mean_resolved",
     "prior_variance_resolved",
     "eval_budget_fraction",
-] + RECOMMENDATION_COLUMNS
+] + RECOMMENDATION_COLUMNS + TS_COLUMNS
 
 
 def safe_token(s: str) -> str:
@@ -223,7 +235,26 @@ def parse_variant_fallback(experiment_variant: str | None) -> dict[str, Any]:
     out: dict[str, Any] = {}
     if not experiment_variant:
         return out
-    v = str(experiment_variant)
+    v = str(experiment_variant).strip()
+    m = re.fullmatch(r"ts_(unit|cost|aware)_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        cost_mode = "cost" if m.group(1) == "aware" else m.group(1)
+        b, prior_type = int(m.group(2)), m.group(3) or "default"
+    else:
+        m = re.fullmatch(r"ts_B(\d+)(?:_(default|dataset))?", v)
+        if m:
+            cost_mode, b, prior_type = "unit", int(m.group(1)), m.group(2) or "default"
+        elif v in {"ts", "ts_unit", "ts_cost", "ts_aware"}:
+            cost_mode = "cost" if v in {"ts_cost", "ts_aware"} else "unit"
+            b, prior_type = 20, "default"
+        else:
+            cost_mode = None
+    if cost_mode is not None:
+        return dict(
+            policy_variant=f"ts_{cost_mode}", policy_family="ts", cost_mode=cost_mode,
+            batch_size=b, gittins_batch_size=b, cost_scaling_factor=1e-4,
+            prior_type=prior_type, ts_target="finite_population_mean",
+        )
     m = re.fullmatch(r"(ucb|lrf)_B(\d+)", v)
     if m:
         policy = m.group(1)
@@ -324,6 +355,8 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
     summary = dict(run.summary)
     exp = cfg.get("experiment_variant") or cfg.get("raw") or cfg.get("policy_variant")
     fallback = parse_variant_fallback(exp)
+    is_gittins = (get_field(cfg, summary, "policy_family") or fallback.get("policy_family")) == "gittins" or str(exp or "").startswith("gittins")
+    known_finite_legacy = get_field(cfg, summary, "gittins_index_target") == "finite_population_mean"
 
     matrix = get_field(cfg, summary, "matrix")
     matrix_task = get_field(cfg, summary, "matrix_task") or get_field(cfg, summary, "task") or matrix_task_from_matrix(matrix)
@@ -361,6 +394,17 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "eval_budget_fraction": get_field(cfg, summary, "eval_budget_fraction"),
         "warmup_percentage": get_field(cfg, summary, "warmup_percentage"),
         **{key: get_field(cfg, summary, key) for key in RECOMMENDATION_COLUMNS},
+        # Our earlier finite-target version planned per cell; older latent
+        # traces have an unknown schedule. Neither inherits the current DP.
+        "gittins_model_version": get_field(cfg, summary, "gittins_model_version") or (
+            ("per_cell_legacy" if known_finite_legacy else "legacy_unversioned") if is_gittins else None
+        ),
+        "gittins_dp_transitions": get_field(cfg, summary, "gittins_dp_transitions") or (
+            ("per_cell" if known_finite_legacy else "unspecified") if is_gittins else None
+        ),
+        **{key: get_field(cfg, summary, key)
+           if get_field(cfg, summary, key) is not None else fallback.get(key)
+           for key in TS_COLUMNS},
     }
 
 
@@ -745,19 +789,25 @@ def summary_existing_keys(summary_path: Path) -> set[tuple[str, ...]]:
 
 
 def require_baseline_recommendations_for_recovery(row: dict[str, Any]) -> None:
-    """Legacy recovery keys omit recommendation/index targets and std penalty."""
+    """Legacy recovery keys omit recommendation/index targets and DP versions."""
     penalty = normalize_scalar(row.get("recommendation_std_penalty"))
     rule = normalize_scalar(row.get("recommendation_rule"))
     index_target = normalize_scalar(row.get("gittins_index_target"))
+    model_version = normalize_scalar(row.get("gittins_model_version"))
+    dp_transitions = normalize_scalar(row.get("gittins_dp_transitions"))
+    variant = normalize_scalar(row.get("experiment_variant"))
     if (
         rule not in {"", "empirical_mean", "posterior_mean"}
         or index_target not in {"", "latent_mean"}
         or (penalty and float(penalty) != 0.0)
+        or model_version not in {"", "per_cell_legacy", "legacy_unversioned"}
+        or dp_transitions not in {"", "per_cell", "unspecified"}
+        or "_dpbatch" in variant
     ):
         raise ValueError(
             "Expected-grid completeness and targeted recovery do not yet support "
-            "finite-population recommendation/index targets or nonzero recommendation std "
-            "penalties. Download these runs without "
+            "finite-population recommendation/index targets, batch DP versions, or nonzero "
+            "recommendation std penalties. Download these runs without "
             "--expected-grid-yaml, --expected-configs-csv, or --recover-missing-targeted; "
             "the normal download preserves each run and its recommendation metadata."
         )
@@ -809,6 +859,9 @@ def load_expected_rows_from_sweep_yaml(path: Path, dataset: str) -> list[dict[st
         require_baseline_recommendations_for_recovery({"recommendation_rule": value})
     for value in _yaml_param_values(params, "gittins_index_target"):
         require_baseline_recommendations_for_recovery({"gittins_index_target": value})
+    for field in ("gittins_model_version", "gittins_dp_transitions", "experiment_variant"):
+        for value in _yaml_param_values(params, field):
+            require_baseline_recommendations_for_recovery({field: value})
     matrices = _yaml_param_values(params, "matrix")
     run_seeds = _yaml_param_values(params, "run_seed") or _yaml_param_values(params, "seed")
     variants = _yaml_param_values(params, "experiment_variant") or _yaml_param_values(params, "policy_variant")

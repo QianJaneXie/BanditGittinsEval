@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Checkpointed W&B downloader for BayesOpt baseline sweeps.
+"""Checkpointed W&B downloader for BayesOpt and MF-KG baseline sweeps.
 
-Downloads run summary + step history from ``run_bo_baseline_wandb.py`` sweeps.
+Downloads run summary + step history from ``run_bo_baseline_wandb.py`` and
+``run_mfkg_baseline.py`` sweeps.
 Output schema is aligned with ``download_wandb_simple_regret.py`` where columns
 overlap, so histories can be merged at plot time.
 
@@ -25,8 +26,10 @@ import gzip
 import json
 import re
 import sys
+import tempfile
 import time
 from collections import Counter, defaultdict
+from itertools import product
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -47,6 +50,10 @@ HISTORY_KEYS = [
     "iter_fit_s",
     "iter_score_s",
     "iter_total_s",
+    "fidelity",
+    "n_observed_arm",
+    "n_new_samples",
+    "observed_y",
 ]
 
 BASE_COLUMNS = [
@@ -68,6 +75,8 @@ BASE_COLUMNS = [
     "method_label",
     "acquisition",
     "cost_mode",
+    "allocation_mode",
+    "batch_size",
     "cost_scaling_factor",
     "n_configs",
     "n_examples",
@@ -77,6 +86,20 @@ BASE_COLUMNS = [
     "dominant_dim",
     "n_init_budget_cap",
     "observation_noise",
+    "matrix",
+    "n_arms",
+    "feature_source",
+    "target_fidelity",
+    "fidelity_samples",
+    "num_fantasies",
+    "fit_maxiter",
+    "warmup_budget_fraction",
+    "warmup_anchors",
+    "warmup_strategy",
+    "recommendation_rule",
+    "observation_model",
+    "cost_aware",
+    "cost_vector",
 ]
 
 SUMMARY_COLUMNS = BASE_COLUMNS + [
@@ -97,6 +120,14 @@ SUMMARY_COLUMNS = BASE_COLUMNS + [
     "budget_original_cost",
     "total_brute_force_original_cost",
     "cost_aware_run",
+    "budget",
+    "budget_spent",
+    "warmup_budget",
+    "warmup_spent",
+    "warmup_steps",
+    "n_init_requested",
+    "n_init_actual",
+    "stop_reason",
 ]
 
 HISTORY_COLUMNS = BASE_COLUMNS + HISTORY_KEYS
@@ -119,6 +150,11 @@ FULL_CONFIG_DIAGNOSTIC_COLUMNS = [
     "eval_budget_fraction",
     "n_init",
     "n_steps",
+    "matrix",
+    "fidelity_samples",
+    "num_fantasies",
+    "allocation_mode",
+    "batch_size",
 ]
 
 
@@ -184,6 +220,10 @@ def infer_benchmark_key(
 def parse_bo_variant(experiment_variant: str | None, acquisition: str | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"policy_family": "bo", "policy_variant": experiment_variant}
     if not experiment_variant:
+        if acquisition:
+            out["acquisition"] = str(acquisition)
+            if str(acquisition).lower() == "mfkg":
+                out["policy_family"] = "mfkg"
         return out
     v = str(experiment_variant).strip()
     acq = v
@@ -201,11 +241,33 @@ def parse_bo_variant(experiment_variant: str | None, acquisition: str | None = N
         cost_mode = "cost"
     if acquisition:
         acq = str(acquisition)
+    if acq.lower() == "mfkg":
+        out["policy_family"] = "mfkg"
     out.update(acquisition=acq, cost_mode=cost_mode, policy_variant=v)
     return out
 
 
-def method_label_from_variant(experiment_variant: str | None, acquisition: str | None = None) -> str:
+def mfkg_allocation_label(label: str, allocation_mode: Any, batch_size: Any) -> str:
+    """Keep fixed item batches separate from adaptive-fidelity experiments."""
+    mode = normalize_scalar(allocation_mode)
+    if not mode:
+        return label
+    label = re.sub(r" \[(?:fixed batch|adaptive fidelity|allocation=)[^\]]*\]$", "", label)
+    if mode == "fixed_batch":
+        batch = normalize_scalar(batch_size) or "unknown"
+        return f"{label} [fixed batch B={batch}]"
+    if mode == "adaptive_fidelity":
+        return f"{label} [adaptive fidelity]"
+    return f"{label} [allocation={mode}]"
+
+
+def method_label_from_variant(
+    experiment_variant: str | None,
+    acquisition: str | None = None,
+    *,
+    allocation_mode: Any = None,
+    batch_size: Any = None,
+) -> str:
     parsed = parse_bo_variant(experiment_variant, acquisition)
     acq = str(parsed.get("acquisition") or "bo").lower()
     cost_mode = str(parsed.get("cost_mode") or "unit")
@@ -214,8 +276,11 @@ def method_label_from_variant(experiment_variant: str | None, acquisition: str |
         ("pbgi", "cost"): "BO PBGI (cost)",
         ("logei", "unit"): "BO LogEI",
         ("logeipc", "cost"): "BO LogEIPC",
+        ("mfkg", "unit"): "BO MF-KG",
+        ("mfkg", "cost"): "BO MF-KG (cost)",
     }
-    return labels.get((acq, cost_mode), f"BO {acq}" + (" (cost)" if cost_mode == "cost" else ""))
+    label = labels.get((acq, cost_mode), f"BO {acq}" + (" (cost)" if cost_mode == "cost" else ""))
+    return mfkg_allocation_label(label, allocation_mode, batch_size) if acq == "mfkg" else label
 
 
 def get_field(cfg: dict[str, Any], summary: dict[str, Any], key: str) -> Any:
@@ -231,11 +296,13 @@ def infer_dataset_from_row(row: dict[str, Any]) -> str | None:
         ds = normalize_dataset_name(row.get(key))
         if ds:
             return ds
-    bo_inputs = str(row.get("bo_inputs") or "").lower()
+    bo_inputs = str(row.get("bo_inputs") or row.get("matrix") or "").lower()
     if "gsm8k" in bo_inputs:
         return "gsm8k"
     if "piqa" in bo_inputs:
         return "piqa"
+    if "alpaca" in bo_inputs:
+        return "alpaca"
     if "mmlu" in bo_inputs or row.get("mmlu_task"):
         return "mmlu"
     return None
@@ -248,18 +315,21 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
     acquisition = get_field(cfg, summary, "acquisition")
     parsed = parse_bo_variant(exp, acquisition)
     bo_inputs = get_field(cfg, summary, "bo_inputs")
+    matrix = get_field(cfg, summary, "matrix")
+    source = bo_inputs or matrix
     dataset = normalize_dataset_name(get_field(cfg, summary, "dataset_tag_resolved")) or normalize_dataset_name(
         get_field(cfg, summary, "dataset_tag")
     )
-    mmlu_task = get_field(cfg, summary, "mmlu_task") or infer_mmlu_task_from_bo_inputs(bo_inputs)
-    matrix_seed = get_field(cfg, summary, "matrix_seed") or infer_matrix_seed(bo_inputs)
+    dataset = dataset or infer_dataset_from_row({"bo_inputs": source})
+    mmlu_task = get_field(cfg, summary, "mmlu_task") or infer_mmlu_task_from_bo_inputs(source)
+    matrix_seed = get_field(cfg, summary, "matrix_seed") or infer_matrix_seed(source)
     benchmark_key = get_field(cfg, summary, "benchmark_key") or infer_benchmark_key(
         dataset=dataset,
-        bo_inputs=bo_inputs,
+        bo_inputs=source,
         mmlu_task=mmlu_task,
         matrix_seed=matrix_seed,
     )
-    return {
+    row = {
         "run_id": run.id,
         "run_name": run.name,
         "state": run.state,
@@ -271,15 +341,15 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "mmlu_task": mmlu_task,
         "mmlu_size_bucket": get_field(cfg, summary, "mmlu_size_bucket"),
         "matrix_seed": matrix_seed,
-        "run_seed": get_field(cfg, summary, "run_seed"),
+        "run_seed": get_field(cfg, summary, "run_seed") if get_field(cfg, summary, "run_seed") is not None else get_field(cfg, summary, "seed"),
         "experiment_variant": exp,
         "policy_variant": get_field(cfg, summary, "policy_variant") or parsed.get("policy_variant"),
-        "policy_family": get_field(cfg, summary, "policy_family") or "bo",
+        "policy_family": get_field(cfg, summary, "policy_family") or parsed.get("policy_family", "bo"),
         "method_label": get_field(cfg, summary, "method_label") or method_label_from_variant(exp, acquisition),
         "acquisition": parsed.get("acquisition"),
         "cost_mode": get_field(cfg, summary, "cost_mode") or parsed.get("cost_mode"),
         "cost_scaling_factor": get_field(cfg, summary, "cost_scaling_factor"),
-        "n_configs": get_field(cfg, summary, "n_configs"),
+        "n_configs": get_field(cfg, summary, "n_configs") if get_field(cfg, summary, "n_configs") is not None else get_field(cfg, summary, "n_arms"),
         "n_examples": get_field(cfg, summary, "n_examples"),
         "eval_budget_fraction": get_field(cfg, summary, "eval_budget_fraction"),
         "n_init": get_field(cfg, summary, "n_init"),
@@ -287,7 +357,16 @@ def base_row(run: wandb.apis.public.Run) -> dict[str, Any]:
         "dominant_dim": get_field(cfg, summary, "dominant_dim"),
         "n_init_budget_cap": get_field(cfg, summary, "n_init_budget_cap"),
         "observation_noise": get_field(cfg, summary, "observation_noise"),
+        "matrix": matrix,
     }
+    for key in BASE_COLUMNS:
+        if key not in row:
+            row[key] = get_field(cfg, summary, key)
+    if str(row.get("policy_family")).lower() == "mfkg" or str(row.get("acquisition")).lower() == "mfkg":
+        row["method_label"] = mfkg_allocation_label(
+            row["method_label"], row.get("allocation_mode"), row.get("batch_size")
+        )
+    return row
 
 
 def load_mmlu_task_buckets(path: Path | None) -> dict[str, str]:
@@ -307,7 +386,7 @@ def get_mmlu_task(row: dict[str, Any]) -> str | None:
     value = row.get("mmlu_task")
     if value is not None and str(value).strip():
         return str(value).strip()
-    return infer_mmlu_task_from_bo_inputs(row.get("bo_inputs"))
+    return infer_mmlu_task_from_bo_inputs(row.get("bo_inputs") or row.get("matrix"))
 
 
 def infer_mmlu_size_bucket(row: dict[str, Any], task_buckets: dict[str, str]) -> str | None:
@@ -342,6 +421,26 @@ def keep_mmlu_size(row: dict[str, Any], size_arg: str, task_buckets: dict[str, s
 def ensure_csv_header(path: Path, columns: list[str], *, gzip_file: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.stat().st_size > 0:
+        opener = gzip.open if gzip_file else Path.open
+        with opener(path, "rt", newline="", encoding="utf-8") as current:
+            old_columns = next(csv.reader(current), [])
+        if old_columns == columns:
+            return
+        if not set(old_columns).issubset(columns):
+            raise ValueError(f"Cannot append to {path}: existing CSV has unknown columns")
+        # Checkpointed downloads can predate the MF-KG columns. Widen the
+        # existing schema atomically, preserving every value in old rows.
+        with tempfile.NamedTemporaryFile(dir=path.parent, prefix=path.name + ".", delete=False) as temp:
+            temp_path = Path(temp.name)
+        try:
+            with opener(path, "rt", newline="", encoding="utf-8") as source, opener(temp_path, "wt", newline="", encoding="utf-8") as dest:
+                writer = csv.DictWriter(dest, fieldnames=columns)
+                writer.writeheader()
+                for row in csv.DictReader(source):
+                    writer.writerow({key: row.get(key) for key in columns})
+            temp_path.replace(path)
+        finally:
+            temp_path.unlink(missing_ok=True)
         return
     if gzip_file:
         with gzip.open(path, "wt", newline="", encoding="utf-8") as f:
@@ -368,11 +467,16 @@ def read_csv_rows(path: Path) -> list[dict[str, Any]]:
 
 
 def config_key(row: dict[str, Any]) -> tuple[str, ...]:
-    return (
-        normalize_scalar(row.get("bo_inputs")),
+    key = (
+        normalize_scalar(row.get("bo_inputs") or row.get("matrix")),
         normalize_scalar(row.get("run_seed")),
         normalize_scalar(row.get("experiment_variant")),
     )
+    mode = normalize_scalar(row.get("allocation_mode"))
+    is_mfkg = str(row.get("policy_family") or "").lower() == "mfkg" or key[2].startswith("mfkg") or str(row.get("acquisition") or "").lower() == "mfkg"
+    if is_mfkg and mode:
+        return (*key, mode, normalize_scalar(row.get("batch_size")) if mode == "fixed_batch" else "")
+    return key
 
 
 def full_diagnostic_key(row: dict[str, Any]) -> tuple[str, ...]:
@@ -466,7 +570,18 @@ def scan_history_with_retry(run: wandb.apis.public.Run, *, page_size: int, retri
     last_err: Exception | None = None
     for attempt in range(1, int(retries) + 1):
         try:
-            return [dict(h) for h in run.scan_history(keys=HISTORY_KEYS, page_size=page_size)]
+            # W&B's keys filter requires every requested key to be present in
+            # a row. Optional MF-KG fields would otherwise drop all old BO
+            # history, and old BO-only fields would drop all MF-KG history.
+            rows = []
+            for raw in run.scan_history(page_size=page_size):
+                row = dict(raw)
+                for canonical, alias in (("cum_eval", "x"), ("cum_original_cost", "x_original_cost"), ("simple_regret", "regret"), ("selection_phase", "bo_phase")):
+                    if row.get(canonical) is None and row.get(alias) is not None:
+                        row[canonical] = row[alias]
+                if row.get("cum_eval") is not None and row.get("simple_regret") is not None:
+                    rows.append(row)
+            return rows
         except Exception as e:
             last_err = e
             time.sleep(float(sleep_s) * attempt)
@@ -550,36 +665,45 @@ def load_expected_rows_from_sweep_yaml(path: Path, dataset: str) -> list[dict[st
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     params = data.get("parameters", {}) if isinstance(data, dict) else {}
     bo_inputs_list = _yaml_param_values(params, "bo_inputs")
+    matrix_list = _yaml_param_values(params, "matrix")
     run_seeds = _yaml_param_values(params, "run_seed") or _yaml_param_values(params, "seed")
     variants = _yaml_param_values(params, "experiment_variant") or _yaml_param_values(params, "policy_variant")
-    if not bo_inputs_list or not run_seeds or not variants:
+    allocation_modes = _yaml_param_values(params, "allocation_mode") or [None]
+    batch_sizes = _yaml_param_values(params, "batch_size") or [None]
+    if (not bo_inputs_list and not matrix_list) or not run_seeds or not variants:
         raise ValueError(
-            "Expected YAML must contain parameters.bo_inputs.values, "
-            "parameters.run_seed.values, and parameters.experiment_variant.values"
+            "Expected YAML must contain bo_inputs or matrix, run_seed or seed, "
+            "and experiment_variant or policy_variant parameters (value or values)"
         )
     rows: list[dict[str, Any]] = []
-    for bo_inputs in bo_inputs_list:
-        bo_inputs = str(bo_inputs)
-        ds = normalize_dataset_name(dataset) or infer_dataset_from_row({"bo_inputs": bo_inputs})
-        mmlu_task = infer_mmlu_task_from_bo_inputs(bo_inputs)
-        matrix_seed = infer_matrix_seed(bo_inputs)
+    sources = [(str(path), str(matrix_list[0]) if len(matrix_list) == 1 else None) for path in bo_inputs_list] if bo_inputs_list else [(None, str(path)) for path in matrix_list]
+    for bo_inputs, matrix in sources:
+        source = bo_inputs or matrix
+        ds = normalize_dataset_name(dataset)
+        if ds in {None, "auto"}:
+            ds = infer_dataset_from_row({"bo_inputs": source})
+        mmlu_task = infer_mmlu_task_from_bo_inputs(source)
+        matrix_seed = infer_matrix_seed(source)
         benchmark_key = infer_benchmark_key(
             dataset=ds,
-            bo_inputs=bo_inputs,
+            bo_inputs=source,
             mmlu_task=mmlu_task,
             matrix_seed=matrix_seed,
         )
         for run_seed in run_seeds:
-            for variant in variants:
+            for variant, allocation_mode, batch_size in product(variants, allocation_modes, batch_sizes):
                 rows.append(
                     {
                         "dataset_tag": ds,
                         "bo_inputs": bo_inputs,
+                        "matrix": matrix,
                         "benchmark_key": benchmark_key,
                         "mmlu_task": mmlu_task,
                         "matrix_seed": matrix_seed,
                         "run_seed": normalize_scalar(run_seed),
                         "experiment_variant": str(variant),
+                        "allocation_mode": allocation_mode,
+                        "batch_size": 16 if allocation_mode == "fixed_batch" and batch_size is None else batch_size,
                     }
                 )
     return rows
@@ -593,7 +717,7 @@ def expected_run_name(dataset: str, row: dict[str, Any]) -> str:
         task = get_mmlu_task(row) or "unknown"
         label = f"task{safe_token(task)}"
     else:
-        label = f"seed{normalize_scalar(row.get('matrix_seed')) or infer_matrix_seed(row.get('bo_inputs')) or 'NA'}"
+        label = f"seed{normalize_scalar(row.get('matrix_seed')) or infer_matrix_seed(row.get('bo_inputs') or row.get('matrix')) or 'NA'}"
     return f"{ds}_{label}_{variant}_runseed{run_seed}"
 
 
@@ -620,7 +744,7 @@ def write_missing_expected_configs(args: argparse.Namespace, expected_rows: list
         missing.append(out)
     write_csv_rows(
         args.raw_dir / "missing_expected_configs.csv",
-        ["dataset_tag", "bo_inputs", "benchmark_key", "run_seed", "experiment_variant", "expected_name"],
+        ["dataset_tag", "bo_inputs", "matrix", "benchmark_key", "run_seed", "experiment_variant", "allocation_mode", "batch_size", "expected_name"],
         missing,
     )
     print(f"Completeness check: expected={len(seen)}, downloaded={len(existing)}, missing={len(missing)}")
@@ -637,12 +761,15 @@ def find_target_runs_within_sweep(args: argparse.Namespace, missing_rows: list[d
     selected_ids: set[str] = set()
     for target in missing_rows:
         bo_inputs = normalize_scalar(target.get("bo_inputs"))
+        input_field = "bo_inputs" if bo_inputs else "matrix"
+        input_path = bo_inputs or normalize_scalar(target.get("matrix"))
         run_seed = int(target["run_seed"]) if str(target.get("run_seed", "")).isdigit() else target.get("run_seed")
         variant = normalize_scalar(target.get("experiment_variant"))
         expected_name = target.get("expected_name") or expected_run_name(args.dataset, target)
         candidates: dict[str, wandb.apis.public.Run] = {}
         for filters in (
-            {"sweep": args.sweep_id, "config.bo_inputs": bo_inputs, "config.run_seed": run_seed, "config.experiment_variant": variant},
+            {"sweep": args.sweep_id, f"config.{input_field}": input_path, "config.run_seed": run_seed, "config.experiment_variant": variant},
+            {"sweep": args.sweep_id, f"config.{input_field}": input_path, "config.seed": run_seed, "config.experiment_variant": variant},
             {"sweep": args.sweep_id, "display_name": expected_name},
             {"sweep": args.sweep_id, "name": expected_name},
         ):
@@ -657,6 +784,8 @@ def find_target_runs_within_sweep(args: argparse.Namespace, missing_rows: list[d
                 continue
             row = base_row(run)
             if not keep_dataset(row, args.dataset):
+                continue
+            if config_key(row) != config_key(target):
                 continue
             valid.append((run, row))
         if not valid:
@@ -737,7 +866,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--entity", required=True)
     p.add_argument("--project", required=True)
     p.add_argument("--sweep-id", required=True)
-    p.add_argument("--dataset", choices=["auto", "gsm8k", "piqa", "mmlu"], default="auto")
+    p.add_argument("--dataset", choices=["auto", "gsm8k", "piqa", "mmlu", "alpaca"], default="auto")
     p.add_argument("--mmlu-size-bucket", choices=["all", "small", "medium", "large"], default="all")
     p.add_argument("--task-metadata", type=Path, default=None)
     p.add_argument("--raw-dir", "--out-dir", dest="raw_dir", required=True, type=Path)

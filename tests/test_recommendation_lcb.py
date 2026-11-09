@@ -241,7 +241,7 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
                         prior_mean=0.0, prior_variance=1.0,
                         obs_noise_variance=noise, batch_size=4,
                         batch_observation_model=batch_model,
-                        roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=4,
+                        roots_lookup_table=torch.zeros((1, 2)), sim_cum_eval=4,
                         recommendation_aware_stop_cum_eval_holder=stop,
                         recommendation_std_penalty=penalty,
                     )
@@ -258,7 +258,7 @@ class RecommendationAwareStoppingTests(unittest.TestCase):
                 means, scores = gittins_post_pull_update(
                     obs, cached_scores=torch.tensor([0.0, unfinished_score]), recompute_arms=[],
                     prior_mean=0.0, prior_variance=1.0, obs_noise_variance=1.0,
-                    roots_lookup_table=torch.zeros((1, 5)), sim_cum_eval=7,
+                    roots_lookup_table=torch.zeros((1, 2)), sim_cum_eval=7,
                     natural_stop_cum_eval_holder=natural_stop,
                     recommendation_aware_stop_cum_eval_holder=recommendation_stop,
                 )

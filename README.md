@@ -9,6 +9,9 @@ Works with any `(n_models, n_examples)` accuracy matrix under `data/`. Full expe
 ```bash
 pip install -e .
 # or: uv sync && uv run python ...
+
+# Optional W&B experiments and the test suite:
+pip install -e '.[experiments,test]'
 ```
 
 See `pyproject.toml` for dependencies (`banditeval`, `torch`, `matplotlib`, `jax`, …).
@@ -22,16 +25,37 @@ python scripts/simulate_simple_regret.py --matrix <matrix.npy> --out <traces.npz
 python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure.png> [--x-axis evals|original_cost]
 ```
 
-**Algorithms** compared in the W&B sweeps:
+**Available policies**:
 
 | Policy | Selection | Recommendation |
 |--------|-----------|----------------|
 | UCB-E | UCB bound | Empirical mean |
 | SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
-| Gittins | Gittins index for the full test-set mean | Full-test-set posterior mean \(E[F_k \mid D_t]\) |
+| Gittins | Gittins index for the full test-set mean | Full-test-set posterior LCB by default; optional mean-only |
+| Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior LCB by default; optional mean-only |
+| Correlated Gaussian TS | Joint Thompson draw using a categorical configuration GP prior | Full-test-set posterior LCB by default; optional mean-only |
+| MF-KG | BoTorch knowledge gradient per incremental item cost; jointly select one configuration and its next fidelity (`q=1`) | GP posterior mean at full fidelity |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
+
+Gaussian TS is enabled with `--algorithms ts` (or add `ts` to the existing list).
+Correlated Gaussian TS has a separate runner, `scripts/run_correlated_ts_baseline.py`.
+For the paired GSM8K comparison with independent TS, use
+`scripts/compare_correlated_ts.py` and `scripts/plot_correlated_ts_comparison.py`;
+see the [configuration kernel and comparison setup](docs/ts_mfkg_baselines.md#correlated-gaussian-thompson-sampling).
+MF-KG has its own matrix-level runner, `scripts/run_mfkg_baseline.py`; see the
+[TS and MF-KG guide](docs/ts_mfkg_baselines.md) for commands, the default
+`q=1 + adaptive_fidelity` setup, the 10% warmup cap, cost accounting, W&B
+configs, and validation. Each MF-KG query chooses one configuration and a
+higher fidelity; its newly evaluated item count depends on that fidelity jump.
+
+For the paper's GSM8K batch-level setup with **both Gittins and TS using LCB
+recommendation**, use `scripts/compare_gittins_ts.py` followed by
+`scripts/plot_gittins_ts_comparison.py`. This comparison uses B=8 and 100 paired
+trials per prior/cost condition. Each Gittins DP transition observes one batch
+and costs `lambda * actual_batch_size * raw_arm_price`; see the guide for the
+exact protocol. Corrected outputs are under `outputs/gsm8k_gittins_ts_batch_lcb100/`.
 
 **Common flags** — run any script with `--help` for the full list:
 
@@ -39,9 +63,9 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 - `--cost-vector <.json/.npy>` — heterogeneous per-arm costs; omit for unit cost (1 per evaluation).
 - `--gittins-prior-mean` / `--gittins-prior-variance` — Gittins prior; MMLU bucket priors in [`docs/mmlu_prior_buckets.md`](docs/mmlu_prior_buckets.md).
 - `--gittins-obs-noise-variance` — override default \(\tau^2 = 1/(4B)\) where \(B\) is `--gittins-batch-size`.
-- `--recommendation-std-penalty 1` — recommend the Gittins arm with the largest full-test-set posterior mean minus its posterior standard deviation; `0` (default) uses this mean alone.
+- `--recommendation-std-penalty 0` / `1` — choose full-test-set posterior mean / LCB recommendation for TS and Gittins. The common simulation, W&B and standalone correlated TS runners default to `1` for the paper setup. Use `0` for the mean-only ablation; allocation is unaffected.
 
-Both simulation and W&B runners use the full-test-set posterior mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. Completed arms have index equal to their exact empirical mean and zero posterior variance. The DP uses the full-test-set mean's transition variance, with the numerical evaluation cost unchanged. This can change sampling and stopping even with no LCB penalty. See [the unified index and seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
+Both simulation and W&B runners use the posterior of the full-test-set mean for Gittins sampling, stopping, and recommendation: observed scores count directly, and the latent posterior predicts the remaining scores. The default LCB recommendation subtracts one posterior standard deviation. Completed arms have index equal to their exact empirical mean and zero posterior variance. The default DP advances once per batch, with noise `tau_cell^2 / b` and cost `lambda * b * raw_per_cell_price` for actual batch size `b`. This can change sampling and stopping even with no LCB penalty. See [the batch schedule and archived seed0 comparison](docs/finite_population_gittins.md) and [the recommendation formulas and earlier GSM8K results](docs/finite_population_recommendation.md); [the earlier latent-mean LCB experiments](docs/posterior_lcb_recommendation.md) are retained for reference.
 
 For a standalone explanation of the two posterior means, see [Latent mean vs. full-test-set mean (中文)](docs/posterior_means/README.md), including a worked example, completed-arm behavior, LCB, and when experiments need to be rerun.
 
@@ -51,7 +75,7 @@ Two representative benchmarks below. Swap paths for any other matrix in `data/`.
 
 ### GSM8K (various models)
 
-Batch size 16; Gittins prior \(\mathcal{N}(0.2, 0.01)\).
+Batch size 8; Gittins prior \(\mathcal{N}(0.2, 0.01)\), with the paper's LCB recommendation.
 
 Bandit (unit cost):
 
@@ -60,8 +84,9 @@ python scripts/simulate_simple_regret.py \
   --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
   --out outputs/bandit_traces/gsm8k_seed1.npz \
   --seed 0 --eval-budget-fraction 0.10 \
-  --batch-size 16 --gittins-batch-size 16 \
-  --gittins-prior-mean 0.2 --gittins-prior-variance 0.01
+  --batch-size 8 --gittins-batch-size 8 \
+  --gittins-prior-mean 0.2 --gittins-prior-variance 0.01 \
+  --recommendation-std-penalty 1
 
 python scripts/plot_simple_regret_results.py \
   --traces outputs/bandit_traces/gsm8k_seed1.npz \

@@ -3,8 +3,10 @@
 
 One W&B run = one concrete experiment configuration.
 Gittins acquisition, recommendations, and posterior_mean_pulled all target the
-full fixed test-set average. Historical runs without gittins_index_target used
-the latent arm mean for acquisition and posterior_mean_pulled.
+full fixed test-set average. Gittins DP transitions are complete observed
+batches, including the actual final short-batch size. Historical runs without
+gittins_index_target used the latent arm mean for acquisition and
+posterior_mean_pulled.
 """
 
 from __future__ import annotations
@@ -37,9 +39,11 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from gittins_policy import gittins_index_exploration, gittins_post_pull_update  # noqa: E402
-from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
+from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
+from gaussian_ts_policy import gaussian_thompson_sampling  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
 DEFAULT_PRIOR_VARIANCE = 0.04
@@ -70,6 +74,19 @@ def safe_token(s: str) -> str:
 
 def parse_experiment_variant(raw: str) -> VariantConfig:
     v = raw.strip()
+
+    m = re.fullmatch(r"ts_(unit|cost|aware)_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        mode = "cost" if m.group(1) == "aware" else m.group(1)
+        b = int(m.group(2))
+        return VariantConfig(v, f"ts_{mode}", "ts", mode, b, b, 1e-4, m.group(3) or "default")
+    m = re.fullmatch(r"ts_B(\d+)(?:_(default|dataset))?", v)
+    if m:
+        b = int(m.group(1))
+        return VariantConfig(v, "ts_unit", "ts", "unit", b, b, 1e-4, m.group(2) or "default")
+    if v in {"ts", "ts_unit", "ts_cost", "ts_aware"}:
+        mode = "cost" if v in {"ts_cost", "ts_aware"} else "unit"
+        return VariantConfig(v, f"ts_{mode}", "ts", mode, 20, 20, 1e-4, "default")
 
     m = re.fullmatch(r"(ucb|lrf)_cost_B(\d+)", v)
     if m:
@@ -121,7 +138,9 @@ def parse_experiment_variant(raw: str) -> VariantConfig:
 def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
     if not path.is_file():
         raise FileNotFoundError(str(path))
-    if path.suffix.lower() == ".npy":
+    if path.suffix.lower() == ".npz":
+        arr = load_bo_per_cell_costs(path, n_arms)
+    elif path.suffix.lower() == ".npy":
         arr = np.squeeze(np.load(path)).astype(np.float64)
     elif path.suffix.lower() == ".json":
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -142,11 +161,11 @@ def load_cost_vector(path: Path, n_arms: int) -> torch.Tensor:
         else:
             raise ValueError(f"unsupported JSON cost format: {path}")
     else:
-        raise ValueError(f"cost vector must be .npy or .json, got {path}")
+        raise ValueError(f"cost vector must be .npy, .json, or a BO .npz archive, got {path}")
     arr = np.asarray(arr, dtype=np.float64).reshape(-1)
     if arr.shape != (n_arms,):
         raise ValueError(f"cost vector shape must be ({n_arms},), got {arr.shape}")
-    return torch.tensor(arr, dtype=torch.float64)
+    return torch.tensor(validate_per_cell_costs(arr, n_arms), dtype=torch.float64)
 
 
 def resolve_prior(
@@ -255,6 +274,29 @@ def build_policy(
 
         return step_fn, empirical_incumbent, None, lookup_table_s
 
+    if variant.policy_family == "ts":
+        B = int(variant.batch_size)
+        if B <= 0:
+            raise ValueError("TS batch size must be positive")
+        tau_sq_batch = getattr(args, "ts_obs_noise_variance", None)
+        if tau_sq_batch is None:
+            tau_sq_batch = args.gittins_obs_noise_variance
+        if tau_sq_batch is None:
+            tau_sq_batch = 1.0 / (4.0 * B)
+
+        def step_fn(obs: torch.Tensor, sim_cum_eval: int):
+            return gaussian_thompson_sampling(
+                obs, prior_mean=prior_mean, prior_variance=prior_variance,
+                obs_noise_variance=tau_sq_batch, batch_size=B,
+                max_batch_size=max_evaluations - sim_cum_eval,
+            )
+
+        return step_fn, partial(
+            posterior_incumbent, prior_mean=prior_mean, prior_variance=prior_variance,
+            tau_sq_cell=float(tau_sq_batch) * B,
+            std_penalty=float(getattr(args, "recommendation_std_penalty", 1.0)),
+        ), None, lookup_table_s
+
     if variant.policy_family != "gittins":
         raise ValueError(f"Unsupported policy family: {variant.policy_family}")
 
@@ -273,16 +315,15 @@ def build_policy(
         decision_cost_per_arm = torch.ones((n_arms,), dtype=torch.float64)
 
     t0 = time.perf_counter()
-    dp_costs_per_arm = (
-        decision_cost_per_arm.to(torch.float32).numpy() * float(variant.cost_scaling_factor)
-    ).astype(np.float32)
     roots_torch = torch.tensor(
         np.array(
-            compute_finite_population_roots_lookup_table(
+            compute_finite_population_batch_roots_lookup_table(
                 prior_variance=float(prior_variance),
                 tau_sq_cell=tau_sq_cell,
                 n_examples=int(ground_truth.shape[1]),
-                costs_per_arm=dp_costs_per_arm,
+                batch_size=B,
+                costs_per_arm=decision_cost_per_arm.numpy(),
+                cost_scaling_factor=float(variant.cost_scaling_factor),
                 n_points=int(args.gittins_grid_points),
             )
         ),
@@ -497,19 +538,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ucb-a", "--ucb_a", dest="ucb_a", type=float, default=1.0)
     p.add_argument("--warmup-percentage", "--warmup_percentage", type=float, default=0.05)
     p.add_argument("--lrf-device", "--lrf_device", default="cpu")
-    p.add_argument("--cost-vector", "--cost_vector", type=Path, default=None)
+    p.add_argument("--cost-vector", "--cost_vector", type=Path, default=None,
+        help="Per-cell prices (.json/.npy), or BO .npz full costs divided by metadata n_examples.")
     p.add_argument("--gittins-grid-points", "--gittins_grid_points", type=int, default=2**10 + 1)
     p.add_argument("--gittins-obs-noise-variance", "--gittins_obs_noise_variance", type=float, default=None)
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument("--ts-prior-mean", "--ts_prior_mean", type=float, default=None,
+                   help="Override the resolved Gaussian TS prior mean.")
+    p.add_argument("--ts-prior-variance", "--ts_prior_variance", type=float, default=None,
+                   help="Override the resolved Gaussian TS prior variance.")
+    p.add_argument("--ts-obs-noise-variance", "--ts_obs_noise_variance", type=float, default=None,
+                   help="TS batch-mean noise; defaults to Gittins override or 1/(4B).")
     p.add_argument(
         "--recommendation-std-penalty",
         "--recommendation_std_penalty",
         type=float,
-        default=0.0,
-        help="Gittins recommendation: maximize the full fixed test-set average's "
+        default=1.0,
+        help="Gittins and TS recommendation: maximize the full fixed test-set average's "
         "posterior mean minus this nonnegative multiple of its posterior predictive "
-        "std. Use 0 for mean only (default), 1 for mean - std.",
+        "std. Use 1 for the paper's LCB rule (default), 0 for a mean-only ablation.",
     )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
@@ -579,6 +627,11 @@ def main() -> int:
         prior_mean = float(args.gittins_prior_mean)
     if args.gittins_prior_variance is not None:
         prior_variance = float(args.gittins_prior_variance)
+    if variant.policy_family == "ts":
+        if args.ts_prior_mean is not None:
+            prior_mean = float(args.ts_prior_mean)
+        if args.ts_prior_variance is not None:
+            prior_variance = float(args.ts_prior_variance)
 
     matrix_seed = re.search(r"seed(\d+)", args.matrix.stem)
     matrix_seed = matrix_seed.group(1) if matrix_seed else None
@@ -595,7 +648,14 @@ def main() -> int:
     recommendation_std_penalty = 0.0
     if variant.policy_family == "gittins":
         recommendation_std_penalty = float(args.recommendation_std_penalty)
-        recommendation_suffix = "_idxfinite_recfinite"
+        recommendation_suffix = "_idxfinite_dpbatch_recfinite"
+        recommendation_rule = "finite_population_posterior_mean"
+        if recommendation_std_penalty > 0.0:
+            recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
+            recommendation_rule = "finite_population_posterior_mean_minus_std"
+    elif variant.policy_family == "ts":
+        recommendation_std_penalty = float(args.recommendation_std_penalty)
+        recommendation_suffix = "_targetfinite_recfinite"
         recommendation_rule = "finite_population_posterior_mean"
         if recommendation_std_penalty > 0.0:
             recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
@@ -607,6 +667,37 @@ def main() -> int:
         "recommendation_rule": recommendation_rule,
         "recommendation_std_penalty": recommendation_std_penalty,
     }
+    if variant.policy_family == "gittins":
+        batch_size = int(variant.gittins_batch_size)
+        batch_sizes = [min(batch_size, n_examples - start)
+                       for start in range(0, n_examples, batch_size)]
+        batch_noise = args.gittins_obs_noise_variance
+        if batch_noise is None:
+            batch_noise = 1.0 / (4.0 * batch_size)
+        tau_sq_cell = float(batch_noise) * batch_size
+        recommendation_config.update(
+            gittins_model_version="batch_level_paper_v1",
+            gittins_dp_transitions="batch",
+            gittins_dp_horizon=len(batch_sizes),
+            gittins_batch_sizes=batch_sizes,
+            gittins_batch_noise_variances=[tau_sq_cell / size for size in batch_sizes],
+            gittins_transition_cost="cost_scaling_factor * batch_size_at_stage * raw_per_cell_price",
+            gittins_root_stage_index="completed_local_batches",
+        )
+    if variant.policy_family == "ts":
+        ts_noise = args.ts_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = args.gittins_obs_noise_variance
+        if ts_noise is None:
+            ts_noise = 1.0 / (4.0 * variant.batch_size)
+        recommendation_config.update(
+            ts_target="finite_population_mean",
+            ts_obs_noise_variance_resolved=float(ts_noise),
+            ts_tau_sq_cell=float(ts_noise) * variant.batch_size,
+            ts_recommendation_rule=recommendation_rule,
+            ts_recommendation_std_penalty=recommendation_std_penalty,
+            ts_cost_allocation="standard_ts_cost_budget_stopping",
+        )
     run_name = args.wandb_name or (
         f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
         f"{recommendation_suffix}"

@@ -8,8 +8,8 @@ and plots per-arm cumulative **batch pulls**:
 - y-axis: cumulative number of batches in which each arm was selected
 
 Supports UCB-E, SySRs, and Gittins (no LRF).
-Gittins replay requires a trace explicitly marked with the finite-population
-index target; historical latent-index traces need their original source version.
+Gittins replay requires a trace explicitly marked with the batch-level
+finite-population model; historical traces need their original source version.
 """
 
 from __future__ import annotations
@@ -46,6 +46,15 @@ def require_supported_gittins_replay(traces) -> None:
             f"Cannot replay Gittins trace with index target {target!r}: this version "
             "uses finite_population_mean. Replay historical traces with the original "
             "source version, or generate a new trace with simulate_simple_regret.py."
+        )
+    version = str(np.asarray(traces.get("gittins_model_version", "legacy_unversioned")).reshape(()))
+    transitions = str(np.asarray(traces.get("gittins_dp_transitions", "per_cell")).reshape(()))
+    if version != "batch_level_paper_v1" or transitions != "batch":
+        raise ValueError(
+            f"Cannot replay Gittins trace with DP model {version!r} and transitions "
+            f"{transitions!r}: this version uses batch_level_paper_v1. Replay historical "
+            "traces with the original source version, or generate a new trace with "
+            "simulate_simple_regret.py."
         )
 
 
@@ -241,20 +250,21 @@ def main() -> int:
             it = list(range(1, len(snaps) + 1))
             panels.append(("SySRs", it, np.stack(snaps, axis=0)))
 
-    # Gittins rollout (per-cell DP with batch-observation model).
+    # Replay only the explicitly versioned batch-level finite-population DP.
     if _has_trace("gittins"):
         from gittins_policy import gittins_index_exploration
-        from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table
+        from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table
 
         snaps = []
         B = int(gittins_batch_size)
         tau_sq_cell = float(tau_sq_batch) * float(B)
-        dp_costs_per_arm = np.asarray(cost_per_arm_original * cost_scaling_factor, dtype=np.float32)
-        roots = compute_finite_population_roots_lookup_table(
+        roots = compute_finite_population_batch_roots_lookup_table(
             prior_variance=prior_variance,
             tau_sq_cell=tau_sq_cell,
             n_examples=int(ground_truth.shape[1]),
-            costs_per_arm=dp_costs_per_arm,
+            batch_size=B,
+            costs_per_arm=cost_per_arm_original,
+            cost_scaling_factor=cost_scaling_factor,
             n_points=int(2**10 + 1),
         )
         roots_torch = torch.tensor(np.array(roots), dtype=torch.float32)
@@ -297,7 +307,7 @@ def main() -> int:
         )
         if snaps:
             it = list(range(1, len(snaps) + 1))
-            panels.append(("Gittins (finite index)", it, np.stack(snaps, axis=0)))
+            panels.append(("Gittins (batch-level finite index)", it, np.stack(snaps, axis=0)))
 
     if not panels:
         print("No algorithms in meta to plot.", file=sys.stderr)

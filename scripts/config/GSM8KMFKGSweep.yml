@@ -1,0 +1,45 @@
+# Seed-1 pilot: q=1 with adaptive fidelity, both cost modes, 20 sampling repeats. Add other
+# matrix seeds as separate paired matrix/bo_inputs sweeps (not a cross product).
+# Set KMP_DUPLICATE_LIB_OK=TRUE in the launcher environment on this Mac.
+program: scripts/run_mfkg_baseline.py
+name: GSM8KMFKGSweep
+method: grid
+command:
+- ${env}
+- ${interpreter}
+- ${program}
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  dataset_tag:
+    value: gsm8k
+  matrix:
+    value: data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+  bo_inputs:
+    value: data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz
+  run_seed:
+    values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  experiment_variant:
+    values: [mfkg_unit, mfkg_cost]
+  eval_budget_fraction:
+    value: 0.1
+  allocation_mode:
+    value: adaptive_fidelity
+  warmup_budget_fraction:
+    value: 0.1
+  warmup_anchors:
+    value: 1
+  warmup_strategy:
+    value: coverage
+  num_fantasies:
+    value: 64
+  fit_maxiter:
+    value: 200
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: gsm8k_mfkg_seed1
+  wandb_mode:
+    value: online

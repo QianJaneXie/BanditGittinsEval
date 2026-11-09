@@ -15,7 +15,7 @@ import jax.numpy as jnp
 import torch
 
 from gittins_shrinking_posterior import (
-    compute_finite_population_roots_lookup_table,
+    compute_finite_population_batch_roots_lookup_table,
     finite_population_mean_scale,
     transition_stds_batch_mean_sequence,
     transition_stds_finite_population_posterior,
@@ -54,16 +54,20 @@ def _finite_roots_for_policy(
     prior_variance: float,
     tau_sq_cell: float,
     n_examples: int,
+    batch_size: int,
     arm_costs: torch.Tensor,
     n_points: int,
 ) -> torch.Tensor:
-    """Build or validate a finite-row root table shared by pre/post-pull updates."""
+    """Build or validate roots indexed by completed local batches."""
+    n_batches = (n_examples + batch_size - 1) // batch_size
     if roots_lookup_table is None:
-        roots = compute_finite_population_roots_lookup_table(
+        roots = compute_finite_population_batch_roots_lookup_table(
             prior_variance=prior_variance,
             tau_sq_cell=tau_sq_cell,
             n_examples=n_examples,
+            batch_size=batch_size,
             costs_per_arm=jnp.asarray(arm_costs.numpy(), dtype=jnp.float32),
+            cost_scaling_factor=1.0,  # arm_costs already contain lambda * raw cell price.
             n_points=n_points,
         )
         roots_lookup_table = torch.tensor(jax.device_get(roots), dtype=torch.float32)
@@ -71,11 +75,12 @@ def _finite_roots_for_policy(
         roots_lookup_table = roots_lookup_table.unsqueeze(0)
     if (
         roots_lookup_table.ndim != 2
-        or roots_lookup_table.shape[1] != n_examples + 1
+        or roots_lookup_table.shape[1] != n_batches + 1
         or roots_lookup_table.shape[0] not in (1, arm_costs.numel())
     ):
         raise ValueError(
-            "finite roots_lookup_table must have shape (1 or n_arms, n_examples+1); "
+            "batch-level finite roots_lookup_table must have shape "
+            "(1 or n_arms, ceil(n_examples/batch_size)+1); "
             f"got {tuple(roots_lookup_table.shape)}"
         )
     return roots_lookup_table
@@ -107,12 +112,23 @@ def _refresh_gittins_scores(
         t = int(counts[k].item())
         finite_mean = float(mus_posterior[k].item())
         c_k = float(arm_costs[k].item())
-        if use_batch_mean_gittins_dp:
-            remaining = n_examples - t
+        if use_batch_mean_gittins_dp or (not force_per_observation_dp and t % batch_size != 0):
+            # A regular batch boundary uses the same full-horizon grid as the
+            # lookup table. Historical partial states outside those boundaries
+            # need their own suffix schedule starting at the observed count.
+            regular_boundary = t % batch_size == 0
+            remaining = n_examples if regular_boundary else n_examples - t
+            stage = t // batch_size if regular_boundary else 0
             bsz_plan = int(batch_size)
             n_batch = (remaining + bsz_plan - 1) // bsz_plan
-            transition_costs_bm = jnp.full((n_batch,), c_k, dtype=jnp.float32)
-            latent_variance = 1.0 / (1.0 / float(prior_variance) + t / tau_sq_cell)
+            batch_sizes = jnp.minimum(
+                bsz_plan, remaining - jnp.arange(n_batch, dtype=jnp.float32) * bsz_plan
+            )
+            transition_costs_bm = batch_sizes * c_k
+            latent_variance = (
+                float(prior_variance) if regular_boundary
+                else 1.0 / (1.0 / float(prior_variance) + t / tau_sq_cell)
+            )
             transition_stds = transition_stds_batch_mean_sequence(
                 jnp.float32(latent_variance),
                 jnp.float32(tau_sq_cell),
@@ -120,7 +136,7 @@ def _refresh_gittins_scores(
                 remaining,
             ) * finite_population_mean_scale(prior_variance, tau_sq_cell, n_examples)
             g = compute_gittins_for_random_walk(
-                jnp.uint32(0),
+                jnp.uint32(stage),
                 jnp.float32(finite_mean),
                 transition_stds,
                 transition_costs_bm,
@@ -142,7 +158,7 @@ def _refresh_gittins_scores(
             if roots_lookup_table is None:
                 raise ValueError("finite-population roots are required in lookup mode")
             k_roots = 0 if roots_lookup_table.shape[0] == 1 else k
-            root_t = float(roots_lookup_table[k_roots, t].item())
+            root_t = float(roots_lookup_table[k_roots, t // batch_size].item())
             g = jnp.float32(finite_mean) - jnp.float32(root_t)
         scores[k] = float(jax.device_get(g))
 
@@ -223,12 +239,17 @@ def gittins_post_pull_update(
 
     LCB affects the selected recommendation and its stopping diagnostic only;
     acquisition scores and natural stopping do not depend on the penalty.
+    Default roots advance once per batch and charge the actual number of cells
+    times the scaled per-cell price. Forced per-observation DP is a legacy mode.
     """
     observed_matrix = observed_matrix.detach()
     if observed_matrix.device.type != "cpu":
         observed_matrix = observed_matrix.cpu()
 
     m_methods, n_examples = observed_matrix.shape
+    if int(batch_size) != batch_size or batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    batch_size = int(batch_size)
     tau_sq = float(obs_noise_variance)
     tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
     mus_posterior, recommendation_variances = finite_population_posterior_moments(
@@ -256,7 +277,7 @@ def gittins_post_pull_update(
     ):
         roots_lookup_table = _finite_roots_for_policy(
             roots_lookup_table, prior_variance=prior_variance, tau_sq_cell=tau_sq_cell,
-            n_examples=n_examples, arm_costs=arm_costs, n_points=n_pts,
+            n_examples=n_examples, batch_size=batch_size, arm_costs=arm_costs, n_points=n_pts,
         )
 
     _refresh_gittins_scores(
@@ -321,7 +342,8 @@ def gittins_index_exploration(
     Rows are arms; columns are conditionally i.i.d. cells Y | θ_k ~ N(θ_k, tau_cell²).
     The payoff is the complete fixed-row average, so its posterior-mean process has
     transitions scaled by 1 + tau_cell²/(n_examples*prior_variance) relative to the
-    latent mean process. Costs retain their supplied numerical scale. With
+    latent mean process. Each batch transition charges its actual cell count
+    times the scaled per-cell price. With
     ``batch_observation_model=True``, ``obs_noise_variance`` is batch-mean noise
     and tau_cell² = batch_size*obs_noise_variance; otherwise it is cell noise.
 
@@ -349,17 +371,15 @@ def gittins_index_exploration(
         prior_variance: v_0 in the Gaussian prior on each θ_k (default 0.04).
         obs_noise_variance: Cell noise variance, or batch-mean noise variance when
             ``batch_observation_model=True`` (e.g. 1/(4*batch_size)).
-        cost_per_transition: Cost per **transition** in the Gittins DP for each arm, in **original**
-            units—for example ``1.0`` for every arm in a cost-unaware setting, or per-arm values in
-            monetary units (e.g. dollars per transition) in a cost-aware setting. A scalar applies to
-            every arm; otherwise pass a sequence or
+        cost_per_transition: Raw cost per **cell** for each arm, for example ``1.0``
+            for unit cell costs or dollars per example. A scalar applies to every
+            arm; otherwise pass a sequence or
             ``(n_arms,)`` tensor with one value per row of ``observed_matrix``. The DP uses
-            ``cost_per_transition * cost_scaling_factor`` so you can keep interpretable costs while
+            ``batch_cell_count * cost_per_transition * cost_scaling_factor`` so you can keep interpretable costs while
             matching the numerical scale of the reward side (default: ``1.0`` homogeneous cost).
-            If ``use_batch_mean_gittins_dp`` is False (default), each transition is one new per-cell
-            observation and the horizon has ``n_examples`` stages. If True, each transition is one
-            **batch mean** (mean of up to ``batch_size`` new cells), so the horizon has one stage per
-            future batch (about ``ceil(remaining / batch_size)`` from the current posterior).
+            The default DP has one transition per batch, including a partial
+            final batch. ``force_per_observation_dp=True`` explicitly selects
+            the legacy per-cell planning relaxation instead.
         cost_scaling_factor: Multiplier applied to ``cost_per_transition`` before the DP (default
             ``1e-4``). Set to ``1.0`` if ``cost_per_transition`` is already scaled for the solver.
         n_gittins_grid_points: Grid size for tabular Q (see ``tabular_q_estimate``).
@@ -374,9 +394,9 @@ def gittins_index_exploration(
         recompute_arms: Used only when ``cached_scores`` is not ``None``. If ``None``, recompute
             every arm that is not fully observed. Otherwise recompute only the listed arm indices
             (typically the arm evaluated on the previous step).
-        use_batch_mean_gittins_dp: If True, each DP step observes the **mean** of the next batch of
-            per-cell draws (likelihood variance ``τ² / b`` for batch size ``b``), matching the idea
-            that learning advances once per simulator batch instead of once per matrix cell.
+        use_batch_mean_gittins_dp: If True, solve the batch DP directly instead
+            of using precomputed roots. Both modes observe batch means with
+            likelihood variance ``tau_cell² / b`` and charge ``b`` cell costs.
         allow_early_stop: If False, never return ``None`` just because the top-scoring arm is
             complete; instead pull the best arm that still has free cells.
         sim_cum_eval: Unused for stopping (kept for API compatibility). Use
@@ -384,7 +404,9 @@ def gittins_index_exploration(
         natural_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
         recommendation_aware_stop_cum_eval_holder: Ignored; use ``gittins_post_pull_update`` instead.
         roots_lookup_table: Optional finite-row roots from
-            ``compute_finite_population_roots_lookup_table``. Latent roots are incompatible.
+            ``compute_finite_population_batch_roots_lookup_table``, with one
+            column per local batch boundary (including completion). Latent or
+            per-cell tables are incompatible when ``batch_size > 1``.
             Ignored in forced per-observation or batch DP modes.
 
     Returns:
@@ -404,6 +426,9 @@ def gittins_index_exploration(
         observed_matrix = observed_matrix.cpu()
 
     m_methods, n_examples = observed_matrix.shape
+    if int(batch_size) != batch_size or batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    batch_size = int(batch_size)
     tau_sq = float(obs_noise_variance)
     tau_sq_cell = tau_sq * float(batch_size) if batch_observation_model else tau_sq
     mus_posterior, _ = finite_population_posterior_moments(
@@ -421,11 +446,11 @@ def gittins_index_exploration(
     arm_costs = _cost_vector_per_arm(cost_per_transition, m_methods) * float(cost_scaling_factor)
     n_pts = int(n_gittins_grid_points)
 
-    # Per-observation mode: always use a lookup table unless explicitly forced to run the DP.
+    # Default: batch-boundary roots; explicitly forced modes run the DP directly.
     if (not use_batch_mean_gittins_dp) and (not force_per_observation_dp):
         roots_lookup_table = _finite_roots_for_policy(
             roots_lookup_table, prior_variance=prior_variance, tau_sq_cell=tau_sq_cell,
-            n_examples=n_examples, arm_costs=arm_costs, n_points=n_pts,
+            n_examples=n_examples, batch_size=batch_size, arm_costs=arm_costs, n_points=n_pts,
         )
 
     if cached_scores is None:

@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from gittins_policy import gittins_index_exploration  # noqa: E402
-from gittins_shrinking_posterior import compute_finite_population_roots_lookup_table  # noqa: E402
+from gittins_shrinking_posterior import compute_finite_population_batch_roots_lookup_table  # noqa: E402
 from simple_regret_recommend import (  # noqa: E402
     finite_population_posterior_moments,
     posterior_moments,
@@ -38,6 +38,7 @@ from simple_regret_recommend import (  # noqa: E402
 
 BUCKET_PRIORS = {"low": (0.4, 0.02), "medium": (0.6, 0.02), "high": (0.75, 0.01)}
 DATASET_PRIORS = {"gsm8k": (0.2, 0.01)}
+GITTINS_MODEL_VERSION = "batch_level_paper_v1"
 
 
 def write_csv(path: Path, rows: list[dict]) -> None:
@@ -246,7 +247,7 @@ def main() -> int:
     parser.add_argument("--prior-types", choices=("default", "dataset"), nargs="+", default=["default", "dataset"])
     parser.add_argument("--dataset-tag", choices=("auto", "mmlu", "gsm8k"), default="auto")
     parser.add_argument("--task-metadata", type=Path, default=REPO_ROOT / "data/MMLU_matrices/task_metadata.json")
-    parser.add_argument("--out-dir", type=Path, default=REPO_ROOT / "outputs/recommendation_lcb_pilot")
+    parser.add_argument("--out-dir", type=Path, default=REPO_ROOT / "outputs/recommendation_batch_lcb_pilot")
     parser.add_argument("--seeds", type=int, default=1)
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--budget-fraction", type=float, default=0.1)
@@ -267,6 +268,13 @@ def main() -> int:
         parser.error("Require finite std-penalty >= 0 and grid-points >= 2.")
     torch.set_num_threads(1)
     args.out_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = args.out_dir / "summary.json"
+    if summary_path.exists() and json.loads(summary_path.read_text()).get("gittins_model_version") != GITTINS_MODEL_VERSION:
+        raise ValueError("Output directory contains historical Gittins results; choose a new --out-dir")
+    for path in [*args.out_dir.glob("*.npz"), *(args.out_dir / "raw").glob("*.npz")]:
+        with np.load(path, allow_pickle=False) as data:
+            if "gittins_model_version" not in data.files or str(data["gittins_model_version"].item()) != GITTINS_MODEL_VERSION:
+                raise ValueError(f"Historical Gittins result would be overwritten: {path}; choose a new --out-dir")
     metadata = (json.loads(args.task_metadata.read_text())
                 if "dataset" in args.prior_types and args.dataset_tag != "gsm8k" else {})
     buckets = {row["task"]: row["dataset_prior_bucket"] for row in metadata.get("tasks", [])}
@@ -288,14 +296,24 @@ def main() -> int:
         if min(arr.shape) < 1:
             raise ValueError(f"Expected a nonempty matrix: {matrix}")
         truth = torch.tensor(arr, dtype=torch.float32)
+        batch_sizes = [min(args.batch_size, truth.shape[1] - start)
+                       for start in range(0, truth.shape[1], args.batch_size)]
+        dp_metadata = dict(
+            gittins_model_version=GITTINS_MODEL_VERSION, gittins_dp_transitions="batch",
+            gittins_dp_horizon=len(batch_sizes), gittins_batch_sizes=batch_sizes,
+            gittins_batch_noise_variances=[args.tau_sq_cell / size for size in batch_sizes],
+            gittins_transition_cost="cost_scaling_factor * batch_size_at_stage * raw_per_cell_price",
+            gittins_root_stage_index="completed_local_batches",
+        )
         for prior_type in args.prior_types:
             prior = (0.5, 0.04) if prior_type == "default" else dataset_prior(matrix, args.dataset_tag, buckets)
             print(f"{matrix.stem}/{prior_type}: {tuple(truth.shape)}, prior={prior}; computing lookup", flush=True)
             roots = torch.tensor(
-                np.array(compute_finite_population_roots_lookup_table(
+                np.array(compute_finite_population_batch_roots_lookup_table(
                     prior_variance=prior[1], tau_sq_cell=args.tau_sq_cell,
-                    n_examples=truth.shape[1],
-                    costs_per_arm=np.float32(args.cost_scaling_factor),
+                    n_examples=truth.shape[1], batch_size=args.batch_size,
+                    costs_per_arm=np.ones(1, dtype=np.float64),
+                    cost_scaling_factor=args.cost_scaling_factor,
                     n_points=args.grid_points,
                 )), dtype=torch.float32,
             )
@@ -310,6 +328,7 @@ def main() -> int:
                     **histories[-1], seed=np.asarray(seed),
                     rules=np.array([name for name, _ in rules]),
                     gittins_index_target=np.asarray("finite_population_mean"),
+                    **dp_metadata,
                 )
                 print(f"  seed {seed}: {len(histories[-1]['evaluations'])} pulls in {time.perf_counter()-seed_started:.1f}s", flush=True)
             requested_budget = int(np.ceil(truth.numel() * args.budget_fraction))
@@ -319,6 +338,7 @@ def main() -> int:
                 rules=np.array([name for name, _ in rules]),
                 seeds=np.arange(args.seed_start, args.seed_start + args.seeds),
                 gittins_index_target=np.asarray("finite_population_mean"),
+                **dp_metadata,
             )
             result = dict(
                 dataset=matrix.stem, prior_type=prior_type, prior=prior,
@@ -329,6 +349,7 @@ def main() -> int:
             results.append(result)
             setups.append(dict(
                 dataset=matrix.stem, matrix=str(matrix),
+                **dp_metadata,
                 sha256=hashlib.sha256(matrix.read_bytes()).hexdigest(),
                 shape=list(truth.shape), prior_type=prior_type,
                 prior_mean=prior[0], prior_variance=prior[1], evaluation_budget=int(x[-1]),
@@ -391,6 +412,7 @@ def main() -> int:
         sampling_policy="Full-test-set Gittins, unit cost; fixed budget; recommendations replayed on identical observations",
         acquisition_target="full_test_set_mean",
         gittins_index_target="finite_population_mean",
+        gittins_model_version=GITTINS_MODEL_VERSION, gittins_dp_transitions="batch",
         acquisition_cost_semantics="The numerical cost scaling is unchanged and is expressed in full-test-set-mean reward units.",
         recommendation_score="Target-specific posterior mean - std_penalty * sqrt(target-specific posterior variance)",
         recommendation_rules=[dict(name=name, **rule) for name, rule in rules],
