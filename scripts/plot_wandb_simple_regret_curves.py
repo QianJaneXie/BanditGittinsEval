@@ -73,6 +73,36 @@ def _gittins_dp_signature(row: pd.Series) -> tuple[str, str]:
     )
 
 
+def _ts_family(row: pd.Series) -> str | None:
+    family = row.get("policy_family")
+    family = str(family).strip().lower() if pd.notna(family) else ""
+    variant = row.get("experiment_variant")
+    variant = str(variant).strip().lower() if pd.notna(variant) else ""
+    if family in {"correlated_ts", "ts"}:
+        return family
+    for candidate in ("correlated_ts", "ts"):
+        if variant == candidate or variant.startswith(f"{candidate}_"):
+            return candidate
+    return None
+
+
+def _ts_recommendation_signature(row: pd.Series) -> tuple[str, float]:
+    """Legacy TS rows without recommendation metadata used the finite mean."""
+    value = row.get("recommendation_std_penalty")
+    if pd.isna(value) or str(value).strip() == "":
+        penalty = 0.0
+    else:
+        penalty = pd.to_numeric(value, errors="coerce")
+        if not np.isfinite(penalty) or penalty < 0:
+            raise ValueError("TS recommendation std penalty must be finite and nonnegative")
+        penalty = float(penalty)
+    rule = row.get("recommendation_rule")
+    rule = str(rule).strip() if pd.notna(rule) else ""
+    if not rule:
+        rule = "finite_population_posterior_mean_minus_std" if penalty > 0 else "finite_population_posterior_mean"
+    return rule, penalty
+
+
 def derive_method_label_row(row: pd.Series) -> str:
     existing_label = row.get("method_label")
     existing_label = str(existing_label).strip() if pd.notna(existing_label) else ""
@@ -102,9 +132,10 @@ def derive_method_label_row(row: pd.Series) -> str:
             else target
         )
         return f"{label} [index: {index_label}; DP: {dp_label} ({version}); recommend: {score}]"
-    if family == "ts" or variant == "ts" or variant.startswith("ts_"):
-        if existing_label:
-            return existing_label
+    ts_family = _ts_family(row)
+    if ts_family is not None:
+        rule, penalty = _ts_recommendation_signature(row)
+        label = re.sub(r" \[recommend: [^\]]+\]$", "", existing_label)
         cost_mode = str(row.get("cost_mode") or "").lower()
         mode = "cost" if cost_mode in {"cost", "aware"} or re.search(r"_(cost|aware)(?:_|$)", variant) else "unit"
         qualifiers = [mode]
@@ -120,7 +151,15 @@ def derive_method_label_row(row: pd.Series) -> str:
             prior = prior_match.group(1) if prior_match else None
         if prior is not None:
             qualifiers.append(f"prior={prior}")
-        return f"Gaussian TS ({'; '.join(qualifiers)})"
+        if not label:
+            name = "Correlated Gaussian TS" if ts_family == "correlated_ts" else "Gaussian TS"
+            label = f"{name} ({'; '.join(qualifiers)})"
+        if penalty > 0:
+            target = "full test-set mean" if rule.startswith("finite_population_") else "posterior mean"
+            label += f" [recommend: {target} - {penalty:g} std]"
+        elif rule != "finite_population_posterior_mean":
+            label += f" [recommend: {rule.replace('_', ' ')}]"
+        return label
     if family == "mfkg" or variant.startswith("mfkg") or str(row.get("acquisition") or "").lower() == "mfkg":
         cost_mode = str(row.get("cost_mode") or "unit").lower()
         label = existing_label or ("BO MF-KG (cost)" if cost_mode in {"cost", "aware"} or "cost" in variant else "BO MF-KG")
@@ -176,6 +215,19 @@ def validate_recommendation_groups(df: pd.DataFrame, group_by: str) -> None:
             raise ValueError(
                 f"Group {label!r} mixes Gittins recommendation rules, index targets, DP models/transitions, or std penalties; "
                 "use --group-by method_label or filter to one DP/index/recommendation rule."
+            )
+    families = _str_series(df, "policy_family").str.lower()
+    variants = _str_series(df, "experiment_variant").str.lower()
+    is_ts = families.isin(("ts", "correlated_ts")) | variants.str.match(r"^(?:correlated_ts|ts)(?:_|$)")
+    for label, group in df.loc[is_ts].groupby(group_by):
+        metadata = group.reindex(columns=["policy_family", "experiment_variant",
+                                          "recommendation_rule", "recommendation_std_penalty"]).drop_duplicates()
+        signatures = {(_ts_family(row), *_ts_recommendation_signature(row))
+                      for _, row in metadata.iterrows()}
+        if len(signatures) > 1:
+            raise ValueError(
+                f"Group {label!r} mixes TS policies, recommendation rules, or std penalties; "
+                "use --group-by method_label or filter to one recommendation rule."
             )
     is_mfkg = (_str_series(df, "policy_family").str.lower() == "mfkg") | (
         _str_series(df, "experiment_variant").str.startswith("mfkg")

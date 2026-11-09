@@ -318,6 +318,7 @@ def build_policy(
         return step_fn, partial(
             posterior_incumbent, prior_mean=prior_mean, prior_variance=prior_variance,
             tau_sq_cell=float(tau_sq_batch) * B,
+            std_penalty=float(getattr(args, "recommendation_std_penalty", 1.0)),
         ), None, lookup_table_s
 
     if variant.policy_family != "gittins":
@@ -580,10 +581,10 @@ def parse_args() -> argparse.Namespace:
         "--recommendation-std-penalty",
         "--recommendation_std_penalty",
         type=float,
-        default=0.0,
-        help="Gittins recommendation: maximize the full fixed test-set average's "
+        default=1.0,
+        help="Gittins and TS recommendation: maximize the full fixed test-set average's "
         "posterior mean minus this nonnegative multiple of its posterior predictive "
-        "std. Use 0 for mean only (default), 1 for mean - std.",
+        "std. Use 1 for the paper's LCB rule (default), 0 for a mean-only ablation.",
     )
     p.add_argument("--mmlu-task-metadata", "--mmlu_task_metadata", type=Path, default=DEFAULT_MMLU_TASK_METADATA)
     p.add_argument("--log-step-metrics", "--log_step_metrics", dest="log_step_metrics", action="store_true", default=True)
@@ -680,8 +681,12 @@ def main() -> int:
             recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
             recommendation_rule = "finite_population_posterior_mean_minus_std"
     elif variant.policy_family == "ts":
+        recommendation_std_penalty = float(args.recommendation_std_penalty)
         recommendation_suffix = "_targetfinite_recfinite"
         recommendation_rule = "finite_population_posterior_mean"
+        if recommendation_std_penalty > 0.0:
+            recommendation_suffix += f"_recstd{recommendation_std_penalty:g}"
+            recommendation_rule = "finite_population_posterior_mean_minus_std"
     recommendation_config = {
         "gittins_index_target": (
             "finite_population_mean" if variant.policy_family == "gittins" else None
@@ -716,6 +721,8 @@ def main() -> int:
             ts_target="finite_population_mean",
             ts_obs_noise_variance_resolved=float(ts_noise),
             ts_tau_sq_cell=float(ts_noise) * variant.batch_size,
+            ts_recommendation_rule=recommendation_rule,
+            ts_recommendation_std_penalty=recommendation_std_penalty,
             ts_cost_allocation="standard_ts_cost_budget_stopping",
         )
     if variant.policy_family == "formatspread_ts":

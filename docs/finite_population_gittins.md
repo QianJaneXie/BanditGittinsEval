@@ -56,7 +56,12 @@ For GSM8K with N=1,000 and tau_cell^2=0.25, a is 1.00625 under the general prior
 
 Natural stopping occurs when the largest index belongs to a completed arm. Both completed and unfinished indices now describe F. The recommendation-aware diagnostic compares the best unfinished finite-target index with the selected arm's unpenalized M. Fixed-budget runners record first crossings and continue to their evaluation budget.
 
-The default recommendation maximizes M. `--recommendation-std-penalty 1` instead maximizes `M - sqrt(V_F)`. LCB affects recommendation and potentially its recommendation-aware stopping diagnostic; it does not enter acquisition or natural stopping. Correcting the target does not eliminate optimistic recommendations for unobserved arms: their M remains the prior mean.
+The current command-line runners default to the paper's LCB recommendation,
+maximizing `M - sqrt(V_F)` (`--recommendation-std-penalty 1`). Use `0` to
+maximize M alone. LCB affects recommendation and potentially its
+recommendation-aware stopping diagnostic; it does not enter acquisition or
+natural stopping. Correcting the target does not eliminate optimistic
+recommendations for unobserved arms: their M remains the prior mean.
 
 The low-level latent posterior and transition helpers retain their latent meaning.
 `gittins_index_exploration` and `gittins_post_pull_update` return finite-target
@@ -112,7 +117,7 @@ All eight curves have zero regret at the budget endpoint. The new data-specific 
 
 These are first post-pull diagnostic crossings, not actual truncations of the fixed-budget experiments. For this seed, mean and LCB give the same first recommendation-aware crossing within each acquisition/prior setting. That equality is an observed result, not a guarantee for other trajectories.
 
-The unified target does not remove general-prior recommendation oscillation. With the new index, LCB reduces switches from 139 to 38 and budget-weighted regret from 0.04824163 to 0.02902692. Under the data-specific prior it reduces switches from 49 to 37, while slightly increasing budget-weighted regret from 0.03128168 to 0.03176888. The default remains mean-only, with LCB available explicitly. Existing results are not interchangeable with the unified acquisition: even without LCB, both priors produce different sampling trajectories in this check.
+The unified target does not remove general-prior recommendation oscillation. With the new index, LCB reduces switches from 139 to 38 and budget-weighted regret from 0.04824163 to 0.02902692. Under the data-specific prior it reduces switches from 49 to 37, while slightly increasing budget-weighted regret from 0.03128168 to 0.03176888. That archived version kept mean-only as its default; the current runners default to the paper's LCB rule. Existing results are not interchangeable with the unified acquisition: even without LCB, both priors produce different sampling trajectories in this check.
 
 See [the old/new regret curves](../outputs/unified_finite_gittins_gsm8k_seed1_run0/simple_regret.png), [recommendation switches](../outputs/unified_finite_gittins_gsm8k_seed1_run0/recommendation_switches.png), and [metrics, stopping times, source hashes, and reproduction audits](../outputs/unified_finite_gittins_gsm8k_seed1_run0/summary.json). Both figures are also saved as PDFs. These local artifacts are ignored by Git; the comparison script and this result record are committed.
 
