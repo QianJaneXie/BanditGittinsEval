@@ -37,6 +37,7 @@ from gittins_shrinking_posterior import compute_finite_population_batch_roots_lo
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
+from formatspread_ts_policy import formatspread_thompson_sampling, beta_parameters, formatspread_prior, dataset_prior_mean
 from gaussian_ts_policy import gaussian_thompson_sampling  # noqa: E402
 
 
@@ -287,8 +288,12 @@ def main() -> int:
         "--algorithms",
         nargs="+",
         default=["ucb", "sysrs", "gittins"],
-        choices=["ucb", "sysrs", "gittins", "ts"],
+        choices=["ucb", "sysrs", "gittins", "ts", "formatspread_ts"],
     )
+    p.add_argument("--formatspread-prior-mean", "--formatspread_prior_mean", type=float, default=None)
+    p.add_argument("--formatspread-prior-alpha", type=float, default=None)
+    p.add_argument("--formatspread-prior-beta", type=float, default=None)
+    p.add_argument("--formatspread-batch-size", type=int, default=8)
     args = p.parse_args()
     if (
         not math.isfinite(args.recommendation_std_penalty)
@@ -606,6 +611,44 @@ def main() -> int:
             ts_regret=np.asarray([], dtype=np.float32), ts_recommended_arm=np.asarray([], dtype=np.int32),
             ts_recommended_mean=np.asarray([], dtype=np.float32),
         )
+
+    if "formatspread_ts" in args.algorithms:
+        prior_x = (dataset_prior_mean(args.matrix) if args.formatspread_prior_mean is None
+                   else args.formatspread_prior_mean)
+        args.formatspread_prior_alpha, args.formatspread_prior_beta = formatspread_prior(
+            prior_x, alpha=args.formatspread_prior_alpha, beta=args.formatspread_prior_beta)
+        # Validate supplied scores before allocation; never use their values for priors.
+        beta_parameters(ground_truth, prior_alpha=args.formatspread_prior_alpha,
+                        prior_beta=args.formatspread_prior_beta)
+
+        def formatspread_step(obs, *, sim_cum_eval):
+            spent = float((obs.isnan().logical_not().sum(1) * per_arm_original_cost).sum())
+            return formatspread_thompson_sampling(
+                obs, batch_size=args.formatspread_batch_size,
+                prior_alpha=args.formatspread_prior_alpha, prior_beta=args.formatspread_prior_beta,
+                max_batch_size=max_evaluations - sim_cum_eval,
+                per_arm_cost=per_arm_original_cost,
+                remaining_cost=None if max_original_cost is None else max(0., max_original_cost - spent),
+            )
+
+        tr = simulate_simple_regret(
+            ground_truth=ground_truth, step=formatspread_step, step_kwargs={}, seed=int(args.seed),
+            max_evaluations=max_evaluations, per_arm_original_cost=per_arm_original_cost,
+            max_original_cost=max_original_cost, pass_sim_cum_eval=True,
+        )
+        for field, values in (("x", tr.x), ("x_original_cost", tr.x_original_cost),
+                              ("regret", tr.regret), ("recommended_arm", tr.recommended_arm),
+                              ("recommended_mean", tr.recommended_mean)):
+            out[f"formatspread_ts_{field}"] = np.asarray(values)
+        out.update(formatspread_ts_label="FormatSpread-TS",
+                   formatspread_ts_prior_x=prior_x,
+                   formatspread_ts_prior_mean_resolved=args.formatspread_prior_alpha / (args.formatspread_prior_alpha + args.formatspread_prior_beta),
+                   formatspread_ts_prior_alpha=args.formatspread_prior_alpha,
+                   formatspread_ts_prior_beta=args.formatspread_prior_beta,
+                   formatspread_ts_batch_size=args.formatspread_batch_size,
+                   formatspread_ts_update="fractional_count_beta",
+                   formatspread_ts_recommendation_rule="empirical_mean",
+                   formatspread_ts_cost_allocation="affordable_batch_accuracy_maximization")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(args.out, **out)

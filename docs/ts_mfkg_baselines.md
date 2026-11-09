@@ -1,5 +1,8 @@
 # Gaussian TS and item-subsampling MF-KG
 
+The main-text TS baseline is now [FormatSpread-TS](formatspread_ts.md).
+Gaussian TS below remains a separate appendix comparison; existing results retain their identities.
+
 These baselines address the human ICLR reviews: Mvv2 requests item-subsampling
 multi-fidelity BO, and dNrr requests Thompson sampling. They operate on the
 supplied accuracy matrices without LLM API calls. W&B sweeps and result uploads
