@@ -11,8 +11,11 @@ TS uses the same independent Gaussian observation model and finite-population
 posterior as the current Gittins implementation. Each step samples a complete
 test-set mean for each unfinished arm, chooses the largest draw, and reveals
 unseen cells from that arm. Completed arms remain eligible for recommendation.
-The recommendation maximizes the complete-test-set posterior mean. TS has no
-separate warmup.
+The recommendation defaults to the paper's empirical-target LCB rule
+`M - sqrt(V)` (`--recommendation-std-penalty 1`). Pass `0` for the mean-only
+ablation. This option changes recommendation only,
+leaving TS allocation and the evaluation budget unchanged. TS has no separate
+warmup.
 
 By default, `--ts-batch-size`, `--ts-prior-mean`, and `--ts-prior-variance`
 inherit the corresponding Gittins settings. `--ts-obs-noise-variance` is the
@@ -33,8 +36,9 @@ KMP_DUPLICATE_LIB_OK=TRUE python3 scripts/simulate_simple_regret.py \
 To compare all matrix-bandit methods in one archive, use
 `--algorithms ucb sysrs gittins ts`. Set `--batch-size 16` as well to match UCB's
 batch size. Match priors, per-cell variance, and recommendation rules when
-isolating allocation effects. The Gittins mean-minus-standard-deviation
-recommendation is a separate ablation; TS recommends the posterior mean.
+isolating allocation effects. The same `--recommendation-std-penalty` applies
+to Gittins and TS in this runner; set it explicitly when matching their
+recommendation rules.
 
 With a per-cell `--cost-vector`, TS uses the same sampling rule and a cost
 stopping budget. It does not divide sampled accuracy by cost, which would
@@ -60,6 +64,13 @@ explicit `--ts-prior-mean`, `--ts-prior-variance`, and
 `scripts/config/GSM8KThompsonSamplingSweep.yml`. It contains unit and cost runs
 using prices from the supplied BO archive. Prices and arm ordering were checked
 to be identical across its five GSM8K matrix seeds.
+
+W&B accepts `--recommendation-std-penalty` and `--recommendation_std_penalty`.
+The paper sweep uses B=8, both general and dataset priors, five matrix seeds,
+20 sampling seeds per matrix, both cost settings, and a 10% budget. It exposes
+`recommendation_std_penalty: {value: 1.0}`; set it to `0.0` for mean-only,
+or deliberately use `values: [0.0, 1.0]` to run both variants.
+The run metadata, names and plotting groups distinguish the two rules.
 
 ## Correlated Gaussian Thompson sampling
 
@@ -92,6 +103,23 @@ Cov(F) = diag(r/N) C diag(r/N) + diag(r * tau_cell^2 / N^2)
 The second term accounts for unrevealed item noise. Completed arms have exact
 means and zero target covariance. Both the standalone correlated TS runner and
 the paired comparator recommend by `M - sqrt(diag(Cov(F)))` by default.
+
+The standalone correlated TS runner uses the same
+`--recommendation-std-penalty` / `--recommendation_std_penalty` switch:
+
+| Value | Recommendation | Independent TS default | Correlated TS default |
+|---|---|---|---|
+| `0` | Empirical-target posterior mean M | No | No |
+| `1` | Empirical-target LCB `M - sqrt(V)` | Yes | Yes |
+
+Both general runners now default to the paper's coefficient one; older TS
+runs without this option used mean-only. Set the value explicitly in external
+batch jobs to make the protocol clear. The output identity includes the
+coefficient, so the two configurations are stored separately. Compatible
+completed correlated TS results are reused, including files created before
+the derived `recommendation_rule` field was added. The dedicated paper
+comparison scripts keep LCB coefficient one as part of their fixed protocol;
+their saved results are not changed by these general-runner switches.
 
 `--kernel-mode fit` learns categorical ARD lengthscales from the current run's
 revealed scores every 32 batches (`--fit-every 32`), with an L-BFGS iteration
@@ -341,8 +369,8 @@ directory when upgrading an existing CSV schema.
 
 The dedicated Gittins/TS comparison explicitly uses the full-benchmark empirical
 target and the same `posterior mean - posterior std` recommendation for **both**
-allocation policies. This differs from the standalone TS runner's default
-posterior-mean recommendation. It uses B=8, cell-noise variance 0.25, Gittins
+allocation policies. The general TS runners now use the same LCB default;
+historical standalone TS defaults were mean-only. It uses B=8, cell-noise variance 0.25, Gittins
 cost scale 1e-4, a 1025-point numerical grid, and a 10% exhaustive budget.
 The general prior N(0.5, 0.04) and GSM8K prior N(0.2, 0.01) are each shared by
 the two policies, under both unit and heterogeneous evaluation costs.
