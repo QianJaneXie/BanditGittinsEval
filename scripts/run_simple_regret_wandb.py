@@ -728,7 +728,7 @@ def main() -> int:
                            (args.formatspread_prior_alpha + args.formatspread_prior_beta + 1)))
         prior_source = "formatspread_beta_from_" + prior_source
         recommendation_config.update(
-            algorithm_label="FormatSpread-TS", formatspread_prior_x=prior_x, formatspread_update="fractional_count_beta",
+            algorithm_label="FormatSpread-TS", formatspread_prior_x=prior_x, formatspread_update="beta_bernoulli",
             formatspread_prior_alpha=args.formatspread_prior_alpha,
             formatspread_prior_beta=args.formatspread_prior_beta,
             formatspread_cost_allocation="affordable_batch_accuracy_maximization",

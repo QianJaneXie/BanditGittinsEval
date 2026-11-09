@@ -24,8 +24,8 @@ from plot_gittins_ts_comparison import load_cases, previous_regret, budget_avera
 def simulate(matrix, costs, mode, seed, fraction=.1):
     """Incremental equivalent of native policy: same Beta draws and unseen-cell RNG."""
     matrix = np.asarray(matrix, dtype=np.float32)
-    if not np.isfinite(matrix).all() or (matrix < 0).any() or (matrix > 1).any():
-        raise ValueError('Scores must be finite and in [0,1]')
+    if not ((matrix == 0) | (matrix == 1)).all():
+        raise ValueError('FormatSpread-TS requires binary scores (0 or 1)')
     torch.manual_seed(seed)
     k, n = matrix.shape
     counts = np.zeros(k, dtype=np.int64)

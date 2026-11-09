@@ -1,8 +1,8 @@
 """Maximization-only FormatSpread-TS with fixed, observation-independent priors.
 
-For binary scores the update is Beta--Bernoulli. For bounded fractional
-scores it is a fractional-count (power-likelihood) extension, not an exact
-Bernoulli posterior. No rounding or access to unobserved scores is used.
+Scores must be binary, giving a Beta--Bernoulli update. Continuous metrics
+such as the debiased AlpacaEval scores are outside this baseline's scope.
+No rounding or access to unobserved scores is used.
 """
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ def beta_parameters(obs, *, prior_alpha=1.0, prior_beta=1.0):
             raise ValueError("Beta prior parameters must be positive and finite")
     seen = ~obs.isnan()
     values = obs[seen]
-    if not bool((torch.isfinite(values) & (values >= 0) & (values <= 1)).all()):
-        raise ValueError("FormatSpread-TS requires scores in [0, 1]; scores are never clipped")
+    if not bool(((values == 0) | (values == 1)).all()):
+        raise ValueError("FormatSpread-TS requires binary scores (0 or 1); continuous scores are unsupported")
     successes = torch.where(seen, obs, 0).to(torch.float64).sum(1)
     counts = seen.sum(1)
     return successes + prior_alpha, counts - successes + prior_beta
@@ -81,7 +81,7 @@ def dataset_prior_mean(matrix):
     import json
     path = Path(matrix)
     name = str(path).lower()
-    for tag, mean in (("gsm8k", .2), ("piqa", .4), ("alpaca", .2)):
+    for tag, mean in (("gsm8k", .2), ("piqa", .4)):
         if tag in name:
             return mean
     if 'mmlu' in name:

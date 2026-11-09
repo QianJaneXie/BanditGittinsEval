@@ -28,32 +28,29 @@ https://github.com/msclar/formatspread/blob/main/format_evaluation.py
   is never divided by price. This is a cost-budgeted baseline, not a cost-aware
   information-allocation algorithm. No finite-population posterior correction.
 
-## AlpacaEval
+## Applicability
 
-The configured `no_rounding_debias.npy` matrix has 153 arms and 805 items, with
-finite scores in [0,1]. Keep the raw fractional scores and original mean-regret
-objective. The update above becomes a **fractional-count Beta extension**
-(power likelihood y log(theta) + (1-y) log(1-theta)); it is not the exact
-Beta--Bernoulli posterior for continuous scores. For binary matrices the same
-implementation reduces to the usual conjugate update. This extension is our
-adaptation, not a claim that the original method evaluated AlpacaEval.
+This baseline requires binary (0/1) per-item feedback, as in the original
+Beta--Bernoulli model. Use it on binary GSM8K, PIQA and MMLU matrices.
+Multi-sample averages or other fractional-valued matrices are rejected.
 
-Do not threshold or randomly binarize scores: either would alter the observed
-feedback or add avoidable sampling noise. Reject scores outside [0,1] rather
-than clipping them. In particular, some alternate Alpaca matrices contain -2
-sentinels and must not be used directly.
+Do not run FormatSpread-TS on the debiased AlpacaEval matrix: its continuous
+scores do not match the Bernoulli observation model. Report this method as
+N/A on AlpacaEval, with a note explaining its binary-feedback assumption.
+Gaussian TS remains a separate appendix baseline supporting continuous scores.
+No thresholding, randomized binarization or fractional-count extension is used.
 
 ## Running
 
 ```bash
 python scripts/simulate_simple_regret.py \
-  --matrix data/BanditEval_matrices/alpaca_eval_weighted_alpaca_eval_gpt4_turbo_2d_comparisons_no_rounding_debias.npy \
+  --matrix data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy \
   --algorithms formatspread_ts --formatspread-batch-size 8 \
   --eval-budget-fraction 0.1 --seed 0 \
-  --out outputs/formatspread_ts/alpaca_seed0.npz
+  --out outputs/formatspread_ts/gsm8k_seed0.npz
 python scripts/plot_simple_regret_results.py \
-  --traces outputs/formatspread_ts/alpaca_seed0.npz \
-  --out outputs/formatspread_ts/alpaca_seed0.png
+  --traces outputs/formatspread_ts/gsm8k_seed0.npz \
+  --out outputs/formatspread_ts/gsm8k_seed0.png
 ```
 
 For cost-budgeted simulation add `--cost-vector` with per-cell arm costs.
@@ -61,14 +58,14 @@ The W&B runner accepts `formatspread_ts_unit_B8` and
 `formatspread_ts_cost_B8` (also B16/B32). Both entry points expose
 `--formatspread-prior-mean` to override x, or an explicit pair of
 `--formatspread-prior-alpha` and `--formatspread-prior-beta`.
-Defaults: GSM8K/Alpaca x=0.2 (alpha_0=1.25, beta_0=5), PIQA x=0.4
+Defaults: GSM8K x=0.2 (alpha_0=1.25, beta_0=5), PIQA x=0.4
 (alpha_0=10/3, beta_0=5); MMLU reuses its task bucket mean. Unknown simulation
 matrices fall back to x=0.5. The original alpha floor can shift the actual mean
 when x < 1.1/6.1; both requested x and actual mean are recorded.
 These priors reuse the existing experimental protocol; if its data-specific means
 were calibrated on the evaluation data, that limitation also applies here.
 Trace metadata records the update, prior, recommendation, and cost allocation.
-GSM8K, PIQA and Alpaca sweep specifications are in
+GSM8K and PIQA sweep specifications are in
 `scripts/config/*FormatSpreadTSSweep.yml`. Creating them does not launch or upload runs.
 
 ## Paired GSM8K comparison against GittinsEval-S (LCB)

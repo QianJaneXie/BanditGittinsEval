@@ -1,4 +1,4 @@
-"""FormatSpread binary/fractional updates, budget feasibility and runner wiring."""
+"""FormatSpread binary updates, budget feasibility and runner wiring."""
 import sys
 import importlib.util
 from pathlib import Path
@@ -13,14 +13,14 @@ from formatspread_ts_policy import beta_parameters, formatspread_thompson_sampli
 from simple_regret_recommend import empirical_incumbent
 
 
-def test_binary_and_fractional_parameters():
-    obs = torch.tensor([[1., 0., float('nan')], [.2, .8, .5]], dtype=torch.float64)
+def test_binary_parameters():
+    obs = torch.tensor([[1., 0., float('nan')], [0., 1., 1.]], dtype=torch.float64)
     a, b = beta_parameters(obs)
-    torch.testing.assert_close(a, torch.tensor([2., 2.5], dtype=torch.float64))
-    torch.testing.assert_close(b, torch.tensor([2., 2.5], dtype=torch.float64))
+    torch.testing.assert_close(a, torch.tensor([2., 3.], dtype=torch.float64))
+    torch.testing.assert_close(b, torch.tensor([2., 2.], dtype=torch.float64))
 
 
-@pytest.mark.parametrize('value', [-2., 1.01, float('inf')])
+@pytest.mark.parametrize('value', [-2., .2, .5, 1.01, float('inf')])
 def test_reject_invalid_scores(value):
     with pytest.raises(ValueError, match='scores'):
         beta_parameters(torch.tensor([[value]]))
@@ -48,13 +48,13 @@ def load_runner(name):
     return module
 
 
-def test_wandb_runner_fractional_cost_budget():
+def test_wandb_runner_binary_cost_budget():
     runner = load_runner('run_simple_regret_wandb')
     variant = runner.parse_experiment_variant('formatspread_ts_cost_B8')
     args = SimpleNamespace(formatspread_prior_alpha=1., formatspread_prior_beta=1.,
                            eval_budget_fraction=.4, run_seed=7)
     result = runner.run_simple_regret_experiment(
-        ground_truth=torch.tensor([[.2, .8, .6], [.9, .4, .1]]),
+        ground_truth=torch.tensor([[0., 1., 1.], [1., 0., 0.]]),
         original_cost_per_arm=torch.tensor([2., 5.], dtype=torch.float64),
         variant=variant, args=args, prior_mean=.5, prior_variance=.04,
         max_evaluations=6, max_original_cost=8.4, run=None, log_step_metrics=False,
@@ -63,12 +63,12 @@ def test_wandb_runner_fractional_cost_budget():
     assert result['x'][-1] > 0
 
 
-def test_simulation_cli_fractional_scores_and_reproducibility(tmp_path):
+def test_simulation_cli_binary_scores_and_reproducibility(tmp_path):
     import subprocess
     import numpy as np
     matrix = tmp_path / 'matrix.npy'
     costs = tmp_path / 'costs.npy'
-    np.save(matrix, np.array([[.2, .7, .4], [.3, .8, .9]], dtype=np.float32))
+    np.save(matrix, np.array([[0., 1., 0.], [0., 1., 1.]], dtype=np.float32))
     np.save(costs, np.array([2., 5.]))
     outputs = [tmp_path / 'a.npz', tmp_path / 'b.npz']
     for output in outputs:
@@ -88,7 +88,7 @@ def test_simulation_cli_fractional_scores_and_reproducibility(tmp_path):
 
 def test_original_prior_parameterization_and_dataset_means():
     from formatspread_ts_policy import formatspread_prior, dataset_prior_mean
-    for dataset, x in [('gsm8k', .2), ('piqa', .4), ('alpaca', .2)]:
+    for dataset, x in [('gsm8k', .2), ('piqa', .4)]:
         assert dataset_prior_mean(dataset + '.npy') == x
         a, b = formatspread_prior(x)
         assert b == 5
@@ -98,3 +98,17 @@ def test_original_prior_parameterization_and_dataset_means():
         formatspread_prior(0.)
     with pytest.raises(ValueError):
         formatspread_prior(.2, alpha=1.)
+
+
+def test_wandb_rejects_continuous_scores_before_running():
+    runner = load_runner('run_simple_regret_wandb')
+    variant = runner.parse_experiment_variant('formatspread_ts_unit_B8')
+    args = SimpleNamespace(formatspread_prior_alpha=None, formatspread_prior_beta=None,
+                           eval_budget_fraction=.4, run_seed=7)
+    with pytest.raises(ValueError, match='binary scores'):
+        runner.run_simple_regret_experiment(
+            ground_truth=torch.tensor([[.2, .8], [.9, .4]]),
+            original_cost_per_arm=torch.ones(2, dtype=torch.float64),
+            variant=variant, args=args, prior_mean=.2, prior_variance=.01,
+            max_evaluations=2, max_original_cost=None, run=None, log_step_metrics=False,
+        )

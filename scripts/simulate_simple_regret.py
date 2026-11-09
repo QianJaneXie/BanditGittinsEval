@@ -646,7 +646,7 @@ def main() -> int:
                    formatspread_ts_prior_alpha=args.formatspread_prior_alpha,
                    formatspread_ts_prior_beta=args.formatspread_prior_beta,
                    formatspread_ts_batch_size=args.formatspread_batch_size,
-                   formatspread_ts_update="fractional_count_beta",
+                   formatspread_ts_update="beta_bernoulli",
                    formatspread_ts_recommendation_rule="empirical_mean",
                    formatspread_ts_cost_allocation="affordable_batch_accuracy_maximization")
 
