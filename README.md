@@ -33,12 +33,15 @@ python scripts/plot_simple_regret_results.py --traces <traces.npz> --out <figure
 | SySRs | Synchronized successive rejects ([llm-bandits-sysrs](https://github.com/zifanlyu/llm-bandits-sysrs) Smart-SR) | Empirical mean among active arms |
 | UCB-E-LRF | Low-rank UCB (after uniform warm-up) | Empirical mean |
 | Gittins | Gittins index for the full test-set mean | Full-test-set posterior LCB by default; optional mean-only |
+| FormatSpread-TS | Beta–Bernoulli TS for binary feedback | Empirical mean among observed arms |
 | Gaussian TS | Thompson draw of the full-test-set mean | Full-test-set posterior LCB by default; optional mean-only |
 | Correlated Gaussian TS | Joint Thompson draw using a categorical configuration GP prior | Full-test-set posterior LCB by default; optional mean-only |
 | Correlation-aware Gittins | Joint Gaussian belief updates and marginal single-arm stopping indices; heuristic for correlated arms | Full-test-set posterior LCB in its dedicated runner |
 | MF-KG | BoTorch knowledge gradient per incremental item cost; jointly select one configuration and its next fidelity (`q=1`) | GP posterior mean at full fidelity |
 
 `simulate_simple_regret.py` runs UCB-E, SySRs, and Gittins (`--algorithms ucb sysrs gittins`). UCB-E-LRF is run via `run_simple_regret_wandb.py` (`experiment_variant` such as `lrf_B32` / `lrf_cost_B32`; see `scripts/config/*_lrf.yml`). SySRs is hyperparameter-free (`sysrs` / `sysrs_cost`; schedule budget = `--eval-budget-fraction`).
+
+FormatSpread-TS is enabled with `--algorithms formatspread_ts`; see the [adaptation and applicability](docs/formatspread_ts.md).
 
 Gaussian TS is enabled with `--algorithms ts` (or add `ts` to the existing list).
 Correlated Gaussian TS has a separate runner, `scripts/run_correlated_ts_baseline.py`.

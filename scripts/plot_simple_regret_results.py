@@ -79,6 +79,7 @@ def main() -> int:
     _plot(x_sysrs, "sysrs_regret", "SySRs (recommend: active empirical mean)", color=color_sysrs)
     _plot(x_gittins, "gittins_regret", gittins_recommendation_label(z), color=color_gittins)
     suffix = "x" if args.x_axis == "evals" else "x_original_cost"
+    _plot(f"formatspread_ts_{suffix}", "formatspread_ts_regret", "FormatSpread-TS", color="C5")
     _plot(f"ts_{suffix}", "ts_regret", ts_recommendation_label(z), color="C4")
     _plot(f"mfkg_{suffix}", "mfkg_regret", "MF-KG (including warmup)", color="C5", source=mfkg)
     if args.x_axis == "original_cost":

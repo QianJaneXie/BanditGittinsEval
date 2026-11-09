@@ -43,6 +43,7 @@ from gittins_shrinking_posterior import compute_finite_population_batch_roots_lo
 from simple_regret_recommend import empirical_incumbent, posterior_incumbent  # noqa: E402
 from sysrs_policy import make_sysrs_policy  # noqa: E402
 from evaluation_costs import load_bo_per_cell_costs, validate_per_cell_costs  # noqa: E402
+from formatspread_ts_policy import formatspread_thompson_sampling, beta_parameters, formatspread_prior
 from gaussian_ts_policy import gaussian_thompson_sampling  # noqa: E402
 
 DEFAULT_PRIOR_MEAN = 0.5
@@ -74,6 +75,11 @@ def safe_token(s: str) -> str:
 
 def parse_experiment_variant(raw: str) -> VariantConfig:
     v = raw.strip()
+
+    m = re.fullmatch(r"formatspread_ts(?:_(unit|cost))?(?:_B(\d+))?", v)
+    if m:
+        mode, b = m.group(1) or "unit", int(m.group(2) or 8)
+        return VariantConfig(v, f"formatspread_ts_{mode}", "formatspread_ts", mode, b, b, 1e-4, "dataset")
 
     m = re.fullmatch(r"ts_(unit|cost|aware)_B(\d+)(?:_(default|dataset))?", v)
     if m:
@@ -272,6 +278,24 @@ def build_policy(
                 device=str(args.lrf_device),
             )
 
+        return step_fn, empirical_incumbent, None, lookup_table_s
+
+    if variant.policy_family == "formatspread_ts":
+        alpha, beta = formatspread_prior(
+            prior_mean if getattr(args, "formatspread_prior_mean", None) is None else args.formatspread_prior_mean,
+            alpha=args.formatspread_prior_alpha, beta=args.formatspread_prior_beta)
+        beta_parameters(ground_truth, prior_alpha=alpha, prior_beta=beta)
+        cost_budget = (float(args.eval_budget_fraction) * ground_truth.shape[1]
+                       * float(actual_cost_per_arm.sum()) if variant.cost_mode == "cost" else None)
+
+        def step_fn(obs, sim_cum_eval):
+            spent = float(((~obs.isnan()).sum(1) * actual_cost_per_arm).sum())
+            return formatspread_thompson_sampling(
+                obs, batch_size=variant.batch_size, prior_alpha=alpha, prior_beta=beta,
+                max_batch_size=max_evaluations - sim_cum_eval,
+                per_arm_cost=actual_cost_per_arm,
+                remaining_cost=None if cost_budget is None else max(0., cost_budget - spent),
+            )
         return step_fn, empirical_incumbent, None, lookup_table_s
 
     if variant.policy_family == "ts":
@@ -544,6 +568,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--gittins-obs-noise-variance", "--gittins_obs_noise_variance", type=float, default=None)
     p.add_argument("--gittins-prior-mean", "--gittins_prior_mean", type=float, default=None)
     p.add_argument("--gittins-prior-variance", "--gittins_prior_variance", type=float, default=None)
+    p.add_argument("--formatspread-prior-mean", "--formatspread_prior_mean", type=float, default=None)
+    p.add_argument("--formatspread-prior-alpha", "--formatspread_prior_alpha", type=float, default=None)
+    p.add_argument("--formatspread-prior-beta", "--formatspread_prior_beta", type=float, default=None)
     p.add_argument("--ts-prior-mean", "--ts_prior_mean", type=float, default=None,
                    help="Override the resolved Gaussian TS prior mean.")
     p.add_argument("--ts-prior-variance", "--ts_prior_variance", type=float, default=None,
@@ -697,6 +724,21 @@ def main() -> int:
             ts_recommendation_rule=recommendation_rule,
             ts_recommendation_std_penalty=recommendation_std_penalty,
             ts_cost_allocation="standard_ts_cost_budget_stopping",
+        )
+    if variant.policy_family == "formatspread_ts":
+        prior_x = prior_mean if args.formatspread_prior_mean is None else args.formatspread_prior_mean
+        args.formatspread_prior_alpha, args.formatspread_prior_beta = formatspread_prior(
+            prior_x, alpha=args.formatspread_prior_alpha, beta=args.formatspread_prior_beta)
+        prior_mean = args.formatspread_prior_alpha / (args.formatspread_prior_alpha + args.formatspread_prior_beta)
+        prior_variance = (args.formatspread_prior_alpha * args.formatspread_prior_beta /
+                          ((args.formatspread_prior_alpha + args.formatspread_prior_beta) ** 2 *
+                           (args.formatspread_prior_alpha + args.formatspread_prior_beta + 1)))
+        prior_source = "formatspread_beta_from_" + prior_source
+        recommendation_config.update(
+            algorithm_label="FormatSpread-TS", formatspread_prior_x=prior_x, formatspread_update="beta_bernoulli",
+            formatspread_prior_alpha=args.formatspread_prior_alpha,
+            formatspread_prior_beta=args.formatspread_prior_beta,
+            formatspread_cost_allocation="affordable_batch_accuracy_maximization",
         )
     run_name = args.wandb_name or (
         f"{dataset_tag}_{matrix_seed_label}_{variant.raw}_runseed{args.run_seed}"
