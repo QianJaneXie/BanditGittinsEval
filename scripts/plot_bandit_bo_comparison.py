@@ -118,6 +118,8 @@ def main() -> int:
         "--mfkg-trace", "--mfkg_trace", type=Path, default=None,
         help="MF-KG trace from scripts/run_mfkg_baseline.py, including all warmup steps.",
     )
+    p.add_argument("--bohb-trace", "--bohb_trace", type=Path, default=None,
+                   help="BOHB trace from scripts/run_bohb_baseline.py, including initial low-fidelity jobs.")
     p.add_argument(
         "--pbgi-label",
         type=str,
@@ -163,6 +165,7 @@ def main() -> int:
     pbgi = np.load(args.pbgi_trace) if args.pbgi_trace is not None else None
     log_bo = np.load(args.log_bo_trace) if args.log_bo_trace is not None else None
     mfkg = np.load(args.mfkg_trace) if args.mfkg_trace is not None else bandit
+    bohb = np.load(args.bohb_trace) if args.bohb_trace is not None else bandit
 
     if args.x_axis == "evals":
         ucb_x = "ucb_x"
@@ -188,6 +191,9 @@ def main() -> int:
     _plot_curve(bandit, x_key=f"sysrs_{suffix}", y_key="sysrs_regret", label="bandit SySRs", color="C2")
     _plot_curve(bandit, x_key=f"ts_{suffix}", y_key="ts_regret", label=ts_recommendation_label(bandit), color="C4")
     _plot_curve(mfkg, x_key=f"mfkg_{suffix}", y_key="mfkg_regret", label="MF-KG (including warmup)", color="C5")
+    if f"bohb_{suffix}" in bohb.files and "bohb_regret" in bohb.files:
+        plt.step(bohb[f"bohb_{suffix}"], bohb["bohb_regret"], where="post",
+                 label="BOHB", color="C6", linewidth=1.7)
     if log_bo is not None:
         _plot_bo_with_stop(
             log_bo,

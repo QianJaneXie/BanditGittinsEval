@@ -322,3 +322,9 @@ python scripts/plot_wandb_simple_regret_curves.py \
 ```
 
 `benchmark_key` links bandit and BO runs (`gsm8k_seed1`, `mmlu_abstract_algebra`, …). Use `--bo-phase post_init` to drop BO random-init steps (matching `plot_bandit_bo_comparison.py`).
+
+## BOHB baseline
+
+The author-default BOHB baseline uses categorical configuration features and
+nested item-subsampling fidelities, with both unit and heterogeneous-cost
+budgets. See [the protocol and commands](docs/bohb_baseline.md).
