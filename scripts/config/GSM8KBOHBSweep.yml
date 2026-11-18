@@ -1,0 +1,33 @@
+# Paired seed-1 pilot. For all five matrices and MMLU use run_bohb_benchmarks.py.
+program: scripts/run_bohb_baseline.py
+name: GSM8KBOHBSweep
+method: grid
+command:
+- ${env}
+- ${interpreter}
+- ${program}
+- ${args}
+metric:
+  name: final_simple_regret
+  goal: minimize
+parameters:
+  matrix:
+    value: data/BanditEval_matrices/gsm8k_1_samples_various_models_seed1.npy
+  bo_inputs:
+    value: data/bo_inputs/gsm8k/gsm8k_1_samples_various_models_seed1_bo_inputs.npz
+  run_seed:
+    values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  experiment_variant:
+    values: [bohb_unit, bohb_cost]
+  eval_budget_fraction:
+    value: 0.1
+  min_fidelity:
+    value: 0.01
+  eta:
+    value: 3
+  wandb_project:
+    value: GittinsBanditEval
+  wandb_group:
+    value: gsm8k_bohb_seed1
+  wandb_mode:
+    value: online

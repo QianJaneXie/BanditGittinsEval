@@ -28,6 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 experiments = ["wandb", "pandas", "PyYAML"]
 test = ["pytest>=8", "wandb", "pandas", "PyYAML"]
+bohb = ["hpbandster==0.7.4", "ConfigSpace==1.2.1", "statsmodels==0.14.6"]
 
 # Editable install exposes modules under src/ (e.g. import q_estimation).
 [tool.setuptools]
@@ -45,5 +46,6 @@ py-modules = [
     "correlated_gittins_policy",
     "marginal_gittins_lookup",
     "mfkg_policy",
+    "bohb_policy",
     "evaluation_costs",
 ]
